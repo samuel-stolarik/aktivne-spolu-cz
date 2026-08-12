@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import Menu from "../components/Menu.astro";
 import Paticka from "../components/Paticka.astro";
+import PrepisyObsahu from "../components/admin/PrepisyObsahu.astro";
 
 interface Props {
   titulek: string;
@@ -42,6 +43,11 @@ const { titulek, popis, sMenu = true } = Astro.props;
     <meta property="og:description" content={popis} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="cs_CZ" />
+
+    {/* Doplní texty upravené v administraci (/admin/). V HTML zůstávají
+        původní texty, tohle jen přepíše ty, které správce změnil.
+        Když databáze nejede, nestane se nic a web vypadá normálně. */}
+    <PrepisyObsahu />
   </head>
 
   <body>

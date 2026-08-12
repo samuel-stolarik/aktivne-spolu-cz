@@ -420,6 +420,21 @@ enabled = true
 enabled = true
 verify_jwt = false
 
+# Administrace webu (/admin) — přihlášky, texty a obrázky.
+#
+# `verify_jwt = false` neznamená, že je funkce otevřená. Ověření se dělá
+# uvnitř funkce a je přísnější: kontroluje se podepsaný přihlašovací token
+# A K TOMU záznam v tabulce `spravci`. Vestavěná kontrola `verify_jwt` by
+# pustila dál kohokoli s veřejným klíčem webu, protože i ten je platný token.
+#
+# Druhý důvod: prohlížeč posílá před každým voláním z jiné domény dotaz
+# metodou OPTIONS a ten Z PRINCIPU nenese hlavičku s přihlášením. Se zapnutou
+# vestavěnou kontrolou by ho brána odmítla a administrace by se k funkci
+# vůbec nedovolala.
+[functions.admin-obsah]
+enabled = true
+verify_jwt = false
+
 # Vyhledání v ARESu podle IČO. Volá se ze stejného formuláře bez přihlašování,
 # takže také nesmí vyžadovat účet. Nevrací nic citlivého — jen to, co je
 # ve veřejném rejstříku, a jen když si o to někdo řekne tlačítkem.

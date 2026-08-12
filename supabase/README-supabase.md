@@ -77,29 +77,44 @@ Databáze si sama hlídá, že:
 | Sekvence | Od kolika | Kdy se posune |
 | --- | --- | --- |
 | `seq_variabilni_symbol` | 100001 | při každé přijaté přihlášce |
-| `seq_faktura_poradi` | 1 | až když se opravdu vystavuje faktura |
-
-Oddělené jsou schválně. Kdyby to bylo jedno číslo, v řadě faktur by zůstávaly
-díry po lidech, kteří se přihlásili a nezaplatili — a to účetní neradi.
+| `seq_faktura_poradi` | 1 | **už se nepoužívá**, viz níž |
 
 ### Číslo faktury
 
+Zadavatel chtěl, aby „variabilní symbol byl stejný jako číslo faktury" — ať se
+platba na výpisu spáruje s fakturou bez hledání v tabulce. Doslova stejné to být
+nemůže: variabilní symbol smí obsahovat **jen číslice** (jde do QR platby jako
+`X-VS` a banka jiný tvar nepřijme), kdežto číslo faktury obsahuje lomítka.
+
+Sjednocené je proto **pořadové číslo, ne celý řetězec**:
+
+```
+variabilní symbol   100001
+číslo faktury       26/03/100001
+```
+
 ```sql
-select dalsi_cislo_faktury(2026, '03');   -- 26/03/001
+select cislo_faktury_pro_vs(2026, '03', 100001);   -- 26/03/100001
 ```
 
-Vrátí `RR/SS/NNN` — rok, řada, pořadí. Řada je **parametr**, ne pevná hodnota
-v kódu; posílá ji ten, kdo fakturu vystavuje.
+Funkce je `immutable` a **nic neposouvá** — pro stejný variabilní symbol vrátí
+vždycky totéž číslo. Dvojí doručení webhooku tak nevyrobí druhé číslo faktury.
+Řada je **parametr**, ne pevná hodnota v kódu.
 
-> **Pozor:** každé zavolání sekvenci posune. Volat až ve chvíli, kdy faktura
-> opravdu vzniká — ne „pro jistotu dopředu".
+> **Co má vědět účetní:** řada faktur není souvislá. Kdo se přihlásí
+> a nezaplatí, spotřebuje variabilní symbol, ale fakturu nedostane — čísla pak
+> vypadají třeba `26/03/100003`, `26/03/100007`. Zákon souvislou řadu
+> nevyžaduje, ale je lepší o tom vědět dopředu.
 
-Ověřeno na živé databázi:
+Původní funkce `dalsi_cislo_faktury(rok, rada)` a sekvence `seq_faktura_poradi`
+dávaly samostatné třímístné pořadí (`26/03/001`). Funkce je **zrušená** schválně:
+kdyby zůstala vedle nové, staré volání by tiše vystavilo fakturu ze zahozené
+řady. Takhle skončí chybou a je to hned vidět. Sekvence smazaná není, jen se
+nepoužívá — kdyby se zadavatel k oddělené řadě vracel, hodnota tam zůstává.
 
-```
-select dalsi_cislo_faktury(2026,'03'), dalsi_cislo_faktury(2026,'03'), dalsi_cislo_faktury(26,'7');
-→ 26/03/001 | 26/03/002 | 26/07/003
-```
+Jedinečnost čísel hlídá databáze, ne důvěra: `variabilni_symbol` je `unique`,
+podmínka `faktura_cislo_odpovida_vs` nepustí k přihlášce číslo faktury, které
+nekončí *jejím* variabilním symbolem, a nad `faktura_cislo` je unikátní index.
 
 ### Zabezpečení — proč se k přihláškám nikdo nedostane
 
@@ -124,7 +139,7 @@ Ověřeno skutečným dotazem veřejným klíčem:
 GET  /rest/v1/prihlasky?select=*        → HTTP 401  permission denied for table prihlasky
 POST /rest/v1/prihlasky                 → HTTP 401  permission denied for table prihlasky
 POST /rest/v1/rpc/dalsi_variabilni_symbol → HTTP 401  permission denied for function dalsi_variabilni_symbol
-POST /rest/v1/rpc/dalsi_cislo_faktury     → HTTP 401  permission denied for function dalsi_cislo_faktury
+POST /rest/v1/rpc/cislo_faktury_pro_vs   → HTTP 401  permission denied for function cislo_faktury_pro_vs
 ```
 
 ### Úložiště souborů
@@ -419,7 +434,7 @@ jde přepsat — ARES má adresu občas v jiném tvaru, než chce účetní.
 | past na roboty | uloženo 0 řádků, odpověď `{"ok":true,…}` |
 | serverová validace při obejití formuláře | HTTP 400 se seznamem chyb po polích |
 | čtení veřejným klíčem | HTTP 401, `permission denied for table prihlasky` |
-| číslování faktur | `26/03/001`, `26/03/002`, `26/07/003` |
+| číslování faktur | `26/03/100001` — číslo vychází z variabilního symbolu |
 | ARES, existující IČO 29154901 | `{"ok":true,"ico":"29154901","nazev":"Právě teď! o.p.s.","adresa":"Fügnerovo náměstí 1808/3, Nové Město, 120 00 Praha 2"}` |
 | ARES, neexistující IČO 00000019 | HTTP 404, `{"ok":false,"duvod":"nenalezeno",…}` |
 | ARES, plátce DPH (27082440) | v odpovědi navíc `"dic":"CZ27082440"` |

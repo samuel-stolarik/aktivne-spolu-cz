@@ -342,7 +342,7 @@
                         }
                     }
                 },
-                "notes": "Hlavička Accept: application/vnd.pgrst.object+json zajistí, že se vrátí jeden objekt, ne pole. RLS je zapnuté a anon nemá na tabulku prihlasky žádná práva – tenhle modul MUSÍ jet přes service_role klíč. Variabilní symbol si Make nevymýšlí, přebírá ho z tohoto načtení. Připojení se v Make zakládá jako klíč typu API Key Auth (pole Credentials), ne jako běžné připojení aplikace. Modul je záměrná pojistka: webhook sice nese kompletní data přihlášky, ale ta jdou z prohlížeče a daly by se podvrhnout – fakturační údaje proto bereme z databáze. Vyhledává se podle id z webhooku."
+                "notes": "Hlavička Accept: application/vnd.pgrst.object+json zajistí, že se vrátí jeden objekt, ne pole. RLS je zapnuté a anon nemá na tabulku prihlasky žádná práva – tenhle modul MUSÍ jet přes service_role klíč. Variabilní symbol si Make nevymýšlí, přebírá ho z tohoto načtení – a protože se z něj skládá i číslo faktury, je tenhle modul jediným zdrojem obojího. Připojení se v Make zakládá jako klíč typu API Key Auth (pole Credentials), ne jako běžné připojení aplikace. Modul je záměrná pojistka: webhook sice nese kompletní data přihlášky, ale ta jdou z prohlížeče a daly by se podvrhnout – fakturační údaje proto bereme z databáze. Vyhledává se podle id z webhooku."
             }
         },
         {
@@ -365,7 +365,7 @@
                 "handleErrors": true
             },
             "mapper": {
-                "url": "{{2.supabase_url}}/rest/v1/rpc/dalsi_cislo_faktury",
+                "url": "{{2.supabase_url}}/rest/v1/rpc/cislo_faktury_pro_vs",
                 "serializeUrl": false,
                 "method": "post",
                 "headers": [
@@ -381,7 +381,7 @@
                 "qs": [],
                 "bodyType": "raw",
                 "contentType": "application/json",
-                "data": "{\n  \"rok\": {{formatDate(now; \"YY\")}},\n  \"rada\": \"{{2.rada_faktur}}\"\n}",
+                "data": "{\n  \"rok\": {{formatDate(now; \"YY\")}},\n  \"rada\": \"{{2.rada_faktur}}\",\n  \"variabilni_symbol\": {{3.data.variabilni_symbol}}\n}",
                 "parseResponse": true,
                 "timeout": 60,
                 "shareCookies": false,
@@ -397,7 +397,7 @@
                 "designer": {
                     "x": 900,
                     "y": 0,
-                    "name": "4. Supabase – přidělení čísla faktury (RPC)"
+                    "name": "4. Supabase – odvození čísla faktury z VS (RPC)"
                 },
                 "restore": {
                     "parameters": {
@@ -406,7 +406,7 @@
                         }
                     }
                 },
-                "notes": "Číslo faktury si Make NEGENERUJE. Vyžádá si ho z databázové funkce public.dalsi_cislo_faktury(rok, rada), která vrátí hotový text ve tvaru RR/SS/NNN (např. 26/03/001). Řada je jediná a atomická, protože pořadové číslo dává Postgres sekvence. Volání posouvá sekvenci, proto je před ním filtr – při opakovaném doručení webhooku se číslo nespálí podruhé."
+                "notes": "Číslo faktury si Make NEGENERUJE. Vyžádá si ho z databázové funkce public.cislo_faktury_pro_vs(rok, rada, variabilni_symbol), která vrátí hotový text ve tvaru RR/SS/<variabilní symbol> – například 26/03/100001. Variabilní symbol se do faktury propisuje schválně: zadavatel chce, aby bylo na platbě i na faktuře vidět stejné číslo. Doslova stejné být nemůže, protože VS smí být jen číslice (jde do QR platby jako X-VS) a číslo faktury má lomítka – sjednocené je tedy pořadové číslo, ne celý řetězec. Variabilní symbol se bere z modulu 3, tedy z databáze, NE z webhooku – data z webhooku pocházejí z prohlížeče a daly by se podvrhnout. Funkce nic neposouvá: pro stejný VS vrátí vždycky stejné číslo faktury, takže opakované doručení webhooku nespálí číslo navíc. Filtr před modulem tu přesto zůstává, aby se hotová faktura nevystavovala a neposílala dvakrát. Sekvence seq_faktura_poradi a stará funkce dalsi_cislo_faktury(rok, rada) se už nepoužívají – stará funkce je v databázi zrušená, takže případné staré volání skončí chybou 404 a je vidět, místo aby tiše vyrobilo číslo ze zahozené řady."
             }
         },
         {
@@ -495,7 +495,7 @@
                         "label": "Platnost proměnné"
                     }
                 ],
-                "notes": "Připraví hodnoty, které se dosazují do šablony faktury. Datum splatnosti se NEPOČÍTÁ znovu – bere se hotové z webhooku (pole splatnost), aby na faktuře bylo stejné datum jako v QR kódu k platbě. Splatnost (dnes + 7 dní) počítá Edge Function; když ji chceš změnit, mění se tam, ne tady. Proměnná splatnost_dnu v modulu 2 je jen informativní, na výpočet nemá vliv."
+                "notes": "Připraví hodnoty, které se dosazují do šablony faktury. Číslo faktury (26/03/100001) končí variabilním symbolem, takže název souboru vyjde faktura-26-03-100001.pdf a je z něj poznat, ke které platbě patří. Datum splatnosti se NEPOČÍTÁ znovu – bere se hotové z webhooku (pole splatnost), aby na faktuře bylo stejné datum jako v QR kódu k platbě. Splatnost (dnes + 7 dní) počítá Edge Function; když ji chceš změnit, mění se tam, ne tady. Proměnná splatnost_dnu v modulu 2 je jen informativní, na výpočet nemá vliv."
             }
         },
         {
@@ -619,7 +619,7 @@
                         }
                     }
                 },
-                "notes": "Šablona je obyčejný Google dokument s poli {{cislo_faktury}}, {{castka_text}} atd. V poli Values (requests) se píše jen NÁZEV pole bez složených závorek – ty si Make doplní sám. Seznam všech polí je v README. V šabloně NESMÍ být žádný rozpis DPH – ani sazba, ani základ daně, ani řádek DPH. Právě teď! o.p.s. je podle ARES potvrzený neplátce DPH a nemá přiděleno DIČ, takže na faktuře není ani pole DIČ dodavatele. Doklad se jmenuje jen FAKTURA, nikdy ne daňový doklad."
+                "notes": "Šablona je obyčejný Google dokument s poli {{cislo_faktury}}, {{castka_text}} atd. V poli Values (requests) se píše jen NÁZEV pole bez složených závorek – ty si Make doplní sám. Seznam všech polí je v README. Pole cislo_faktury i variabilni_symbol se na faktuře schválně opakují – je to jedno a totéž pořadové číslo, jen jednou s rokem a řadou (26/03/100001) a jednou samotné (100001), protože do QR platby lomítka nesmí. V šabloně NESMÍ být žádný rozpis DPH – ani sazba, ani základ daně, ani řádek DPH. Právě teď! o.p.s. je podle ARES potvrzený neplátce DPH a nemá přiděleno DIČ, takže na faktuře není ani pole DIČ dodavatele. Doklad se jmenuje jen FAKTURA, nikdy ne daňový doklad."
             }
         },
         {
@@ -667,7 +667,7 @@
                 ],
                 "bcc": [],
                 "subject": "Faktura {{5.cislo_faktury}} – registrační poplatek, Mezinárodní den seniorů",
-                "html": "<p>Dobrý den,</p><p>děkujeme za přihlášku do projektu k Mezinárodnímu dni seniorů. V příloze posíláme fakturu na registrační poplatek.</p><p><strong>Kolik:</strong> {{5.castka_text}}<br><strong>Číslo účtu:</strong> {{2.banka_ucet}} ({{2.banka_nazev}})<br><strong>Variabilní symbol:</strong> {{5.variabilni_symbol}}<br><strong>Zpráva pro příjemce:</strong> {{2.zprava_pro_prijemce}}<br><strong>Zaplaťte do:</strong> {{5.datum_splatnosti}}</p><p>Variabilní symbol prosím vyplňte, ať platbu poznáme a spárujeme s vaší přihláškou.</p><p>Platíte-li ze zahraničí, použijte IBAN {{2.banka_iban}} a SWIFT {{2.banka_swift}}.</p><p>{{2.veta_neplatce_dph}}</p><p>Kdyby cokoliv, napište nám na {{2.vystavovatel_email}} nebo zavolejte na {{2.vystavovatel_telefon}}.</p><p>Těšíme se na vaše setkání!<br>{{2.vystavovatel_nazev}}<br>{{2.vystavovatel_web}}</p>",
+                "html": "<p>Dobrý den,</p><p>děkujeme za přihlášku do projektu k Mezinárodnímu dni seniorů. V příloze posíláme fakturu na registrační poplatek.</p><p><strong>Kolik:</strong> {{5.castka_text}}<br><strong>Číslo účtu:</strong> {{2.banka_ucet}} ({{2.banka_nazev}})<br><strong>Variabilní symbol:</strong> {{5.variabilni_symbol}}<br><strong>Zpráva pro příjemce:</strong> {{2.zprava_pro_prijemce}}<br><strong>Zaplaťte do:</strong> {{5.datum_splatnosti}}</p><p>Variabilní symbol prosím vyplňte, ať platbu poznáme a spárujeme s vaší přihláškou. Je to zároveň poslední část čísla faktury {{5.cislo_faktury}}, takže se nedá splést.</p><p>Platíte-li ze zahraničí, použijte IBAN {{2.banka_iban}} a SWIFT {{2.banka_swift}}.</p><p>{{2.veta_neplatce_dph}}</p><p>Kdyby cokoliv, napište nám na {{2.vystavovatel_email}} nebo zavolejte na {{2.vystavovatel_telefon}}.</p><p>Těšíme se na vaše setkání!<br>{{2.vystavovatel_nazev}}<br>{{2.vystavovatel_web}}</p>",
                 "attachments": [
                     {
                         "fileName": "{{5.nazev_souboru}}",
@@ -844,7 +844,7 @@
                         }
                     }
                 },
-                "notes": "Teprve tímhle zápisem je faktura hotová. Dokud je faktura_cislo prázdné, filtr v modulu 4 pustí scénář znovu a faktura se dovystaví."
+                "notes": "Teprve tímhle zápisem je faktura hotová. Dokud je faktura_cislo prázdné, filtr v modulu 4 pustí scénář znovu a faktura se dovystaví. Databáze si navíc hlídá, že zapisované číslo faktury končí variabilním symbolem téhle přihlášky (podmínka faktura_cislo_odpovida_vs) – cizí nebo přepsané číslo neprojde a zápis skončí chybou 400."
             }
         },
         {
@@ -912,7 +912,7 @@
                 "moduleIds": [
                     4
                 ],
-                "content": "<p>Číslo faktury dává databáze, ne Make. Volání posouvá sekvenci – nespouštěj modul naprázdno při testování, spálíš číslo v řadě.</p>",
+                "content": "<p>Číslo faktury dává databáze, ne Make. Skládá se z variabilního symbolu přihlášky (26/03/100001), takže je na faktuře i na platbě vidět stejné číslo. Volání nic neposouvá – pro stejný VS vrátí vždycky totéž číslo, testováním se nic nespálí.</p>",
                 "isFilterNote": false,
                 "metadata": {
                     "color": "#F8B24C"

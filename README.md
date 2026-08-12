@@ -113,7 +113,7 @@ Všechna pole z formuláře, plus:
 |---|---|
 | `variabilni_symbol` | Přiděluje se při registraci ze sekvence `seq_variabilni_symbol` (od 100001) |
 | `stav` | `nova` → `zaplaceno` / `zruseno` |
-| `faktura_cislo` | Doplní se až při vystavení faktury, tvar `RR/SS/NNN` |
+| `faktura_cislo` | Doplní se až při vystavení faktury, tvar `RR/SS/<variabilní symbol>`, např. `26/03/100001` |
 | `faktura_url` | Odkaz na PDF faktury |
 
 **Variabilní symbol a číslo faktury jsou dvě různé věci.** Variabilní symbol

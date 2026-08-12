@@ -126,30 +126,61 @@ už jen informativní — **když chceš měnit splatnost, mění se v Edge Func
 
 ---
 
-## Číslo faktury: proč si ho Make nevymýšlí
+## Číslo faktury: je v něm variabilní symbol
 
-Faktura má číslo ve tvaru **`RR/SS/NNN`**, například `26/03/001`:
+Faktura má číslo ve tvaru **`RR/SS/<variabilní symbol>`**, například `26/03/100001`:
 
 - `RR` — rok (26 = rok 2026)
 - `SS` — interní číslo řady, nastavuje se v modulu 2 jako `rada_faktur`
-- `NNN` — pořadové číslo faktury v řadě
+- poslední část — **variabilní symbol té konkrétní přihlášky**, tedy zároveň pořadové číslo faktury
 
-**Číslo si Make negeneruje sám.** Zavolá databázovou funkci
-`public.dalsi_cislo_faktury(rok, rada)` v Supabase a ta mu vrátí hotový text. Důvod je jednoduchý:
-kdyby si číslo počítal Make, mohly by při dvou přihláškách ve stejnou vteřinu vzniknout dvě faktury
-se stejným číslem. Takhle pořadí hlídá jedna Postgres sekvence a řada je vždycky souvislá a jenom
-na jednom místě.
+### Proč není číslo faktury a variabilní symbol úplně stejné
 
-**Stejné to je s variabilním symbolem.** Ten přiděluje Supabase už při registraci, Make ho jen
-přebere z načtené přihlášky (modul 3) a opíše na fakturu. Nikde ho nedopočítává.
+Zadavatel chtěl, aby „variabilní symbol byl stejný jako číslo faktury" — ať se platba na výpisu
+spáruje s fakturou bez hledání v tabulce. **Doslova stejné to být nemůže:**
 
-⚠️ **Pozor při testování:** každé volání modulu 4 posune sekvenci. Když si modul spustíš „jen tak
-na zkoušku", spálíš tím jedno číslo v řadě a v číslování vznikne díra. Proto je před modulem 4
-filtr, který pustí dál jen přihlášky, které fakturu opravdu ještě nemají — díky němu se při
-opakovaném doručení webhooku číslo nepřidělí podruhé.
+- variabilní symbol smí obsahovat **jen číslice**, nejvýš deset. Do QR platby jde jako `X-VS`
+  a banka jiný tvar nepřijme,
+- číslo faktury obsahuje **lomítka** (`26/03/…`).
+
+Sjednocené je proto **pořadové číslo, ne celý řetězec**:
+
+```
+variabilní symbol   100001
+číslo faktury       26/03/100001
+                          ^^^^^^ tentýž variabilní symbol
+```
+
+Na faktuře i na platbě je tak vidět stejné číslo a spárování je na první pohled. Blíž se
+k „naprosto stejné" dostat nedá.
+
+⚠️ **Řada faktur není souvislá a účetní o tom musí vědět.** Variabilní symbol dostane každý hned
+při registraci, ale fakturu jen ten, kdo platí převodem. Kdo se přihlásí a nezaplatí, spotřebuje
+variabilní symbol, ale fakturu nedostane — v číslech faktur po něm zůstane díra
+(`26/03/100003`, `26/03/100007`, `26/03/100008`). Zákon souvislou řadu nevyžaduje, ale bývá to
+první věc, na kterou se účetní ptá.
+
+### Číslo si Make negeneruje sám
+
+Zavolá databázovou funkci `public.cislo_faktury_pro_vs(rok, rada, variabilni_symbol)` v Supabase
+a ta mu vrátí hotový text. Variabilní symbol do ní posílá **z modulu 3, tedy z databáze**, ne
+z webhooku — data z webhooku pocházejí z prohlížeče a daly by se podvrhnout.
+
+✅ **Testováním se nedá nic spálit.** Funkce nic neposouvá: pro stejný variabilní symbol vrátí
+vždycky stejné číslo faktury. Když se webhook doručí dvakrát (což se stává), vznikne dvakrát
+totéž číslo místo dvou různých. Filtr před modulem 4 přesto zůstává — ne kvůli číslu, ale aby se
+hotová faktura nevystavovala a neposílala podruhé.
 
 *(Parametr `rok` řešit nemusíš — funkce si dělá `rok % 100`, takže `26` i `2026` dají stejný
 výsledek. Blueprint posílá dvojčíslí a je to v pořádku.)*
+
+### Co se změnilo oproti dřívější verzi
+
+Původně měla faktura tvar `26/03/001` a pořadí bralo z vlastní sekvence `seq_faktura_poradi`.
+Ta se **už nepoužívá** (v databázi zůstává jen pro případ návratu k oddělené řadě) a stará funkce
+`dalsi_cislo_faktury(rok, rada)` je **zrušená**. Kdyby na ni někde zůstalo staré volání, dostane
+HTTP 404 a scénář se zastaví — je to schválně: lepší hlasitá chyba než tiše vystavená faktura
+ze zahozené řady.
 
 ---
 
@@ -201,10 +232,10 @@ závorkách. Make je při každém běhu nahradí skutečnými hodnotami.
 
 | Pole v šabloně | Co se doplní |
 | --- | --- |
-| `{{cislo_faktury}}` | Číslo faktury, např. 26/03/001 |
+| `{{cislo_faktury}}` | Číslo faktury, např. 26/03/100001 |
 | `{{datum_vystaveni}}` | Datum vystavení |
 | `{{datum_splatnosti}}` | Datum splatnosti (7 dní od vystavení) |
-| `{{variabilni_symbol}}` | Variabilní symbol ze Supabase |
+| `{{variabilni_symbol}}` | Variabilní symbol ze Supabase, např. 100001 |
 | `{{vystavovatel_nazev}}` | Právě teď! o.p.s. |
 | `{{vystavovatel_adresa}}` | Ulice a číslo |
 | `{{vystavovatel_mesto_psc}}` | PSČ a město |
@@ -287,7 +318,12 @@ Tenhle jeden klíč pak vyber ve všech pěti modulech: 3, 4, 9, 10 a 11.
 
 Zapisuje zpět jen dva sloupce: **`faktura_cislo`** a **`faktura_url`**.
 
-Volá funkci `public.dalsi_cislo_faktury(rok, rada)`.
+Volá funkci `public.cislo_faktury_pro_vs(rok, rada, variabilni_symbol)`.
+
+📌 Zápis `faktura_cislo` hlídá databáze podmínkou `faktura_cislo_odpovida_vs`: číslo faktury musí
+končit variabilním symbolem té přihlášky, ke které se zapisuje. Cizí nebo ručně přepsané číslo
+neprojde a zápis skončí chybou 400. Je to pojistka proti překlepu ve scénáři — číslo faktury je
+účetní údaj a nemá se dát „nějak" opravit.
 
 📌 Filtr před modulem 2 pouští dál jen přihlášky, kde se `forma_platby` **rovná** `prevod`.
 Databáze má na tom sloupci omezení `check (forma_platby in ('qr', 'prevod'))` a formulář posílá
@@ -346,8 +382,10 @@ kterou dostane přihlášený.**
 9. **Otestuj** — pošli přes web zkušební přihlášku s volbou „převod s fakturou".
    Zkontroluj, že: přišel e-mail s PDF, PDF je v bucketu `faktury`, a že u přihlášky
    v databázi přibylo `faktura_cislo` i `faktura_url`.
-10. **Zkušební přihlášku smaž** — ale číslo faktury už je ze sekvence spotřebované, takže první
-    ostrá faktura bude mít o jedničku vyšší pořadí. To je v pořádku, jen ať tě to nepřekvapí.
+10. **Zkušební přihlášku smaž.** Číslo faktury se z ničeho nespálí — odvozuje se z variabilního
+    symbolu, ne z vlastní sekvence. Spotřebovaný zůstane jen ten variabilní symbol zkušební
+    přihlášky, takže první ostrá faktura na něj nenaváže. To je v pořádku, jen ať tě to
+    nepřekvapí.
 
 ---
 

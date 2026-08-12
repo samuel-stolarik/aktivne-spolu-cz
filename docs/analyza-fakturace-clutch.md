@@ -223,7 +223,7 @@ Faktura tak má jen jedno číslo, které se platí. Žádný základ daně, ž�
 > je vždy, natvrdo. Ta podmínka je přesně to místo, kde by šlo omylem vystavit
 > fakturu bez povinného upozornění.
 
-### 4.2 Clutchovská číselná řada — máme vlastní `RR/SS/NNN`
+### 4.2 Clutchovská číselná řada — máme vlastní `RR/SS/<variabilní symbol>`
 
 **Druhý tvrdý požadavek zadavatele.**
 
@@ -231,20 +231,49 @@ Clutch čísluje faktury ve tvaru `2026-0001` (u zálohových `Z2026-0001`). Ten
 tvar **nepřebíráme**. Naše číselná řada vypadá takhle:
 
 ```
-26 / 03 / 001
+26 / 03 / 100001
 │    │    │
-│    │    └── NNN — pořadí faktury, zleva doplněné nulami na tři místa
+│    │    └── variabilní symbol přihlášky = pořadové číslo faktury
 │    └─────── SS  — interní číslo řady, dvě číslice, z proměnné prostředí
 └──────────── RR  — poslední dvě číslice roku vystavení (2026 → 26)
 ```
 
-Příklad: první faktura řady 03 v roce 2026 má číslo **`26/03/001`**.
+Příklad: faktura pro přihlášku s variabilním symbolem 100001 má v řadě 03
+v roce 2026 číslo **`26/03/100001`**.
+
+#### Proč není číslo faktury a variabilní symbol doslova stejné
+
+Zadavatel to zadal takhle: *„QR kód nám funguje, ale potřebujeme, aby variabilní
+symbol byl stejný jako číslo faktury."* Doslova stejné to ale být nemůže:
+
+- **variabilní symbol smí obsahovat jen číslice, nejvýš deset.** Do platebního
+  řetězce jde jako `X-VS` a banka jiný tvar nepřijme — lomítko se do něj
+  nedostane,
+- **číslo faktury lomítka obsahuje** (`26/03/…`) a je to daný tvar, ne detail
+  k obejití.
+
+Sjednocené je proto **pořadové číslo, ne celý řetězec**: variabilní symbol
+`100001` a číslo faktury `26/03/100001`. Na faktuře i na platbě je vidět totéž
+číslo, spárování je na první pohled a blíž se k „naprosto stejné" dostat nedá.
+
+#### Co se tím vědomě mění
+
+Původně měly obě řady schválně oddělené sekvence: variabilní symbol se přiděluje
+při registraci, pořadí faktury až při vystavení. Řada faktur díky tomu byla
+souvislá — 001, 002, 003.
+
+Po sjednocení bude v číslech faktur **řídká řada**. Kdo se přihlásí a nezaplatí,
+spotřebuje variabilní symbol, ale fakturu nedostane — čísla pak vypadají třeba
+`26/03/100003`, `26/03/100007`, `26/03/100008`. Zákon souvislou číselnou řadu
+nevyžaduje (stačí, aby čísla byla jedinečná a vzestupná), ale **účetní o tom
+musí vědět**, protože díry v řadě bývají první věc, na kterou se ptá.
 
 **Pořadové číslo generuje databáze, nikdy ne aplikace.**
 
-Zdrojem pořadí je Postgres sekvence **`seq_faktura_poradi`** v Supabase,
-zpřístupněná funkcí **`dalsi_cislo_faktury(rok, rada)`**. Ta je už nasazená.
-Aplikační kód si pořadí **nepočítá za žádných okolností** — jen si o něj řekne.
+Zdrojem je Postgres sekvence **`seq_variabilni_symbol`** v Supabase; číslo
+faktury z ní skládá funkce **`cislo_faktury_pro_vs(rok, rada, variabilni_symbol)`**
+(migrace `20260812170000_cislo_faktury_z_vs.sql`, už nasazená). Aplikační kód si
+pořadí **nepočítá za žádných okolností** — jen si o něj řekne.
 
 *Proč tak striktně:* kdyby si pořadí počítala aplikace („najdi nejvyšší číslo
 a přičti jedna"), stačilo by, aby se dva lidé přihlásili ve stejnou vteřinu,
@@ -252,13 +281,37 @@ a vznikly by **dvě faktury se stejným číslem**. To je v účetnictví chyba,
 se špatně opravuje a která se navíc projeví až za několik měsíců. Databázová
 sekvence stejné číslo nevydá dvakrát ani při stovce souběžných přihlášek.
 
+Nová funkce má proti staré jednu příjemnou vlastnost navíc: **nic neposouvá.**
+Pro stejný variabilní symbol vrátí vždycky stejné číslo faktury, takže opakované
+doručení webhooku do fakturace nevyrobí druhé číslo ani další díru v řadě.
+
+Původní sekvence **`seq_faktura_poradi`** se už nepoužívá. Nemaže se — kdyby se
+zadavatel po konzultaci s účetní rozhodl vrátit k oddělené řadě, zůstává i s
+dosaženou hodnotou na místě. Stará funkce `dalsi_cislo_faktury(rok, rada)` je
+naopak **zrušená**, aby se z případného starého volání stala hlasitá chyba (HTTP
+404) místo tiše vystavené faktury ze zahozené řady.
+
+#### Jak je zajištěná jedinečnost čísel faktur
+
+1. `prihlasky.variabilni_symbol` je `not null unique` a bere se výhradně ze
+   sekvence — dvě přihlášky nikdy nemají stejný.
+2. Číslo faktury tímhle symbolem **končí**, takže různé přihlášky mají různá
+   čísla. Sekvence se neresetuje ani mezi roky, takže se řady nekříží ani
+   napříč lety.
+3. Databáze si to hlídá sama, ne důvěrou: podmínka `faktura_cislo_odpovida_vs`
+   nepustí k přihlášce číslo faktury, které nekončí jejím variabilním symbolem,
+   a unikátní index `prihlasky_faktura_cislo_idx` je poslední záchytná síť.
+
 Modul `src/lib/platba/cisloFaktury.ts` proto dělá **jenom dvě věci**:
 
-- `sestavCisloFaktury({ rok, cisloRady, poradi })` — z dílů složí `26/03/001`,
+- `sestavCisloFaktury({ rok, cisloRady, variabilniSymbol })` — složí
+  `26/03/100001`,
 - `jePlatneCisloFaktury(…)`, `rozlozCisloFaktury(…)` — ověří a rozebere tvar.
 
-Navíc `variabilniSymbolZCisla("26/03/001")` → `"2603001"`, aby se platba dala na
-bankovním výpisu spárovat s konkrétní fakturou.
+Navíc `variabilniSymbolZCisla("26/03/100001")` → `"100001"`, aby se platba dala
+na bankovním výpisu spárovat s konkrétní fakturou. (Dřív tahle funkce z čísla
+škrtala lomítka a vracela `"2603001"` — to už neplatí, rok ani řada do
+variabilního symbolu nepatří.)
 
 Interní číslo řady (`SS`) si určuje účetní organizace, ne programátor. Čte se
 z proměnné prostředí `FAKTURY_CISLO_RADY` pomocí `nactiCisloRadyZEnv(…)`.
@@ -296,7 +349,7 @@ někam volá, a věděl, když to selže.
 | `src/lib/platba/iban.ts` | Normalizace, formátování a kontrola čísla účtu |
 | `src/lib/platba/spayd.ts` | Sestavení řetězce pro QR platbu, konstanta `REGISTRACNI_POPLATEK_KC = 500` |
 | `src/lib/platba/qr.ts` | Vytvoření QR obrázku (SVG všude, PNG jen v prohlížeči) |
-| `src/lib/platba/cisloFaktury.ts` | Skládání a kontrola čísla faktury `RR/SS/NNN` |
+| `src/lib/platba/cisloFaktury.ts` | Skládání a kontrola čísla faktury `RR/SS/<variabilní symbol>` |
 
 Každý soubor má nahoře komentář s vysvětlením a příkladem použití, včetně
 příkladu pro Supabase Edge Function.
@@ -329,8 +382,11 @@ SPD*1.0*ACC:CZ2303000000000258492161+CEKOCZPP*AM:500.00*CC:CZK
 *DT:20260819*X-VS:100001*RN:Prave ted! o.p.s.*MSG:AKTIVNE SPOLU 100001
 ```
 
-Číslo faktury skládá funkce `dalsi_cislo_faktury(rok, rada)` nad sekvencí
-`seq_faktura_poradi` — obojí je v Supabase nasazené.
+Číslo faktury skládá funkce `cislo_faktury_pro_vs(rok, rada, variabilni_symbol)`
+ze stejného variabilního symbolu — pro VS `100001` vrátí `26/03/100001`.
+Na platbě i na faktuře je tak vidět totéž číslo. Ověřeno naostro 12. 8. 2026
+proti nasazené databázi; testovací záznam byl po sobě uklizen a sekvence
+vrácena na 100001.
 
 ---
 

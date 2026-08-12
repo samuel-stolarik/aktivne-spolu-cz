@@ -1,0 +1,110 @@
+---
+/**
+ * Načtení textů upravených v administraci.
+ *
+ * POZOR — tahle komponenta patří na VEŘEJNÉ stránky, i když leží ve složce
+ * `admin/`. Je tu proto, že tvoří druhou polovinu administrace obsahu:
+ * v `/admin/` se texty ukládají, tady se používají.
+ *
+ * Vkládá se jedním řádkem do `src/layouts/Layout.astro`, takže platí
+ * pro celý web.
+ *
+ * JAK TO FUNGUJE
+ * V HTML jsou původní texty. Tenhle kód si z databáze vyzvedne přepisy
+ * a doplní je do už vykreslené stránky.
+ *
+ * Načítání se spouští co nejdřív, ještě než prohlížeč dočte zbytek stránky.
+ * Ve chvíli, kdy je stránka hotová, tak už bývá odpověď k dispozici a texty
+ * se vymění dřív, než je návštěvník uvidí. Kdyby přišla později, vymění se
+ * později — vždycky jen ty, které se opravdu liší, takže obsah nikam
+ * neposkočí.
+ *
+ * VÝPADEK DATABÁZE NIC NEROZBIJE
+ * Když se načtení nepovede, vyprší časový limit nebo přijdou nesmysly,
+ * neudělá se nic a zůstanou původní texty z HTML. Návštěvník nepozná,
+ * že se něco nepovedlo, a v konzoli se neobjeví žádná chyba — je to
+ * očekávaný stav, ne porucha.
+ */
+
+// Obojí je veřejné a smí být v prohlížeči. Anonymní klíč nedává přístup
+// k ničemu citlivému: tabulku `obsah` s ním jde jen ČÍST, a jsou v ní
+// stejné texty, jaké jsou vidět na stránce. K přihláškám se s ním nedostane
+// nikdo — viz migrace 20260812120000_prihlasky.sql.
+const adresaSupabase = import.meta.env.PUBLIC_SUPABASE_URL ?? "";
+const verejnyKlic = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "";
+
+// Bez nastavení se nevykreslí vůbec nic. Web pak jede na původních textech.
+const jeNastaveno = Boolean(adresaSupabase && verejnyKlic);
+
+const adresaPrepisu = jeNastaveno
+  ? `${adresaSupabase}/rest/v1/obsah?select=klic,hodnota`
+  : "";
+
+/** Po kolika milisekundách načítání vzdáme. */
+const CASOVY_LIMIT_MS = 4000;
+---
+
+{
+  jeNastaveno && (
+    <script
+      is:inline
+      define:vars={{ adresaPrepisu, verejnyKlic, CASOVY_LIMIT_MS }}
+    >
+      // Tenhle krátký kousek běží hned, jak na něj prohlížeč narazí v hlavičce
+      // stránky — schválně dřív, než se dočte zbytek. Jen odešle dotaz
+      // a slíbenou odpověď odloží; použije se o kus dál, až je stránka hotová.
+      (function () {
+        var prerus = new AbortController();
+        var hlidac = setTimeout(function () {
+          prerus.abort();
+        }, CASOVY_LIMIT_MS);
+
+        window.__prepisyObsahu = fetch(adresaPrepisu, {
+          headers: {
+            apikey: verejnyKlic,
+            authorization: "Bearer " + verejnyKlic,
+            accept: "application/json",
+          },
+          signal: prerus.signal,
+        })
+          .then(function (odpoved) {
+            clearTimeout(hlidac);
+            return odpoved.ok ? odpoved.json() : null;
+          })
+          .catch(function () {
+            // Nedostupná databáze, pomalé připojení, vypršený limit — na webu
+            // zůstanou původní texty a nikdo si ničeho nevšimne. Schválně se
+            // nic nevypisuje do konzole, není to porucha.
+            clearTimeout(hlidac);
+            return null;
+          });
+      })();
+    </script>
+  )
+}
+
+{
+  jeNastaveno && (
+    <script>
+      import {
+        pouzijPrepisy,
+        prepisyZOdpovedi,
+      } from "../../lib/obsah";
+
+      // Tenhle skript se spouští, až je celá stránka načtená. Odpověď
+      // z hlavičky už na sebe nenechá dlouho čekat, často je hotová.
+      const cekaniNaOdpoved = window.__prepisyObsahu;
+
+      if (cekaniNaOdpoved) {
+        cekaniNaOdpoved
+          .then((data) => {
+            const prepisy = prepisyZOdpovedi(data);
+            if (Object.keys(prepisy).length > 0) pouzijPrepisy(prepisy);
+          })
+          .catch(() => {
+            // Zůstanou původní texty. Viz komentář výš.
+          });
+      }
+    </script>
+  )
+}

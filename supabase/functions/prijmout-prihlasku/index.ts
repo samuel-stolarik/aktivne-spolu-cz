@@ -393,7 +393,14 @@ function textEmailu(
   }
 
   if (p.forma_platby === 'prevod') {
-    radky.push('', 'Fakturu vám pošleme e-mailem, jakmile ji vystavíme.');
+    // Číslo faktury končí variabilním symbolem (26/03/100001). Píšeme to sem
+    // schválně: až faktura přijde, člověk v ní pozná svoje číslo a nemusí
+    // dohledávat, jestli patří k jeho platbě.
+    radky.push(
+      '',
+      'Fakturu vám pošleme e-mailem, jakmile ji vystavíme.',
+      `Její číslo bude končit vaším variabilním symbolem ${vs}, ať se to nedá splést.`,
+    );
   }
 
   radky.push(
@@ -427,7 +434,8 @@ function htmlEmailu(
     : '';
 
   const fakturaBlok = p.forma_platby === 'prevod'
-    ? '<p style="margin:24px 0 0;">Fakturu vám pošleme e-mailem, jakmile ji vystavíme.</p>'
+    ? `<p style="margin:24px 0 0;">Fakturu vám pošleme e-mailem, jakmile ji vystavíme.
+       Její číslo bude končit vaším variabilním symbolem <strong>${vs}</strong>, ať se to nedá splést.</p>`
     : '';
 
   return `<!doctype html>

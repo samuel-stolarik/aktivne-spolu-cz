@@ -63,7 +63,7 @@ Tohle je **ověřené** na živém projektu příkazy `supabase projects list`,
 | **Všechna data** — tabulka `prihlasky` i vše ostatní | Databáze se nepřesouvá. |
 | **Zabezpečení (RLS)** na tabulce `prihlasky` | Zámek je uložený v databázi, jde s ní. |
 | **Sekvence a jejich aktuální čísla** | Počítadla pokračují tam, kde skončila. Nevrací se na začátek. |
-| **Databázová funkce `dalsi_cislo_faktury`** | Součást databáze. |
+| **Databázová funkce `cislo_faktury_pro_vs`** | Součást databáze. |
 | **Buckety `qr` a `faktury` včetně souborů a nastavení veřejnosti** | Uložené v databázi (byly založené migrací). |
 | **Edge Funkce `prijmout-prihlasku` včetně kódu a verze** | Verze zůstává, funkce neztratí historii. |
 | **Tajemství Edge Funkce** (číslo účtu, částka, IBAN…) | Patří k projektu, ne k organizaci. Po převodu se ale **kontroluje** — viz kapitola 6, krok 5. |
@@ -184,7 +184,6 @@ Odškrtávejte položku po položce. Dokud nejsou všechny hotové, převod neza
       opsat do zápisu z převodu:
       ```sql
       select last_value, is_called from seq_variabilni_symbol;
-      select last_value, is_called from seq_faktura_poradi;
       select count(*) from prihlasky;
       ```
       Stav 12. 8. 2026: variabilní symbol `100001` / `is_called = true` (další
@@ -425,7 +424,6 @@ V Supabase → *SQL Editor*:
 
 ```sql
 select last_value, is_called from seq_variabilni_symbol;
-select last_value, is_called from seq_faktura_poradi;
 select count(*) from prihlasky;
 ```
 
@@ -436,7 +434,7 @@ Kontrola číslování faktur se dá udělat i naostro, ale **pozor — každé 
 posune počítadlo**, takže jen pokud opravdu vystavujete fakturu:
 
 ```sql
-select dalsi_cislo_faktury(2026, '03');
+select cislo_faktury_pro_vs(2026, '03', 100001);
 ```
 
 ### A ještě jedna kontrola: migrace

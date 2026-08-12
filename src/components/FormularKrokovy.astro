@@ -1,0 +1,1645 @@
+---
+/**
+ * Registrační formulář — KROKOVÁ VARIANTA.
+ *
+ * Stejná přihláška jako ve `Formular.astro`, jen rozdělená na kroky:
+ * jedna otázka (nebo jedna malá skupina, která patří k sobě) na obrazovku.
+ * Důvod je psychologický — dlouhý formulář vypadá jako práce na hodinu,
+ * i když se vyplňuje tři minuty. Krok po kroku to působí zvládnutelně.
+ *
+ * VŠECHNA LOGIKA JE PŘEVZATÁ z `Formular.astro`, který je odzkoušený naostro
+ * proti nasazené Edge Funkci. Validace, honeypot, ARES i odeslání se tu
+ * nevymýšlejí znovu — jsou jen přeskládané do kroků.
+ *
+ * Pravidla, která tu platí (stejná jako v uzemněné verzi):
+ *  - Popisky polí jsou VŽDY viditelné, nikdy jen jako placeholder uvnitř pole.
+ *  - Chybové hlášky jsou konkrétní a slovní, doprovázené ikonou. Chybová
+ *    červená je jiná než tlačítková, aby se nepletly.
+ *  - Klikací plochy nejméně 44×44 px.
+ *  - Klientské validaci nevěříme — Edge Funkce validuje všechno znovu.
+ *  - Ven se sahá jen na výslovnou žádost (tlačítko „Načíst z rejstříku").
+ *
+ * A navíc to, co si vynucuje krokování:
+ *  - Ukazatel postupu. Bez něj je krokový formulář HORŠÍ než jeden dlouhý,
+ *    protože člověk netuší, jestli je v půlce nebo na začátku.
+ *  - Přeskočené kroky se do počtu nezapočítávají. Jednotlivec nemá IČO,
+ *    tak ať mu krok pro IČO nezvyšuje číslo „z kolika".
+ *  - Zpět funguje a hodnoty zůstávají vyplněné.
+ *  - Po přechodu na krok dostane fokus první pole — dá se to vyplnit
+ *    jen z klávesnice.
+ *  - Enter posune na další krok, neodešle celou přihlášku předčasně.
+ *
+ * POZOR NA ID: komponenta se vkládá na stránku, kde už může být vložený
+ * i běžný `Formular.astro`. Všechna `id` proto mají příponu `-k`, aby se
+ * skripty obou formulářů nepobily o stejné prvky. Atributy `name` naopak
+ * zůstávají stejné — podle nich se skládají data pro Edge Funkci a rádiová
+ * tlačítka se sdružují vždy jen v rámci vlastního `<form>`.
+ */
+import Ikona from "./Ikona.astro";
+import Tlacitko from "./Tlacitko.astro";
+
+const kraje = [
+  "Praha",
+  "Středočeský",
+  "Jihočeský",
+  "Plzeňský",
+  "Karlovarský",
+  "Ústecký",
+  "Liberecký",
+  "Královéhradecký",
+  "Pardubický",
+  "Vysočina",
+  "Jihomoravský",
+  "Olomoucký",
+  "Zlínský",
+  "Moravskoslezský",
+];
+
+const typyPoradatele = [
+  { hodnota: "skola", popis: "Škola" },
+  { hodnota: "organizace", popis: "Organizace" },
+  { hodnota: "jednotlivec", popis: "Jednotlivec" },
+];
+
+// Společné třídy pro pole, ať se focus chová všude stejně.
+// Na focus se plynule mění jen barva rámečku, nic víc.
+const poleTridy =
+  "min-h-11 w-full rounded-lg border-2 border-merunka-tlumena bg-white px-4 py-2.5 transition-colors duration-150 focus:border-tyrkys focus:outline-none";
+---
+
+<div
+  id="prihlaska-krokova-obal"
+  class="najezd rounded-xl bg-white p-6 sm:p-8"
+  data-poradi="4"
+  data-stav="nacita"
+>
+  <h3 class="text-xl">Registrační formulář</h3>
+
+  {/* --- Když se JavaScript nespustí --------------------------------------
+      Krokový formulář bez skriptu neposkládá kroky ani neodešle data.
+      Uživatel proto nesmí zůstat u prázdné stránky — musí dostat větu,
+      která říká, co se stalo a co s tím. Hláška se ukáže dvěma cestami:
+      přes <noscript> (JavaScript je vypnutý) a přes hlídače níž
+      (JavaScript je zapnutý, ale skript spadl nebo se nestáhl). */}
+  <noscript>
+    <div
+      class="mt-6 flex items-start gap-3 rounded-lg border-2 border-chyba bg-white p-4"
+      role="alert"
+    >
+      <Ikona jmeno="alert-circle" velikost={24} trida="text-chyba" />
+      <p class="m-0 text-chyba">
+        Formulář potřebuje zapnutý JavaScript. Zapněte ho prosím v prohlížeči
+        a načtěte stránku znovu, nebo se nám ozvěte — přihlásíme vás ručně.
+      </p>
+    </div>
+  </noscript>
+
+  <div
+    id="krokovy-nenacteno"
+    class="mt-6 hidden items-start gap-3 rounded-lg border-2 border-chyba bg-white p-4"
+    role="alert"
+  >
+    <Ikona jmeno="alert-circle" velikost={24} trida="text-chyba" />
+    <p class="m-0 text-chyba">
+      Formulář se nepodařilo spustit. Zkuste prosím načíst stránku znovu.
+      Pokud potíž trvá, ozvěte se nám a přihlásíme vás ručně.
+    </p>
+  </div>
+
+  <form id="prihlaska-krokova" class="mt-6" novalidate>
+    {/* Past na roboty. Skutečný člověk tohle pole nikdy neuvidí ani
+        nevyplní — čtečky obrazovky ho přeskočí díky aria-hidden
+        a tabindex="-1". Když dorazí vyplněné, přihlášku zahodíme. */}
+    <div class="absolute h-0 w-0 overflow-hidden" aria-hidden="true">
+      <label for="web-k">Nevyplňujte toto pole</label>
+      <input
+        id="web-k"
+        name="web"
+        type="text"
+        tabindex="-1"
+        autocomplete="off"
+      />
+    </div>
+
+    {/* --- Ukazatel postupu ---------------------------------------------
+        Kolik kroků zbývá, musí být vidět pořád. Číslo „z kolika" počítá
+        jen kroky, které se opravdu ukážou — přeskočené se nezapočítají. */}
+    <div class="mb-7" role="status" aria-live="polite">
+      <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+        <p class="m-0 font-semibold" data-postup-cislo>Krok 1</p>
+        <p class="m-0 text-popisek" data-postup-nazev></p>
+      </div>
+      <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-merunka-tlumena">
+        <div
+          class="h-full rounded-full bg-tyrkys"
+          data-postup-vypln
+          style="width: 0%"
+        >
+        </div>
+      </div>
+    </div>
+
+    {/* Pevná spodní hranice výšky, ať karta mezi krátkým a dlouhým krokem
+        neposkakuje a tlačítko „Pokračovat" zůstalo přibližně na místě. */}
+    <div id="krokovy-obsah" class="min-h-[17rem]">
+      {/* === Krok 1 — kdo se hlásí ==================================== */}
+      {/* Schválně první: podle odpovědi se rozhodne, jestli se vůbec
+          ptát na IČO. Vyřadit otázku dopředu je lepší než ji ukázat
+          a pak schovat. */}
+      <div class="krok" data-krok="typ">
+        <fieldset class="m-0 border-0 p-0">
+          <legend class="otazka">Kdo se hlásí?</legend>
+          <p class="mt-2 mb-4 text-popisek">
+            Podle odpovědi se vás doptáme jen na to, co se vás týká.
+          </p>
+
+          <div class="flex flex-wrap gap-3">
+            {
+              typyPoradatele.map((typ) => (
+                <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border-2 border-merunka-tlumena px-4 py-2 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys">
+                  <input
+                    type="radio"
+                    name="typ_poradatele"
+                    value={typ.hodnota}
+                    class="h-5 w-5 accent-[#12707F]"
+                  />
+                  <span>{typ.popis}</span>
+                </label>
+              ))
+            }
+          </div>
+          <p class="chyba" data-chyba-pro="typ_poradatele"></p>
+        </fieldset>
+      </div>
+
+      {/* === Krok 2 — IČO a načtení z rejstříku ======================= */}
+      {/* Jen škola a organizace. Jednotlivec IČO nemá, tak celý krok
+          přeskočí a nezapočítá se mu ani do postupu.
+          Načítání spouští VÝHRADNĚ tlačítko — nikdy se nesahá ven samo
+          od sebe při otevření stránky. */}
+      <div class="krok" data-krok="ico" hidden>
+        <h4 class="otazka">Jaké má vaše organizace IČO?</h4>
+
+        <div class="mt-4">
+          <label for="ico-k" class="popisek">
+            IČO <span class="povinne">povinné</span>
+          </label>
+
+          <div class="flex flex-wrap items-start gap-3">
+            <div class="min-w-[9rem] flex-1 sm:max-w-[13rem]">
+              <input
+                id="ico-k"
+                name="ico"
+                type="text"
+                inputmode="numeric"
+                maxlength="8"
+                autocomplete="off"
+                class={poleTridy}
+              />
+            </div>
+
+            <Tlacitko
+              varianta="vedlejsi"
+              id="tlacitko-ares-k"
+              trida="w-full sm:w-auto"
+            >
+              <span data-popisek-ares>Načíst z rejstříku</span>
+            </Tlacitko>
+          </div>
+
+          <p class="mt-2 mb-0 text-popisek">
+            Osm číslic. Podle nich předvyplníme fakturační údaje z veřejného
+            rejstříku ARES — vyplnit je jde i ručně.
+          </p>
+
+          <p class="chyba" data-chyba-pro="ico"></p>
+
+          {/* --- Stavy načítání ---------------------------------------
+              Uživatel musí vždycky poznat, jestli se načítá, povedlo se to,
+              nebo selhalo. Žádný z těch tří stavů nesmí vypadat jako ten
+              druhý a žádný nesmí zůstat viset donekonečna. */}
+
+          {/* Probíhá */}
+          <p
+            id="ares-prubeh-k"
+            class="mt-2 hidden items-center gap-2 text-popisek"
+            role="status"
+          >
+            <Ikona jmeno="hourglass" velikost={20} />
+            <span>Načítáme údaje z rejstříku ARES…</span>
+          </p>
+
+          {/* Povedlo se */}
+          <p
+            id="ares-hotovo-k"
+            class="mt-2 hidden items-start gap-2 text-popisek"
+            role="status"
+          >
+            <Ikona jmeno="circle-check" velikost={20} trida="text-potvrzeni" />
+            <span data-text-ares-hotovo></span>
+          </p>
+
+          {/* Selhalo. Vždy slovní vysvětlení a ikona, nikdy jen barva —
+              a tlačítko zůstane odemčené, ať to jde zkusit znovu.
+              Výpadek rejstříku nesmí zabránit dokončení přihlášky, proto
+              se z tohohle kroku dá jít dál i bez načtených údajů. */}
+          <div
+            id="ares-chyba-k"
+            class="mt-3 hidden items-start gap-3 rounded-lg border-2 border-chyba bg-white p-4"
+            role="alert"
+          >
+            <Ikona jmeno="alert-circle" velikost={24} trida="text-chyba" />
+            <p class="m-0 text-chyba" data-text-ares-chyba></p>
+          </div>
+        </div>
+      </div>
+
+      {/* === Krok 3 — název pořadatele ================================ */}
+      <div class="krok" data-krok="nazev" hidden>
+        <h4 class="otazka">Pod jakým názvem se hlásíte?</h4>
+
+        <div class="mt-4">
+          <label for="nazev_poradatele-k" class="popisek">
+            Název pořadatele <span class="povinne">povinné</span>
+          </label>
+          <input
+            id="nazev_poradatele-k"
+            name="nazev_poradatele"
+            type="text"
+            autocomplete="organization"
+            class={poleTridy}
+          />
+          <p class="mt-2 mb-0 text-popisek">
+            Název školy, organizace, nebo vaše jméno. Takhle vás budeme
+            uvádět v seznamu zapojených.
+          </p>
+          <p class="chyba" data-chyba-pro="nazev_poradatele"></p>
+        </div>
+      </div>
+
+      {/* === Krok 4 — kontakt ========================================= */}
+      {/* Tři pole na jedné obrazovce schválně: jméno, e-mail a telefon
+          jsou pro člověka jedna otázka („jak vás zastihneme"), ne tři.
+          Rozsekat je na tři obrazovky by formulář jen protáhlo. */}
+      <div class="krok" data-krok="kontakt" hidden>
+        <h4 class="otazka">Jak vás zastihneme?</h4>
+        <p class="mt-2 mb-4 text-popisek">
+          Na e-mail vám pošleme potvrzení, platební údaje a QR kód.
+        </p>
+
+        <div class="grid gap-5 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label for="kontaktni_osoba-k" class="popisek">
+              Jméno a příjmení kontaktní osoby
+              <span class="povinne">povinné</span>
+            </label>
+            <input
+              id="kontaktni_osoba-k"
+              name="kontaktni_osoba"
+              type="text"
+              autocomplete="name"
+              class={poleTridy}
+            />
+            <p class="chyba" data-chyba-pro="kontaktni_osoba"></p>
+          </div>
+
+          <div>
+            <label for="email-k" class="popisek">
+              E-mail <span class="povinne">povinné</span>
+            </label>
+            <input
+              id="email-k"
+              name="email"
+              type="email"
+              autocomplete="email"
+              inputmode="email"
+              class={poleTridy}
+            />
+            <p class="chyba" data-chyba-pro="email"></p>
+          </div>
+
+          <div>
+            <label for="telefon-k" class="popisek">
+              Telefonní kontakt <span class="povinne">povinné</span>
+            </label>
+            <input
+              id="telefon-k"
+              name="telefon"
+              type="tel"
+              autocomplete="tel"
+              inputmode="tel"
+              class={poleTridy}
+            />
+            <p class="chyba" data-chyba-pro="telefon"></p>
+          </div>
+        </div>
+      </div>
+
+      {/* === Krok 5 — místo =========================================== */}
+      <div class="krok" data-krok="misto" hidden>
+        <h4 class="otazka">Kde se setkání uskuteční?</h4>
+
+        <div class="mt-4 grid gap-5 sm:grid-cols-2">
+          <div>
+            <label for="mesto-k" class="popisek">
+              Město <span class="povinne">povinné</span>
+            </label>
+            <input
+              id="mesto-k"
+              name="mesto"
+              type="text"
+              autocomplete="address-level2"
+              class={poleTridy}
+            />
+            <p class="chyba" data-chyba-pro="mesto"></p>
+          </div>
+
+          <div>
+            <label for="kraj-k" class="popisek">
+              Kraj <span class="povinne">povinné</span>
+            </label>
+            <select id="kraj-k" name="kraj" class={poleTridy}>
+              <option value="">Vyberte kraj</option>
+              {kraje.map((kraj) => <option value={kraj}>{kraj}</option>)}
+            </select>
+            <p class="chyba" data-chyba-pro="kraj"></p>
+          </div>
+        </div>
+      </div>
+
+      {/* === Krok 6 — nápad na aktivitu (nepovinné) ==================== */}
+      {/* Jediná otevřená otázka v celém formuláři. Že se dá přeskočit,
+          musí být vidět dřív, než začne člověk vymýšlet odpověď — proto
+          je to napsané nad polem a proto se i tlačítko samo přejmenuje
+          na „Přeskočit a pokračovat", dokud je pole prázdné. */}
+      <div class="krok" data-krok="napad" hidden>
+        <h4 class="otazka">Máte už nápad na aktivitu?</h4>
+        <p class="mt-2 mb-4 text-popisek">
+          Nepovinné. Když ještě nevíte, klidně to přeskočte — nápad se dá
+          doplnit kdykoli později.
+        </p>
+
+        <div>
+          <label for="napad_na_aktivitu-k" class="popisek">
+            Předběžný nápad na aktivitu
+            <span class="text-popisek font-normal">(nepovinné)</span>
+          </label>
+          <textarea
+            id="napad_na_aktivitu-k"
+            name="napad_na_aktivitu"
+            rows="4"
+            class={poleTridy}></textarea>
+        </div>
+      </div>
+
+      {/* === Krok 7 — forma platby ==================================== */}
+      <div class="krok" data-krok="platba" hidden>
+        <fieldset class="m-0 border-0 p-0">
+          <legend class="otazka">Jak chcete zaplatit?</legend>
+          <p class="mt-2 mb-4 text-popisek">
+            Registrační poplatek je 500 Kč.
+          </p>
+
+          <div class="space-y-3">
+            <label class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border-2 border-merunka-tlumena p-4 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys">
+              <input
+                type="radio"
+                name="forma_platby"
+                value="qr"
+                class="mt-1 h-5 w-5 accent-[#12707F]"
+              />
+              <span>
+                <span class="block font-semibold">QR kód</span>
+                <span class="text-popisek">
+                  Pošleme vám QR kód k okamžité platbě z mobilního
+                  bankovnictví.
+                </span>
+              </span>
+            </label>
+
+            <label class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border-2 border-merunka-tlumena p-4 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys">
+              <input
+                type="radio"
+                name="forma_platby"
+                value="prevod"
+                class="mt-1 h-5 w-5 accent-[#12707F]"
+              />
+              <span>
+                <span class="block font-semibold">
+                  Převod na účet s vystavením faktury
+                </span>
+                <span class="text-popisek">
+                  Vystavíme fakturu pro účetnictví školy nebo organizace.
+                  Doptáme se pak ještě na fakturační údaje.
+                </span>
+              </span>
+            </label>
+          </div>
+          <p class="chyba" data-chyba-pro="forma_platby"></p>
+        </fieldset>
+      </div>
+
+      {/* === Krok 8 — fakturační údaje (jen při převodu) =============== */}
+      <div class="krok" data-krok="fakturace" hidden>
+        <h4 class="otazka">Na koho vystavit fakturu?</h4>
+        <p class="mt-2 mb-4 text-popisek">
+          Vyplňte podle obchodního rejstříku, ať faktura projde účetnictvím.
+        </p>
+
+        <div class="grid gap-5 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label for="fakt_nazev-k" class="popisek">
+              Název dle obchodního rejstříku <span class="povinne">povinné</span>
+            </label>
+            <input
+              id="fakt_nazev-k"
+              name="fakt_nazev"
+              type="text"
+              class={poleTridy}
+            />
+            <p class="chyba" data-chyba-pro="fakt_nazev"></p>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label for="fakt_adresa-k" class="popisek">
+              Adresa <span class="povinne">povinné</span>
+            </label>
+            <input
+              id="fakt_adresa-k"
+              name="fakt_adresa"
+              type="text"
+              autocomplete="street-address"
+              class={poleTridy}
+            />
+            <p class="chyba" data-chyba-pro="fakt_adresa"></p>
+          </div>
+
+          <div>
+            <label for="fakt_ic-k" class="popisek">
+              IČ <span class="povinne">povinné</span>
+            </label>
+            <input
+              id="fakt_ic-k"
+              name="fakt_ic"
+              type="text"
+              inputmode="numeric"
+              maxlength="8"
+              class={poleTridy}
+            />
+            <p class="chyba" data-chyba-pro="fakt_ic"></p>
+          </div>
+
+          <div>
+            <label for="fakt_dic-k" class="popisek">
+              DIČ <span class="text-popisek font-normal">(nepovinné)</span>
+            </label>
+            <input
+              id="fakt_dic-k"
+              name="fakt_dic"
+              type="text"
+              class={poleTridy}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* === Krok 9 — přehled, souhlas a odeslání ===================== */}
+      {/* Rekapitulace je u krokového formuláře nutná: člověk už nevidí,
+          co vyplnil o šest obrazovek dřív. Každý řádek jde opravit
+          a po opravě se vrátí zpátky sem. */}
+      <div class="krok" data-krok="souhrn" hidden>
+        <h4 class="otazka">Zkontrolujte a odešlete</h4>
+        <p class="mt-2 mb-4 text-popisek">
+          Tohle nám odejde. Cokoli se dá ještě opravit.
+        </p>
+
+        <div id="krokovy-prehled" class="mb-6"></div>
+
+        <div>
+          <label class="flex min-h-11 cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              name="souhlas_gdpr"
+              value="ano"
+              class="mt-1 h-5 w-5 accent-[#12707F]"
+            />
+            <span>
+              Souhlasím se zpracováním osobních údajů. Podrobnosti najdete
+              v dokumentu
+              <a
+                href="/zpracovani-osobnich-udaju/"
+                class="text-tyrkys underline"
+                target="_blank"
+                rel="noopener"
+              >
+                Zpracování osobních údajů
+              </a>.
+            </span>
+          </label>
+          <p class="chyba" data-chyba-pro="souhlas_gdpr"></p>
+        </div>
+      </div>
+    </div>
+
+    {/* --- Ovládání ------------------------------------------------------
+        Na mobilu je „Pokračovat" nahoře (flex-col-reverse), na širší
+        obrazovce vlevo „Zpět" a vpravo „Pokračovat" — jak to lidé čekají. */}
+    <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+      <Tlacitko
+        varianta="vedlejsi"
+        id="krokovy-zpet"
+        trida="w-full sm:w-auto"
+        hidden
+      >
+        <Ikona jmeno="arrow-left" velikost={20} />
+        Zpět
+      </Tlacitko>
+
+      <Tlacitko id="krokovy-dalsi" trida="w-full sm:w-auto">
+        <span data-popisek-dalsi>Pokračovat</span>
+        <Ikona jmeno="arrow-right" velikost={20} trida="text-white" />
+      </Tlacitko>
+
+      <Tlacitko typ="submit" id="krokovy-odeslat" trida="w-full sm:w-auto" hidden>
+        <span data-popisek-tlacitka>
+          Odeslat přihlášku a dokončit registraci
+        </span>
+      </Tlacitko>
+    </div>
+
+    {/* Souhrn chyb po pokusu o odeslání. Nikdy jen barevný rámeček bez
+        vysvětlení — vždy ikona a slovní popis, co je potřeba opravit. */}
+    <div
+      id="souhrn-chyb-k"
+      class="mt-4 hidden items-start gap-3 rounded-lg border-2 border-chyba bg-white p-4"
+      role="alert"
+    >
+      <Ikona jmeno="alert-circle" velikost={24} trida="text-chyba" />
+      <p class="m-0 text-chyba" data-text-souhrnu></p>
+    </div>
+  </form>
+
+  {/* --- Poděkování po odeslání ------------------------------------- */}
+  <div id="dekovani-k" class="hidden" role="status">
+    <div class="flex items-start gap-3">
+      <Ikona jmeno="circle-check" velikost={32} trida="text-potvrzeni" />
+      <div>
+        <h3 class="text-xl">Přihláška odeslána. Děkujeme!</h3>
+        <p class="mt-2">
+          Potvrzení jsme vám poslali na e-mail. Najdete v něm platební údaje
+          i QR kód.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 rounded-xl bg-plocha-tyrkys p-6">
+      <p class="m-0 text-popisek">Váš variabilní symbol</p>
+      <p class="mt-1 mb-4 text-3xl font-semibold text-tyrkys" data-vypis-vs></p>
+
+      <p class="m-0 text-popisek">Částka k úhradě</p>
+      <p class="mt-1 mb-0 text-xl font-semibold">500 Kč</p>
+
+      <img
+        data-vypis-qr
+        alt="QR kód pro platbu registračního poplatku"
+        width="200"
+        height="200"
+        class="mt-5 hidden rounded-lg bg-white p-2"
+      />
+    </div>
+  </div>
+</div>
+
+{/* Hlídač spuštění. Když modul do čtyř vteřin nenaběhne (spadl, nestáhl se,
+    prohlížeč ho neumí), ukáže se místo zaseklého formuláře věta, co s tím.
+    Nikdy nesmí zůstat viset první krok bez možnosti pokračovat. */}
+<script is:inline>
+  window.setTimeout(function () {
+    var obal = document.getElementById("prihlaska-krokova-obal");
+    if (!obal || obal.dataset.stav === "pripraveno") return;
+
+    var hlaska = document.getElementById("krokovy-nenacteno");
+    if (hlaska) {
+      hlaska.classList.remove("hidden");
+      hlaska.classList.add("flex");
+    }
+  }, 4000);
+</script>
+
+<style>
+  /* Při přechodu na další krok se karta sroluje do obrazovky. Musí
+     zastavit pod lepivou horní lištou, jinak se první řádek kroku
+     schová za ni. Stejná hodnota jako u kotev v global.css. */
+  #prihlaska-krokova-obal {
+    scroll-margin-top: 5.5rem;
+  }
+
+  .otazka {
+    margin: 0;
+    color: var(--color-tyrkys);
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .popisek {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: var(--text-popisek);
+    font-weight: 600;
+  }
+
+  .povinne {
+    margin-left: 0.25rem;
+    font-size: var(--text-popisek);
+    font-weight: 400;
+    color: var(--color-tyrkys);
+  }
+
+  /* Chybová hláška je skrytá, dokud ji skript nenaplní textem. */
+  .chyba {
+    display: none;
+    margin-top: 0.375rem;
+    margin-bottom: 0;
+    font-size: var(--text-popisek);
+    color: var(--color-chyba);
+  }
+
+  .chyba.je-videt {
+    display: block;
+  }
+
+  /* Pole s chybou dostane výrazný rámeček. Nikdy ale samo o sobě —
+     vždy k němu patří i slovní hláška pod polem. */
+  :global(.pole-s-chybou) {
+    border-color: var(--color-chyba) !important;
+  }
+
+  /* Skryté kroky. Vlastní pravidlo, ať to nezávisí na tom, jestli
+     resetovací styly `[hidden]` řeší, nebo ne. */
+  .krok[hidden] {
+    display: none;
+  }
+
+  /* Ukazatel postupu roste plynule. */
+  [data-postup-vypln] {
+    transition: width 300ms ease-out;
+  }
+
+  /* Přechod mezi kroky. Krátký a nenápadný — jen naznačí směr pohybu.
+     Animace naskočí sama, protože krok jde z display:none do zobrazení. */
+  @keyframes krok-zprava {
+    from {
+      opacity: 0;
+      transform: translateX(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes krok-zleva {
+    from {
+      opacity: 0;
+      transform: translateX(-14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  [data-smer="vpred"] .krok {
+    animation: krok-zprava 220ms ease-out;
+  }
+
+  [data-smer="vzad"] .krok {
+    animation: krok-zleva 220ms ease-out;
+  }
+
+  /* Při zapnutém prefers-reduced-motion se přechody vypnou ÚPLNĚ.
+     Globální styly to sice řeší taky, ale spoléhat se na to nebudeme —
+     krok se pak jen prostě objeví, bez posunu i bez prolnutí. */
+  @media (prefers-reduced-motion: reduce) {
+    [data-smer="vpred"] .krok,
+    [data-smer="vzad"] .krok {
+      animation: none !important;
+    }
+
+    [data-postup-vypln] {
+      transition: none !important;
+    }
+  }
+</style>
+
+<script>
+  import { nactiUdajeZAresu, type FakturacniUdaje } from "../lib/ares";
+
+  const obal = document.querySelector<HTMLElement>("#prihlaska-krokova-obal");
+  const formular = document.querySelector<HTMLFormElement>("#prihlaska-krokova");
+  const souhrnChyb = document.querySelector<HTMLElement>("#souhrn-chyb-k");
+  const dekovani = document.querySelector<HTMLElement>("#dekovani-k");
+  const tlacitkoZpet = document.querySelector<HTMLButtonElement>("#krokovy-zpet");
+  const tlacitkoDalsi =
+    document.querySelector<HTMLButtonElement>("#krokovy-dalsi");
+  const tlacitkoOdeslat =
+    document.querySelector<HTMLButtonElement>("#krokovy-odeslat");
+  const prehled = document.querySelector<HTMLElement>("#krokovy-prehled");
+
+  if (
+    obal &&
+    formular &&
+    souhrnChyb &&
+    dekovani &&
+    tlacitkoZpet &&
+    tlacitkoDalsi &&
+    tlacitkoOdeslat &&
+    prehled
+  ) {
+    const adresaFunkce = `${import.meta.env.PUBLIC_SUPABASE_URL}/functions/v1/prijmout-prihlasku`;
+    const verejnyKlic = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+    const chceMenePohybu = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    /** Hodnota pole tak, jak by odešla na server. */
+    function hodnota(klic: string): string {
+      return String(new FormData(formular!).get(klic) ?? "").trim();
+    }
+
+    // ==================================================================
+    // Chyby u polí
+    // ==================================================================
+
+    function ukazChybu(pole: string, hlaska: string) {
+      const misto = formular!.querySelector<HTMLElement>(
+        `[data-chyba-pro="${pole}"]`,
+      );
+      if (misto) {
+        misto.textContent = hlaska;
+        misto.classList.add("je-videt");
+      }
+      formular!
+        .querySelectorAll(`[name="${pole}"]`)
+        .forEach((prvek) => prvek.classList.add("pole-s-chybou"));
+    }
+
+    /** Smaže chybu u jednoho pole. Ostatních se nedotkne. */
+    function smazChybuPole(pole: string) {
+      formular!
+        .querySelector<HTMLElement>(`[data-chyba-pro="${pole}"]`)
+        ?.classList.remove("je-videt");
+      formular!
+        .querySelectorAll(`[name="${pole}"]`)
+        .forEach((prvek) => prvek.classList.remove("pole-s-chybou"));
+    }
+
+    function smazChyby() {
+      formular!
+        .querySelectorAll(".chyba")
+        .forEach((prvek) => prvek.classList.remove("je-videt"));
+      formular!
+        .querySelectorAll(".pole-s-chybou")
+        .forEach((prvek) => prvek.classList.remove("pole-s-chybou"));
+      souhrnChyb!.classList.add("hidden");
+      souhrnChyb!.classList.remove("flex");
+    }
+
+    function ukazSouhrn(hlaska: string) {
+      const text = souhrnChyb!.querySelector<HTMLElement>("[data-text-souhrnu]");
+      if (text) text.textContent = hlaska;
+      souhrnChyb!.classList.remove("hidden");
+      souhrnChyb!.classList.add("flex");
+    }
+
+    function skryjSouhrn() {
+      souhrnChyb!.classList.add("hidden");
+      souhrnChyb!.classList.remove("flex");
+    }
+
+    // ==================================================================
+    // Kontroly jednotlivých polí
+    //
+    // Přesně ta samá pravidla i hlášky jako v `Formular.astro`, jen
+    // rozdělené po polích, aby šlo zkontrolovat jeden krok zvlášť.
+    // Klientské validaci se stejně nevěří — Edge Funkce si všechno
+    // ověřuje znovu a sama.
+    // ==================================================================
+
+    /** IČO má smysl jen u školy a organizace. Jednotlivec žádné nemá. */
+    function jeSubjektSIco(): boolean {
+      const typ = hodnota("typ_poradatele");
+      return typ === "skola" || typ === "organizace";
+    }
+
+    function jePrevod(): boolean {
+      return hodnota("forma_platby") === "prevod";
+    }
+
+    type Kontrola = () => string | null;
+
+    const kontroly: Record<string, Kontrola> = {
+      typ_poradatele: () =>
+        hodnota("typ_poradatele") ? null : "Vyberte, kdo se hlásí.",
+
+      ico: () => {
+        // U jednotlivce se na IČO neptáme, takže se ani nekontroluje.
+        // Kontroluje se jen tvar čísla — jestli ho rejstřík zná, na
+        // odeslání přihlášky nezáleží.
+        if (!jeSubjektSIco()) return null;
+        const ico = hodnota("ico").replace(/\s+/g, "");
+        if (!ico) return "Vyplňte IČO školy nebo organizace.";
+        if (!/^\d{8}$/.test(ico)) return "IČO musí mít přesně osm číslic.";
+        return null;
+      },
+
+      nazev_poradatele: () =>
+        hodnota("nazev_poradatele") ? null : "Vyplňte název pořadatele.",
+
+      kontaktni_osoba: () =>
+        hodnota("kontaktni_osoba")
+          ? null
+          : "Vyplňte jméno a příjmení kontaktní osoby.",
+
+      email: () => {
+        const email = hodnota("email");
+        if (!email) return "Vyplňte e-mail.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+          return "E-mail nemá správný tvar. Zkontrolujte zavináč a tečku.";
+        }
+        return null;
+      },
+
+      telefon: () => {
+        const telefon = hodnota("telefon");
+        if (!telefon) return "Vyplňte telefonní kontakt.";
+        if (telefon.replace(/\D/g, "").length < 9) {
+          return "Telefon musí mít alespoň 9 číslic.";
+        }
+        return null;
+      },
+
+      mesto: () => (hodnota("mesto") ? null : "Vyplňte město."),
+      kraj: () => (hodnota("kraj") ? null : "Vyberte kraj."),
+
+      forma_platby: () =>
+        hodnota("forma_platby") ? null : "Vyberte formu platby.",
+
+      fakt_nazev: () =>
+        !jePrevod() || hodnota("fakt_nazev")
+          ? null
+          : "Vyplňte název dle obchodního rejstříku.",
+
+      fakt_adresa: () =>
+        !jePrevod() || hodnota("fakt_adresa")
+          ? null
+          : "Vyplňte fakturační adresu.",
+
+      fakt_ic: () => {
+        if (!jePrevod()) return null;
+        const ic = hodnota("fakt_ic");
+        if (!ic) return "Vyplňte IČ.";
+        if (!/^\d{8}$/.test(ic)) return "IČ musí mít přesně 8 číslic.";
+        return null;
+      },
+
+      souhlas_gdpr: () =>
+        formular!.querySelector<HTMLInputElement>('input[name="souhlas_gdpr"]')
+          ?.checked
+          ? null
+          : "Bez souhlasu se zpracováním osobních údajů nemůžeme přihlášku přijmout.",
+    };
+
+    // ==================================================================
+    // Kroky
+    // ==================================================================
+
+    interface Krok {
+      /** Musí sedět s atributem data-krok v HTML */
+      klic: string;
+      /** Krátký název do ukazatele postupu */
+      nazev: string;
+      /** Pole, která se v tomhle kroku kontrolují */
+      pole: string[];
+      /** Pole, která se v tomhle kroku vypíšou do rekapitulace */
+      souhrn: string[];
+      /** Kdy se krok vůbec ukáže. Nezobrazený krok se nepočítá do postupu. */
+      jeVidet: () => boolean;
+    }
+
+    const KROKY: Krok[] = [
+      {
+        klic: "typ",
+        nazev: "Kdo se hlásí",
+        pole: ["typ_poradatele"],
+        souhrn: ["typ_poradatele"],
+        jeVidet: () => true,
+      },
+      {
+        klic: "ico",
+        nazev: "IČO",
+        pole: ["ico"],
+        souhrn: ["ico"],
+        jeVidet: jeSubjektSIco,
+      },
+      {
+        klic: "nazev",
+        nazev: "Název pořadatele",
+        pole: ["nazev_poradatele"],
+        souhrn: ["nazev_poradatele"],
+        jeVidet: () => true,
+      },
+      {
+        klic: "kontakt",
+        nazev: "Kontakt",
+        pole: ["kontaktni_osoba", "email", "telefon"],
+        souhrn: ["kontaktni_osoba", "email", "telefon"],
+        jeVidet: () => true,
+      },
+      {
+        klic: "misto",
+        nazev: "Místo konání",
+        pole: ["mesto", "kraj"],
+        souhrn: ["mesto", "kraj"],
+        jeVidet: () => true,
+      },
+      {
+        klic: "napad",
+        nazev: "Nápad na aktivitu",
+        pole: [],
+        souhrn: ["napad_na_aktivitu"],
+        jeVidet: () => true,
+      },
+      {
+        klic: "platba",
+        nazev: "Forma platby",
+        pole: ["forma_platby"],
+        souhrn: ["forma_platby"],
+        jeVidet: () => true,
+      },
+      {
+        klic: "fakturace",
+        nazev: "Fakturační údaje",
+        pole: ["fakt_nazev", "fakt_adresa", "fakt_ic"],
+        souhrn: ["fakt_nazev", "fakt_adresa", "fakt_ic", "fakt_dic"],
+        jeVidet: jePrevod,
+      },
+      {
+        klic: "souhrn",
+        nazev: "Souhlas a odeslání",
+        pole: ["souhlas_gdpr"],
+        souhrn: [],
+        jeVidet: () => true,
+      },
+    ];
+
+    /** Index v poli KROKY, ne pořadí na obrazovce. */
+    let aktualni = 0;
+
+    /** Nastaveno, když se uživatel proklikl na krok z rekapitulace. */
+    let navratNaPrehled = false;
+
+    function sekceKroku(klic: string): HTMLElement | null {
+      return formular!.querySelector<HTMLElement>(`[data-krok="${klic}"]`);
+    }
+
+    /** Kroky, které se za současného vyplnění opravdu ukážou. */
+    function viditelneKroky(): Krok[] {
+      return KROKY.filter((krok) => krok.jeVidet());
+    }
+
+    // ==================================================================
+    // Ukazatel postupu
+    //
+    // Počítají se JEN viditelné kroky. Jednotlivci se krok pro IČO
+    // nezapočítá, při platbě QR kódem se nezapočítá fakturace.
+    // Číslo se tím pádem po volbě formy platby může o jedna zvětšit —
+    // to je poctivější než slibovat míň kroků, než jich nakonec bude.
+    // ==================================================================
+    function prekresliPostup() {
+      const videt = viditelneKroky();
+      const krok = KROKY[aktualni];
+      const poradi = videt.indexOf(krok) + 1;
+      const celkem = videt.length;
+
+      const cislo = formular!.querySelector<HTMLElement>("[data-postup-cislo]");
+      const nazev = formular!.querySelector<HTMLElement>("[data-postup-nazev]");
+      const vypln = formular!.querySelector<HTMLElement>("[data-postup-vypln]");
+
+      if (cislo) cislo.textContent = `Krok ${poradi} z ${celkem}`;
+      if (nazev) nazev.textContent = krok.nazev;
+      if (vypln) vypln.style.width = `${(poradi / celkem) * 100}%`;
+    }
+
+    // ==================================================================
+    // Přepínání kroků
+    // ==================================================================
+
+    /**
+     * Postaví první pole kroku do fokusu, ať se dá formulář vyplnit
+     * jen z klávesnice. U rádiových tlačítek se míří na už zvolenou
+     * možnost, aby se návrat Zpět choval podle očekávání.
+     */
+    function zamerPrvniPole(sekce: HTMLElement) {
+      const zaskrtnute = sekce.querySelector<HTMLInputElement>(
+        'input[type="radio"]:checked, input[type="checkbox"]:checked',
+      );
+      const prvni =
+        zaskrtnute ??
+        sekce.querySelector<HTMLElement>(
+          "input:not([type='hidden']), select, textarea",
+        );
+      prvni?.focus({ preventScroll: true });
+    }
+
+    /** Karta se musí dostat do obrazovky, jinak krok „zmizí" nad okrajem. */
+    function srovnejPohled() {
+      const misto = obal!.getBoundingClientRect();
+      if (misto.top >= 0 && misto.top < window.innerHeight * 0.5) return;
+
+      obal!.scrollIntoView({
+        behavior: chceMenePohybu ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+
+    function jePosledni(): boolean {
+      const videt = viditelneKroky();
+      return videt[videt.length - 1] === KROKY[aktualni];
+    }
+
+    /** Popisek tlačítka se mění podle toho, co udělá. */
+    function prekresliOvladani() {
+      const krok = KROKY[aktualni];
+      const videt = viditelneKroky();
+      const jePrvni = videt[0] === krok;
+
+      tlacitkoZpet!.hidden = jePrvni;
+      tlacitkoDalsi!.hidden = jePosledni();
+      tlacitkoOdeslat!.hidden = !jePosledni();
+
+      const popisek = tlacitkoDalsi!.querySelector<HTMLElement>(
+        "[data-popisek-dalsi]",
+      );
+      if (!popisek) return;
+
+      if (navratNaPrehled) {
+        popisek.textContent = "Uložit a zpět na přehled";
+      } else if (krok.klic === "napad" && !hodnota("napad_na_aktivitu")) {
+        // Že se otázka dá přeskočit, musí být vidět i na tlačítku.
+        popisek.textContent = "Přeskočit a pokračovat";
+      } else {
+        popisek.textContent = "Pokračovat";
+      }
+    }
+
+    function jdiNaKrok(index: number) {
+      const cil = KROKY[index];
+      if (!cil || index === aktualni) return;
+
+      // Směr přechodu se odvodí sám z pořadí kroků, ať se animace nikdy
+      // nerozejde s tím, kam se člověk opravdu pohnul.
+      obal!.dataset.smer = index > aktualni ? "vpred" : "vzad";
+
+      sekceKroku(KROKY[aktualni].klic)?.setAttribute("hidden", "");
+      aktualni = index;
+
+      const sekce = sekceKroku(cil.klic);
+      sekce?.removeAttribute("hidden");
+
+      if (cil.klic === "fakturace") {
+        // Ať nikdo nepíše IČO podruhé — přenese se z prvního kroku.
+        prenesIco();
+      }
+
+      if (cil.klic === "souhrn") sestavPrehled();
+
+      prekresliPostup();
+      prekresliOvladani();
+      skryjSouhrn();
+
+      if (sekce) {
+        srovnejPohled();
+        zamerPrvniPole(sekce);
+      }
+    }
+
+    /** Zkontroluje pole jednoho kroku a chyby vypíše u nich. */
+    function zkontrolujKrok(krok: Krok): boolean {
+      let vPoradku = true;
+
+      for (const pole of krok.pole) {
+        smazChybuPole(pole);
+        const hlaska = kontroly[pole]?.();
+        if (hlaska) {
+          ukazChybu(pole, hlaska);
+          vPoradku = false;
+        }
+      }
+
+      if (!vPoradku) {
+        const prvni = sekceKroku(krok.klic)?.querySelector<HTMLElement>(
+          ".pole-s-chybou",
+        );
+        prvni?.focus({ preventScroll: false });
+      }
+
+      return vPoradku;
+    }
+
+    /**
+     * První viditelný krok, ve kterém něco chybí. Používá se při návratu
+     * z opravy i před odesláním — ať se nedá přeskočit krok, který se
+     * zpřístupnil až pozdější volbou (typicky fakturace po volbě převodu).
+     */
+    function prvniNeplatnyKrok(): Krok | null {
+      for (const krok of viditelneKroky()) {
+        if (krok.pole.some((pole) => kontroly[pole]?.())) return krok;
+      }
+      return null;
+    }
+
+    function dalsiKrok() {
+      if (!zkontrolujKrok(KROKY[aktualni])) return;
+
+      // Návrat z opravy vyvolané z rekapitulace. Skočit rovnou na přehled
+      // jde jen tehdy, když mezitím nezůstal nedodělaný jiný krok.
+      if (navratNaPrehled) {
+        const chybejici = prvniNeplatnyKrok();
+        if (chybejici) {
+          jdiNaKrok(KROKY.indexOf(chybejici));
+          return;
+        }
+        navratNaPrehled = false;
+        jdiNaKrok(KROKY.length - 1);
+        return;
+      }
+
+      const videt = viditelneKroky();
+      const dalsi = videt[videt.indexOf(KROKY[aktualni]) + 1];
+      if (dalsi) jdiNaKrok(KROKY.indexOf(dalsi));
+    }
+
+    function predchoziKrok() {
+      // Zpět nikdy nevaliduje. Vyplněné hodnoty zůstávají v polích,
+      // takže se návratem nic neztratí.
+      navratNaPrehled = false;
+      const videt = viditelneKroky();
+      const predchozi = videt[videt.indexOf(KROKY[aktualni]) - 1];
+      if (predchozi) jdiNaKrok(KROKY.indexOf(predchozi));
+    }
+
+    tlacitkoDalsi.addEventListener("click", dalsiKrok);
+    tlacitkoZpet.addEventListener("click", predchoziKrok);
+
+    // Enter v poli posune na další krok, neodešle přihlášku předčasně.
+    // V textovém poli pro nápad musí Enter dál dělat nový řádek.
+    formular.addEventListener("keydown", (udalost) => {
+      if (udalost.key !== "Enter") return;
+
+      const cil = udalost.target as HTMLElement | null;
+      if (!cil) return;
+      if (cil instanceof HTMLTextAreaElement) return;
+      if (cil instanceof HTMLButtonElement) return;
+      if (cil instanceof HTMLAnchorElement) return;
+
+      // Na posledním kroku Enter odesílá — tak to lidé čekají.
+      if (jePosledni()) return;
+
+      udalost.preventDefault();
+      dalsiKrok();
+    });
+
+    // ==================================================================
+    // Rekapitulace na posledním kroku
+    //
+    // U krokového formuláře už člověk nevidí, co vyplnil o šest obrazovek
+    // dřív. Bez přehledu by odesílal naslepo.
+    // ==================================================================
+
+    const nazvyPoli: Record<string, string> = {
+      typ_poradatele: "Kdo se hlásí",
+      ico: "IČO",
+      nazev_poradatele: "Název pořadatele",
+      kontaktni_osoba: "Kontaktní osoba",
+      email: "E-mail",
+      telefon: "Telefon",
+      mesto: "Město",
+      kraj: "Kraj",
+      napad_na_aktivitu: "Nápad na aktivitu",
+      forma_platby: "Forma platby",
+      fakt_nazev: "Název na faktuře",
+      fakt_adresa: "Fakturační adresa",
+      fakt_ic: "IČ",
+      fakt_dic: "DIČ",
+    };
+
+    /** Uložené hodnoty jsou strojové, v přehledu musí být čitelné česky. */
+    /**
+     * Volby z rádiových tlačítek se ukládají strojově ("skola", "prevod"),
+     * v přehledu ale musí být čitelné česky. Překlad je schválně vázaný
+     * na konkrétní pole — jinak by se město „Škola" přeložilo taky.
+     */
+    const citelneHodnoty: Record<string, Record<string, string>> = {
+      typ_poradatele: {
+        skola: "Škola",
+        organizace: "Organizace",
+        jednotlivec: "Jednotlivec",
+      },
+      forma_platby: {
+        qr: "QR kód",
+        prevod: "Převod na účet s vystavením faktury",
+      },
+    };
+
+    function sestavPrehled() {
+      prehled!.replaceChildren();
+
+      for (const krok of viditelneKroky()) {
+        for (const pole of krok.souhrn) {
+          const zapsano = hodnota(pole);
+          // Prázdné nepovinné pole se nevypisuje. Řádek s pomlčkou
+          // by jen budil dojem, že něco chybí.
+          if (!zapsano) continue;
+
+          const radek = document.createElement("div");
+          radek.className =
+            "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-merunka-tlumena py-3";
+
+          const text = document.createElement("div");
+          text.className = "min-w-0";
+
+          const popisek = document.createElement("span");
+          popisek.className = "block text-popisek";
+          popisek.textContent = nazvyPoli[pole] ?? pole;
+
+          const vypis = document.createElement("span");
+          vypis.className = "block font-semibold break-words";
+          vypis.textContent = citelneHodnoty[pole]?.[zapsano] ?? zapsano;
+
+          text.append(popisek, vypis);
+
+          const uprav = document.createElement("button");
+          uprav.type = "button";
+          uprav.className =
+            "min-h-11 shrink-0 cursor-pointer border-0 bg-transparent px-2 font-semibold text-tyrkys underline";
+          uprav.textContent = "Upravit";
+          // Samotné „Upravit" by ve čtečce obrazovky nedávalo smysl —
+          // po sobě jdoucích tlačítek je tu deset.
+          uprav.setAttribute(
+            "aria-label",
+            `Upravit: ${nazvyPoli[pole] ?? pole}`,
+          );
+          uprav.addEventListener("click", () => {
+            navratNaPrehled = true;
+            jdiNaKrok(KROKY.indexOf(krok));
+          });
+
+          radek.append(text, uprav);
+          prehled!.append(radek);
+        }
+      }
+    }
+
+    // ==================================================================
+    // IČO a načtení z rejstříku ARES
+    //
+    // Sahá se na cizí server, takže se nic nespouští samo od sebe. Načítá
+    // se výhradně po stisku tlačítka a uživatel u toho celou dobu vidí,
+    // v jakém je to stavu: probíhá / povedlo se / nepovedlo se.
+    // ==================================================================
+
+    const poleIco = formular.querySelector<HTMLInputElement>("#ico-k");
+    const poleFaktIc = formular.querySelector<HTMLInputElement>("#fakt_ic-k");
+    const tlacitkoAres =
+      formular.querySelector<HTMLButtonElement>("#tlacitko-ares-k");
+    const popisekAres = formular.querySelector<HTMLElement>(
+      "[data-popisek-ares]",
+    );
+    const aresPrubeh = formular.querySelector<HTMLElement>("#ares-prubeh-k");
+    const aresHotovo = formular.querySelector<HTMLElement>("#ares-hotovo-k");
+    const aresChyba = formular.querySelector<HTMLElement>("#ares-chyba-k");
+
+    /**
+     * Ukáže jeden ze tří stavů načítání.
+     *
+     * Vždycky přesně jeden — nikdy dva najednou a nikdy žádný, když se něco
+     * děje. Zamčené tlačítko patří výhradně ke stavu "probíhá": jakmile se
+     * to nepovede, hned zase jde a člověk to může zkusit znovu.
+     */
+    function ukazStavAresu(
+      stav: "nic" | "probiha" | "hotovo" | "chyba",
+      hlaska = "",
+    ) {
+      // "hidden" a "flex" se přepínají spolu — samotné odebrání "hidden"
+      // by prvek zobrazilo, ale ikona a text by se rozjely vedle sebe špatně.
+      const prepni = (prvek: HTMLElement | null, videt: boolean) => {
+        prvek?.classList.toggle("hidden", !videt);
+        prvek?.classList.toggle("flex", videt);
+      };
+
+      prepni(aresPrubeh, stav === "probiha");
+      prepni(aresHotovo, stav === "hotovo");
+      prepni(aresChyba, stav === "chyba");
+
+      const textHotovo = formular!.querySelector<HTMLElement>(
+        "[data-text-ares-hotovo]",
+      );
+      const textChyba = formular!.querySelector<HTMLElement>(
+        "[data-text-ares-chyba]",
+      );
+      if (stav === "hotovo" && textHotovo) textHotovo.textContent = hlaska;
+      if (stav === "chyba" && textChyba) textChyba.textContent = hlaska;
+
+      if (tlacitkoAres) tlacitkoAres.disabled = stav === "probiha";
+      if (popisekAres) {
+        popisekAres.textContent =
+          stav === "probiha"
+            ? "Načítám…"
+            : stav === "chyba"
+              ? "Zkusit znovu"
+              : "Načíst z rejstříku";
+      }
+    }
+
+    // IČO se ve fakturačním kroku nezadává podruhé — přenese se tam samo.
+    // Když si ho tam ale někdo přepíše ručně, jeho hodnotu necháme být
+    // a přestaneme do pole sahat.
+    let icoPrenesene = "";
+
+    function prenesIco() {
+      if (!poleIco || !poleFaktIc || !jeSubjektSIco()) return;
+
+      const ico = poleIco.value.replace(/\s+/g, "");
+      if (!ico) return;
+
+      const uzTamNeco = poleFaktIc.value.trim();
+      if (uzTamNeco && uzTamNeco !== icoPrenesene) return;
+
+      poleFaktIc.value = ico;
+      icoPrenesene = ico;
+    }
+
+    /** Rozepíše načtené údaje do fakturačních polí. */
+    function predvyplnZAresu(udaje: FakturacniUdaje) {
+      const nastav = (id: string, hodnotaPole: string) => {
+        const pole = formular!.querySelector<HTMLInputElement>(`#${id}`);
+        if (pole && hodnotaPole) pole.value = hodnotaPole;
+      };
+
+      // Přepisujeme i vyplněná pole — člověk si o načtení sám řekl
+      // tlačítkem, takže čeká, že se údaje nahradí. Zpátky je kdykoli
+      // přepíše ručně, žádné z polí se nezamyká.
+      nastav("fakt_nazev-k", udaje.nazev);
+      nastav("fakt_adresa-k", udaje.adresa);
+      nastav("fakt_ic-k", udaje.ico);
+      if (udaje.dic) nastav("fakt_dic-k", udaje.dic);
+      icoPrenesene = udaje.ico;
+
+      // Navíc oproti jednostránkové verzi: krok „Název pořadatele" přijde
+      // hned po tomhle, takže by ho člověk opisoval z hlášky o kus výš.
+      // Doplní se jen do prázdného pole — cokoli napsaného rukou má
+      // přednost před rejstříkem.
+      const nazevPoradatele = formular!.querySelector<HTMLInputElement>(
+        "#nazev_poradatele-k",
+      );
+      if (nazevPoradatele && !nazevPoradatele.value.trim()) {
+        nazevPoradatele.value = udaje.nazev;
+      }
+
+      // Chybějící DIČ není chyba, jen to znamená neplátce DPH. Radši to
+      // řekneme rovnou, ať uživatel nehledá, proč se pole nedoplnilo.
+      const oDic = udaje.dic
+        ? ""
+        : " DIČ rejstřík neuvádí — subjekt není plátce DPH.";
+
+      ukazStavAresu(
+        "hotovo",
+        `Načteno z rejstříku ARES: ${udaje.nazev}. Fakturační údaje jsme podle toho předvyplnili, klidně je přepište.${oDic}`,
+      );
+    }
+
+    async function nactiZRejstriku() {
+      if (!poleIco) return;
+
+      const ico = poleIco.value.replace(/\s+/g, "");
+      poleIco.value = ico;
+      smazChybuPole("ico");
+
+      if (!/^\d{8}$/.test(ico)) {
+        ukazStavAresu("nic");
+        ukazChybu("ico", "Nejdřív vyplňte IČO — přesně osm číslic.");
+        poleIco.focus();
+        return;
+      }
+
+      ukazStavAresu("probiha");
+
+      try {
+        const udaje = await nactiUdajeZAresu(ico);
+
+        if (udaje === null) {
+          // Rejstřík odpověděl, jen takové IČO nezná. To je něco jiného
+          // než výpadek, tak to i jinak pojmenujeme.
+          ukazStavAresu(
+            "chyba",
+            `Rejstřík ARES IČO ${ico} nezná. Zkontrolujte prosím číslice, nebo fakturační údaje vyplňte ručně — přihlášku to nijak nebrzdí.`,
+          );
+          return;
+        }
+
+        predvyplnZAresu(udaje);
+      } catch (potiz) {
+        // Ať se stalo cokoli, uživatel dostane větu, ne točící se kolečko.
+        // A hlavně: formulář jde dál vyplnit ručně, výpadek rejstříku
+        // registraci nezablokuje.
+        ukazStavAresu(
+          "chyba",
+          potiz instanceof Error
+            ? potiz.message
+            : "Rejstřík ARES se teď nepodařilo zeptat. Zkuste to prosím znovu, nebo fakturační údaje vyplňte ručně.",
+        );
+      }
+    }
+
+    tlacitkoAres?.addEventListener("click", nactiZRejstriku);
+
+    poleIco?.addEventListener("input", () => {
+      // Číslo se změnilo, takže výsledek od minule už k němu nepatří.
+      // Nechat ho svítit by znamenalo ukazovat údaje k jinému subjektu.
+      ukazStavAresu("nic");
+      smazChybuPole("ico");
+      prenesIco();
+    });
+
+    // ==================================================================
+    // Reakce na volby, které mění skladbu kroků
+    // ==================================================================
+
+    formular
+      .querySelectorAll('input[name="typ_poradatele"]')
+      .forEach((prvek) =>
+        prvek.addEventListener("change", () => {
+          smazChybuPole("typ_poradatele");
+
+          if (!jeSubjektSIco()) {
+            // U jednotlivce by hláška o rejstříku visela u kroku, který
+            // se přeskočí. Vyplněnou hodnotu ale necháváme být — kdyby
+            // se člověk překlikl a vrátil, nemusí ji psát znovu.
+            ukazStavAresu("nic");
+            smazChybuPole("ico");
+          }
+
+          // Ubyl nebo přibyl krok, takže „z kolika" už neplatí.
+          prekresliPostup();
+        }),
+      );
+
+    formular
+      .querySelectorAll('input[name="forma_platby"]')
+      .forEach((prvek) =>
+        prvek.addEventListener("change", () => {
+          smazChybuPole("forma_platby");
+          if (jePrevod()) prenesIco();
+          prekresliPostup();
+        }),
+      );
+
+    // Popisek tlačítka na nepovinném kroku se mění podle toho, jestli
+    // je pole prázdné („Přeskočit a pokračovat"), nebo ne („Pokračovat").
+    formular
+      .querySelector<HTMLTextAreaElement>("#napad_na_aktivitu-k")
+      ?.addEventListener("input", prekresliOvladani);
+
+    // ==================================================================
+    // Odeslání
+    // ==================================================================
+
+    formular.addEventListener("submit", async (udalost) => {
+      udalost.preventDefault();
+
+      // Pojistka proti odeslání z jiného než posledního kroku (typicky
+      // Enterem). Formulář se místo toho jen posune dál.
+      if (!jePosledni()) {
+        dalsiKrok();
+        return;
+      }
+
+      smazChyby();
+
+      // Poslední kontrola přes všechny viditelné kroky. Kdyby se sem někdo
+      // dostal s nedodělaným krokem, formulář ho na něj vrátí.
+      // Skutečná validace stejně probíhá znovu v Edge Funkci.
+      const chybejici = prvniNeplatnyKrok();
+      if (chybejici) {
+        // Nejdřív přesun, teprve pak hlášky. Opačné pořadí by nefungovalo —
+        // přechod na krok chybový souhrn schovává.
+        const jinyKrok = KROKY.indexOf(chybejici) !== aktualni;
+
+        navratNaPrehled = true;
+        jdiNaKrok(KROKY.indexOf(chybejici));
+        zkontrolujKrok(chybejici);
+        ukazSouhrn(
+          jinyKrok
+            ? `Přihlášku se nepodařilo odeslat. Vrátili jsme vás na krok „${chybejici.nazev}" — chybí tam ještě údaje.`
+            : "Přihlášku se nepodařilo odeslat. Zkontrolujte prosím označená pole.",
+        );
+        return;
+      }
+
+      const popisekTlacitka = formular.querySelector<HTMLElement>(
+        "[data-popisek-tlacitka]",
+      );
+      const puvodniPopisek = popisekTlacitka?.textContent ?? "";
+
+      // Průběh musí být poznat. Zároveň se tlačítko zamkne, ať se přihláška
+      // neodešle dvakrát.
+      tlacitkoOdeslat.disabled = true;
+      if (popisekTlacitka) popisekTlacitka.textContent = "Odesíláme…";
+
+      try {
+        const odpoved = await fetch(adresaFunkce, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: verejnyKlic,
+            Authorization: `Bearer ${verejnyKlic}`,
+          },
+          // Souhlas posíláme jako pravdivostní hodnotu, ne jako text
+          // ze zaškrtávacího pole. Server sice zvládne oboje, ale takhle
+          // je z odeslaných dat na první pohled jasné, co znamenají.
+          body: JSON.stringify({
+            ...Object.fromEntries(new FormData(formular)),
+            souhlas_gdpr: Boolean(
+              formular.querySelector<HTMLInputElement>(
+                'input[name="souhlas_gdpr"]',
+              )?.checked,
+            ),
+          }),
+        });
+
+        const vysledek = await odpoved.json().catch(() => null);
+
+        if (!odpoved.ok || !vysledek?.ok) {
+          // Chybu ukážeme tak, jak přišla ze serveru, ať uživatel ví,
+          // co konkrétně opravit. Když server nic neposlal, aspoň
+          // srozumitelné obecné vysvětlení a možnost to zkusit znovu.
+          ukazSouhrn(
+            vysledek?.chyba ??
+              "Přihlášku se nepodařilo odeslat. Zkuste to prosím znovu. Pokud potíž trvá, ozvěte se nám a přihlásíme vás ručně.",
+          );
+          return;
+        }
+
+        // Hotovo — formulář schováme a ukážeme poděkování s VS a QR kódem.
+        const vypisVs = dekovani.querySelector<HTMLElement>("[data-vypis-vs]");
+        if (vypisVs) vypisVs.textContent = String(vysledek.variabilni_symbol);
+
+        const obrazekQr =
+          dekovani.querySelector<HTMLImageElement>("[data-vypis-qr]");
+        if (obrazekQr && vysledek.qr_url) {
+          obrazekQr.src = vysledek.qr_url;
+          obrazekQr.classList.remove("hidden");
+        }
+
+        formular.classList.add("hidden");
+        dekovani.classList.remove("hidden");
+        dekovani.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch {
+        // Spadlé připojení. Nikdy nenecháme točit kolečko donekonečna —
+        // uživatel musí poznat, že se to nepovedlo, a mít možnost opakovat.
+        ukazSouhrn(
+          "Nepodařilo se spojit se serverem. Zkontrolujte připojení k internetu a zkuste to znovu.",
+        );
+      } finally {
+        tlacitkoOdeslat.disabled = false;
+        if (popisekTlacitka) popisekTlacitka.textContent = puvodniPopisek;
+      }
+    });
+
+    // ==================================================================
+    // Výchozí stav
+    //
+    // Nic se přitom nenačítá z rejstříku — jen se srovná, který krok
+    // je vidět a co je na tlačítkách. Fokus se na začátku NEnastavuje,
+    // aby stránka po otevření sama neposkočila k formuláři.
+    // ==================================================================
+    KROKY.forEach((krok, i) => {
+      const sekce = sekceKroku(krok.klic);
+      if (i === 0) sekce?.removeAttribute("hidden");
+      else sekce?.setAttribute("hidden", "");
+    });
+
+    // `data-smer` se schválně nenastavuje hned. Dokud tam není, nemá
+    // první krok co animovat — jinak by po otevření stránky sám od sebe
+    // přijel zprava, přestože se nikam nešlo.
+    prekresliPostup();
+    prekresliOvladani();
+
+    // Až teď je formulář opravdu obsluhovaný. Hlídač spuštění díky tomu
+    // neukáže hlášku o nenačteném formuláři.
+    obal.dataset.stav = "pripraveno";
+  }
+</script>
