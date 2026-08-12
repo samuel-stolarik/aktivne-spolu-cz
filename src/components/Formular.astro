@@ -14,6 +14,9 @@
  *    červená je jiná než tlačítková, aby se nepletly.
  *  - Klikací plochy nejméně 44×44 px.
  *  - Klientské validaci nevěříme — Edge Funkce validuje všechno znovu.
+ *  - Ven se sahá jen na výslovnou žádost. Fakturační údaje z rejstříku ARES
+ *    se načtou po stisku tlačítka, nikdy tiše při otevření stránky, a jejich
+ *    výpadek nesmí zabránit odeslání přihlášky.
  */
 import Ikona from "./Ikona.astro";
 import Tlacitko from "./Tlacitko.astro";
@@ -79,6 +82,81 @@ const poleTridy =
       </div>
       <p class="chyba" data-chyba-pro="typ_poradatele"></p>
     </fieldset>
+
+    {/* --- IČO a načtení z rejstříku -------------------------------- */}
+    {/* Ukazuje se jen škole a organizaci. Jednotlivec IČO nemá, tak by ho
+        pole jen mátlo. Načítání spouští VÝHRADNĚ tlačítko — nikdy se nesahá
+        ven samo od sebe při otevření stránky. */}
+    <div id="blok-ico" class="hidden">
+      <label for="ico" class="popisek">
+        IČO <span class="povinne">povinné</span>
+      </label>
+
+      <div class="flex flex-wrap items-start gap-3">
+        <div class="min-w-[9rem] flex-1 sm:max-w-[13rem]">
+          <input
+            id="ico"
+            name="ico"
+            type="text"
+            inputmode="numeric"
+            maxlength="8"
+            autocomplete="off"
+            class={poleTridy}
+          />
+        </div>
+
+        <Tlacitko
+          varianta="vedlejsi"
+          id="tlacitko-ares"
+          trida="w-full sm:w-auto"
+        >
+          <span data-popisek-ares>Načíst z rejstříku</span>
+        </Tlacitko>
+      </div>
+
+      <p class="mt-2 mb-0 text-popisek">
+        Osm číslic. Podle nich předvyplníme fakturační údaje z veřejného
+        rejstříku ARES — vyplnit je jde i ručně.
+      </p>
+
+      <p class="chyba" data-chyba-pro="ico"></p>
+
+      {/* --- Stavy načítání ---------------------------------------------
+          Uživatel musí vždycky poznat, jestli se načítá, povedlo se to,
+          nebo selhalo. Žádný z těch tří stavů nesmí vypadat jako ten
+          druhý a žádný nesmí zůstat viset donekonečna. */}
+
+      {/* Probíhá */}
+      <p
+        id="ares-prubeh"
+        class="mt-2 hidden items-center gap-2 text-popisek"
+        role="status"
+      >
+        <Ikona jmeno="hourglass" velikost={20} />
+        <span>Načítáme údaje z rejstříku ARES…</span>
+      </p>
+
+      {/* Povedlo se */}
+      <p
+        id="ares-hotovo"
+        class="mt-2 hidden items-start gap-2 text-popisek"
+        role="status"
+      >
+        <Ikona jmeno="circle-check" velikost={20} trida="text-potvrzeni" />
+        <span data-text-ares-hotovo></span>
+      </p>
+
+      {/* Selhalo. Vždy slovní vysvětlení a ikona, nikdy jen barva —
+          a tlačítko zůstane odemčené, ať to jde zkusit znovu. */}
+      <div
+        id="ares-chyba"
+        class="mt-3 hidden items-start gap-3 rounded-lg border-2 border-chyba bg-white p-4"
+        role="alert"
+      >
+        <Ikona jmeno="alert-circle" velikost={24} trida="text-chyba" />
+        <p class="m-0 text-chyba" data-text-ares-chyba></p>
+      </div>
+    </div>
 
     {/* --- Základní údaje ------------------------------------------- */}
     <div class="grid gap-5 sm:grid-cols-2">
@@ -390,12 +468,15 @@ const poleTridy =
 </style>
 
 <script>
+  import { nactiUdajeZAresu, type FakturacniUdaje } from "../lib/ares";
+
   const formular = document.querySelector<HTMLFormElement>("#prihlaska");
+  const blokIco = document.querySelector<HTMLElement>("#blok-ico");
   const blokFakturace = document.querySelector<HTMLElement>("#blok-fakturace");
   const souhrnChyb = document.querySelector<HTMLElement>("#souhrn-chyb");
   const dekovani = document.querySelector<HTMLElement>("#dekovani");
 
-  if (formular && blokFakturace && souhrnChyb && dekovani) {
+  if (formular && blokIco && blokFakturace && souhrnChyb && dekovani) {
     const adresaFunkce = `${import.meta.env.PUBLIC_SUPABASE_URL}/functions/v1/prijmout-prihlasku`;
     const verejnyKlic = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
@@ -411,6 +492,16 @@ const poleTridy =
       formular!
         .querySelectorAll(`[name="${pole}"]`)
         .forEach((prvek) => prvek.classList.add("pole-s-chybou"));
+    }
+
+    /** Smaže chybu u jednoho pole. Ostatních se nedotkne. */
+    function smazChybuPole(pole: string) {
+      formular!
+        .querySelector<HTMLElement>(`[data-chyba-pro="${pole}"]`)
+        ?.classList.remove("je-videt");
+      formular!
+        .querySelectorAll(`[name="${pole}"]`)
+        .forEach((prvek) => prvek.classList.remove("pole-s-chybou"));
     }
 
     function smazChyby() {
@@ -439,11 +530,199 @@ const poleTridy =
       );
       const jePrevod = zvoleno?.value === "prevod";
       blokFakturace!.classList.toggle("hidden", !jePrevod);
+
+      // Když se blok právě odkryl, ať v něm IČO nemusí nikdo psát podruhé.
+      if (jePrevod) prenesIco();
     }
 
     formular
       .querySelectorAll('input[name="forma_platby"]')
       .forEach((prvek) => prvek.addEventListener("change", prepniFakturaci));
+
+    // --- IČO a načtení z rejstříku ARES ----------------------------
+    // Sahá se na cizí server, takže se nic nespouští samo od sebe. Načítá
+    // se výhradně po stisku tlačítka a uživatel u toho celou dobu vidí,
+    // v jakém je to stavu: probíhá / povedlo se / nepovedlo se.
+
+    const poleIco = formular.querySelector<HTMLInputElement>("#ico");
+    const poleFaktIc = formular.querySelector<HTMLInputElement>("#fakt_ic");
+    const tlacitkoAres =
+      formular.querySelector<HTMLButtonElement>("#tlacitko-ares");
+    const popisekAres = formular.querySelector<HTMLElement>(
+      "[data-popisek-ares]",
+    );
+    const aresPrubeh = formular.querySelector<HTMLElement>("#ares-prubeh");
+    const aresHotovo = formular.querySelector<HTMLElement>("#ares-hotovo");
+    const aresChyba = formular.querySelector<HTMLElement>("#ares-chyba");
+
+    /** IČO má smysl jen u školy a organizace. Jednotlivec žádné nemá. */
+    function jeSubjektSIco(): boolean {
+      const zvoleno = formular!.querySelector<HTMLInputElement>(
+        'input[name="typ_poradatele"]:checked',
+      );
+      return zvoleno?.value === "skola" || zvoleno?.value === "organizace";
+    }
+
+    /**
+     * Ukáže jeden ze tří stavů načítání.
+     *
+     * Vždycky přesně jeden — nikdy dva najednou a nikdy žádný, když se něco
+     * děje. Zamčené tlačítko patří výhradně ke stavu "probíhá": jakmile se
+     * to nepovede, hned zase jde a člověk to může zkusit znovu.
+     */
+    function ukazStavAresu(
+      stav: "nic" | "probiha" | "hotovo" | "chyba",
+      hlaska = "",
+    ) {
+      // "hidden" a "flex" se přepínají spolu — samotné odebrání "hidden"
+      // by prvek zobrazilo, ale ikona a text by se rozjely vedle sebe špatně.
+      const prepni = (prvek: HTMLElement | null, videt: boolean) => {
+        prvek?.classList.toggle("hidden", !videt);
+        prvek?.classList.toggle("flex", videt);
+      };
+
+      prepni(aresPrubeh, stav === "probiha");
+      prepni(aresHotovo, stav === "hotovo");
+      prepni(aresChyba, stav === "chyba");
+
+      const textHotovo = formular!.querySelector<HTMLElement>(
+        "[data-text-ares-hotovo]",
+      );
+      const textChyba = formular!.querySelector<HTMLElement>(
+        "[data-text-ares-chyba]",
+      );
+      if (stav === "hotovo" && textHotovo) textHotovo.textContent = hlaska;
+      if (stav === "chyba" && textChyba) textChyba.textContent = hlaska;
+
+      if (tlacitkoAres) tlacitkoAres.disabled = stav === "probiha";
+      if (popisekAres) {
+        popisekAres.textContent =
+          stav === "probiha"
+            ? "Načítám…"
+            : stav === "chyba"
+              ? "Zkusit znovu"
+              : "Načíst z rejstříku";
+      }
+    }
+
+    // IČO se ve fakturačním bloku nezadává podruhé — přenese se tam samo.
+    // Když si ho tam ale někdo přepíše ručně, jeho hodnotu necháme být
+    // a přestaneme do pole sahat.
+    let icoPrenesene = "";
+
+    function prenesIco() {
+      if (!poleIco || !poleFaktIc || !jeSubjektSIco()) return;
+
+      const ico = poleIco.value.replace(/\s+/g, "");
+      if (!ico) return;
+
+      const uzTamNeco = poleFaktIc.value.trim();
+      if (uzTamNeco && uzTamNeco !== icoPrenesene) return;
+
+      poleFaktIc.value = ico;
+      icoPrenesene = ico;
+    }
+
+    /** Rozhodne, jestli se pole pro IČO vůbec ukáže. */
+    function prepniIco() {
+      const jeSIco = jeSubjektSIco();
+      blokIco!.classList.toggle("hidden", !jeSIco);
+
+      if (jeSIco) {
+        prenesIco();
+      } else {
+        // U jednotlivce by hláška o rejstříku visela u neviditelného pole.
+        // Vyplněnou hodnotu ale necháváme být — kdyby se člověk překlikl
+        // a vrátil se zpátky, nemusí ji psát znovu.
+        ukazStavAresu("nic");
+        smazChybuPole("ico");
+      }
+    }
+
+    /** Rozepíše načtené údaje do fakturačního bloku. */
+    function predvyplnZAresu(udaje: FakturacniUdaje) {
+      const nastav = (id: string, hodnota: string) => {
+        const pole = formular!.querySelector<HTMLInputElement>(`#${id}`);
+        if (pole && hodnota) pole.value = hodnota;
+      };
+
+      // Přepisujeme i vyplněná pole — člověk si o načtení sám řekl
+      // tlačítkem, takže čeká, že se údaje nahradí. Zpátky je kdykoli
+      // přepíše ručně, žádné z polí se nezamyká.
+      nastav("fakt_nazev", udaje.nazev);
+      nastav("fakt_adresa", udaje.adresa);
+      nastav("fakt_ic", udaje.ico);
+      if (udaje.dic) nastav("fakt_dic", udaje.dic);
+      icoPrenesene = udaje.ico;
+
+      // Chybějící DIČ není chyba, jen to znamená neplátce DPH. Radši to
+      // řekneme rovnou, ať uživatel nehledá, proč se pole nedoplnilo.
+      const oDic = udaje.dic
+        ? ""
+        : " DIČ rejstřík neuvádí — subjekt není plátce DPH.";
+
+      ukazStavAresu(
+        "hotovo",
+        `Načteno z rejstříku ARES: ${udaje.nazev}. Fakturační údaje jsme podle toho předvyplnili, klidně je přepište.${oDic}`,
+      );
+    }
+
+    async function nactiZRejstriku() {
+      if (!poleIco) return;
+
+      const ico = poleIco.value.replace(/\s+/g, "");
+      poleIco.value = ico;
+      smazChybuPole("ico");
+
+      if (!/^\d{8}$/.test(ico)) {
+        ukazStavAresu("nic");
+        ukazChybu("ico", "Nejdřív vyplňte IČO — přesně osm číslic.");
+        poleIco.focus();
+        return;
+      }
+
+      ukazStavAresu("probiha");
+
+      try {
+        const udaje = await nactiUdajeZAresu(ico);
+
+        if (udaje === null) {
+          // Rejstřík odpověděl, jen takové IČO nezná. To je něco jiného
+          // než výpadek, tak to i jinak pojmenujeme.
+          ukazStavAresu(
+            "chyba",
+            `Rejstřík ARES IČO ${ico} nezná. Zkontrolujte prosím číslice, nebo fakturační údaje vyplňte ručně — přihlášku to nijak nebrzdí.`,
+          );
+          return;
+        }
+
+        predvyplnZAresu(udaje);
+      } catch (potiz) {
+        // Ať se stalo cokoli, uživatel dostane větu, ne točící se kolečko.
+        // A hlavně: formulář jde dál vyplnit ručně, výpadek rejstříku
+        // registraci nezablokuje.
+        ukazStavAresu(
+          "chyba",
+          potiz instanceof Error
+            ? potiz.message
+            : "Rejstřík ARES se teď nepodařilo zeptat. Zkuste to prosím znovu, nebo fakturační údaje vyplňte ručně.",
+        );
+      }
+    }
+
+    tlacitkoAres?.addEventListener("click", nactiZRejstriku);
+
+    poleIco?.addEventListener("input", () => {
+      // Číslo se změnilo, takže výsledek od minule už k němu nepatří.
+      // Nechat ho svítit by znamenalo ukazovat údaje k jinému subjektu.
+      ukazStavAresu("nic");
+      smazChybuPole("ico");
+      prenesIco();
+    });
+
+    formular
+      .querySelectorAll('input[name="typ_poradatele"]')
+      .forEach((prvek) => prvek.addEventListener("change", prepniIco));
 
     // --- Kontrola vyplnění -----------------------------------------
     // Tohle je jen pomoc uživateli, ať nemusí čekat na odpověď serveru.
@@ -483,6 +762,20 @@ const poleTridy =
       if (telefon && telefon.replace(/\D/g, "").length < 9) {
         ukazChybu("telefon", "Telefon musí mít alespoň 9 číslic.");
         vChybe = true;
+      }
+
+      // IČO chceme po škole a organizaci. Jednotlivec žádné nemá, takže
+      // se na něj ani neptáme. Kontroluje se jen tvar čísla — jestli ho
+      // rejstřík zná, na odeslání přihlášky nezáleží.
+      if (jeSubjektSIco()) {
+        const ico = text("ico").replace(/\s+/g, "");
+        if (!ico) {
+          ukazChybu("ico", "Vyplňte IČO školy nebo organizace.");
+          vChybe = true;
+        } else if (!/^\d{8}$/.test(ico)) {
+          ukazChybu("ico", "IČO musí mít přesně osm číslic.");
+          vChybe = true;
+        }
       }
 
       if (text("forma_platby") === "prevod") {
@@ -601,6 +894,9 @@ const poleTridy =
       }
     });
 
+    // Výchozí stav stránky. Nic se přitom nenačítá z rejstříku — jen se
+    // srovná, které bloky jsou vidět.
+    prepniIco();
     prepniFakturaci();
   }
 </script>

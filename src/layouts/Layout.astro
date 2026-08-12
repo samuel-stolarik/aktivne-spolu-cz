@@ -1,13 +1,16 @@
 ---
 import "../styles/global.css";
+import Menu from "../components/Menu.astro";
 import Paticka from "../components/Paticka.astro";
 
 interface Props {
   titulek: string;
   popis: string;
+  /** Na právních podstránkách nemá kotvové menu co odkazovat */
+  sMenu?: boolean;
 }
 
-const { titulek, popis } = Astro.props;
+const { titulek, popis, sMenu = true } = Astro.props;
 ---
 
 <!doctype html>
@@ -49,6 +52,8 @@ const { titulek, popis } = Astro.props;
     >
       Přeskočit na obsah
     </a>
+
+    {sMenu && <Menu />}
 
     <main id="obsah">
       <slot />

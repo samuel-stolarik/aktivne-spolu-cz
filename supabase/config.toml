@@ -419,3 +419,10 @@ enabled = true
 [functions.prijmout-prihlasku]
 enabled = true
 verify_jwt = false
+
+# Vyhledání v ARESu podle IČO. Volá se ze stejného formuláře bez přihlašování,
+# takže také nesmí vyžadovat účet. Nevrací nic citlivého — jen to, co je
+# ve veřejném rejstříku, a jen když si o to někdo řekne tlačítkem.
+[functions.ares-lookup]
+enabled = true
+verify_jwt = false

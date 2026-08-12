@@ -2,25 +2,27 @@
 /**
  * Patička.
  *
- * Loga pořadatelů mají být každé ve vlastním bílém boxu. Vektorová loga
- * zatím nemáme (viz [DOPLNIT] níž), takže box zatím nese název organizace
- * vysázený typograficky. Není to prázdné místo čekající na obrázek —
- * je to plnohodnotná varianta, která po dodání log jen vymění obsah boxu.
+ * Záměrně střídmá: loga pořadatelů, právní odkazy, copyright. Nic víc.
+ *
+ * Dřív tu byla i věta "Akci pořádá organizace… ve spolupráci se…" a v sekci
+ * Ke stažení a kontakt k tomu ještě dva velké boxy s popisy obou organizací.
+ * Bylo to dvakrát to samé. Popis organizací vypadl, tady zůstala jen loga.
+ *
+ * Vektorová loga zatím nemáme — [DOPLNIT] níž. Box proto zatím nese název
+ * organizace vysázený typograficky. Není to prázdné místo čekající
+ * na obrázek, je to plnohodnotná varianta: až loga dorazí, vymění se
+ * obsah boxu a rozvržení zůstane.
  */
 ---
 
-<footer class="border-t border-merunka-tlumena bg-pozadi px-5 py-16">
+<footer class="border-t border-merunka-tlumena bg-pozadi px-5 py-12">
   <div class="mx-auto max-w-obsah">
-    <p class="text-center font-semibold text-tyrkys">
-      Akci pořádá organizace Právě teď! o.p.s. ve spolupráci se ZŠ Magic Hill.
-    </p>
-
-    <div class="mt-8 grid gap-5 sm:grid-cols-2">
+    <div class="grid gap-5 sm:grid-cols-2">
       {/* [DOPLNIT: logo Právě teď! o.p.s. ve vektorovém formátu (SVG)] */}
       <a
         href="https://www.pravetedops.cz"
         rel="noopener"
-        class="flex min-h-28 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-8 text-center no-underline"
+        class="flex min-h-24 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-6 text-center no-underline"
       >
         <span class="text-lg font-semibold text-tyrkys">Právě teď! o.p.s.</span>
       </a>
@@ -29,13 +31,13 @@
       <a
         href="https://www.magic-hill.cz"
         rel="noopener"
-        class="flex min-h-28 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-8 text-center no-underline"
+        class="flex min-h-24 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-6 text-center no-underline"
       >
         <span class="text-lg font-semibold text-tyrkys">ZŠ Magic Hill</span>
       </a>
     </div>
 
-    <nav class="mt-12 flex flex-wrap justify-center gap-x-8 gap-y-3">
+    <nav class="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3">
       <a href="/obchodni-podminky/" class="text-tyrkys underline">
         Obchodní podmínky
       </a>
@@ -44,7 +46,7 @@
       </a>
     </nav>
 
-    <p class="mt-8 text-center text-popisek">
+    <p class="mt-6 text-center text-popisek">
       © {new Date().getFullYear()} Právě teď! o.p.s.
     </p>
   </div>

@@ -1,0 +1,207 @@
+/* ==========================================================================
+   Kreativní verze — pohyb, interakce, efekty
+   ==========================================================================
+   Tenhle soubor je schválně "přestimulovaný". Je to nabídka k proškrtání,
+   ne finální podoba. Každý efekt je samostatný, takže jde vyhodit jeden
+   bez toho, aby se rozsypaly ostatní.
+
+   Barvy zůstávají ze schválené palety. Kreativita je v pohybu, měřítku
+   a kompozici, ne ve vymýšlení nových odstínů — paleta je značka.
+
+   VŠECHNO respektuje prefers-reduced-motion. To není na proškrtání:
+   publikum zahrnuje seniory a lidi citlivé na pohyb.
+   ========================================================================== */
+
+/* --- Ukazatel průběhu čtení ------------------------------------------- */
+.pruh-postupu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  height: 4px;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    var(--color-tyrkys),
+    var(--color-merunka)
+  );
+}
+
+/* --- Světlo sledující myš ---------------------------------------------- */
+/* Jemná záře, která jde za kurzorem. Na dotykových zařízeních se nezobrazí
+   vůbec — tam by jen zabírala výkon. */
+.svetlo-mysi {
+  position: fixed;
+  z-index: 0;
+  height: 420px;
+  width: 420px;
+  border-radius: 9999px;
+  opacity: 0.35;
+  filter: blur(90px);
+  background: radial-gradient(
+    circle,
+    var(--color-plocha-tyrkys) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%);
+  transition: opacity 400ms ease-out;
+  pointer-events: none;
+}
+
+@media (hover: none) {
+  .svetlo-mysi {
+    display: none;
+  }
+}
+
+/* --- Odhalování textu po slovech --------------------------------------- */
+/* Nadpis se skládá po slovech, ne najednou. Dává mu to rytmus čtení. */
+.slovo {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.4em) rotate(2deg);
+  transition:
+    opacity 500ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slovo.je-videt {
+  opacity: 1;
+  transform: translateY(0) rotate(0deg);
+}
+
+/* --- Naklánění karty za kurzorem --------------------------------------- */
+.naklon {
+  transform-style: preserve-3d;
+  transition: transform 200ms ease-out;
+  will-change: transform;
+}
+
+.naklon > * {
+  transform: translateZ(30px);
+}
+
+/* --- Magnetické tlačítko ------------------------------------------------ */
+/* Tlačítko se lehce přitáhne ke kurzoru. Posun je malý schválně —
+   ovládací prvek, který utíká, se špatně trefuje. */
+.magnet {
+  transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* --- Nekonečný pás s nápady -------------------------------------------- */
+.pas {
+  display: flex;
+  width: max-content;
+  animation: pas-jede 42s linear infinite;
+}
+
+.pas-obal:hover .pas {
+  animation-play-state: paused;
+}
+
+@keyframes pas-jede {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Obsah je v šabloně dvakrát, takže posun o polovinu je bezešvý. */
+    transform: translateX(-50%);
+  }
+}
+
+/* --- Kreslení cesty mezi kroky ----------------------------------------- */
+/* Čára se vykresluje podle toho, jak daleko je člověk odscrollovaný.
+   Délku dopočítá skript, protože závisí na výšce sekce. */
+.cesta {
+  stroke-dasharray: var(--delka-cesty);
+  stroke-dashoffset: var(--delka-cesty);
+}
+
+/* --- Velké číslo v pozadí kroku ---------------------------------------- */
+.cislo-v-pozadi {
+  font-size: clamp(6rem, 16vw, 13rem);
+  font-weight: 600;
+  line-height: 0.8;
+  color: var(--color-merunka-tlumena);
+  opacity: 0.5;
+  user-select: none;
+}
+
+/* --- Vybraná cílová skupina -------------------------------------------- */
+/* Karty skupin se navzájem "utlumí", když jednu vyberete. Ukazuje to,
+   že se obsah stránky podle výběru mění. */
+.skupina {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease-out,
+    box-shadow 300ms ease-out;
+}
+
+.skupiny-maji-vybrano .skupina:not([aria-pressed="true"]) {
+  opacity: 0.45;
+}
+
+.skupina[aria-pressed="true"] {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px -18px rgba(18, 112, 127, 0.55);
+}
+
+/* --- Zvýraznění obsahu podle skupiny ----------------------------------- */
+.pro-skupinu {
+  transition:
+    opacity 300ms ease-out,
+    filter 300ms ease-out;
+}
+
+.pro-skupinu.utlumeno {
+  opacity: 0.3;
+  filter: grayscale(0.7);
+}
+
+/* --- Odpočet do akce ---------------------------------------------------- */
+.odpocet-cislo {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   Vypnutí pohybu — POVINNÉ, není na proškrtání
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .pruh-postupu {
+    display: none;
+  }
+
+  .svetlo-mysi {
+    display: none;
+  }
+
+  .pas {
+    animation: none;
+    transform: none;
+  }
+
+  .slovo {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .naklon,
+  .magnet {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .cesta {
+    stroke-dashoffset: 0 !important;
+  }
+
+  .skupina[aria-pressed="true"] {
+    transform: none;
+  }
+}

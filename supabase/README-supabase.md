@@ -24,8 +24,10 @@ supabase/
 │   │   ├── spayd.ts                 skládání platebního řetězce pro QR
 │   │   ├── qr.ts                    vykreslení QR kódu do obrázku PNG
 │   │   └── gmail.ts                 odesílání e-mailů přes Google
-│   └── prijmout-prihlasku/
-│       └── index.ts               příjem přihlášky z formuláře
+│   ├── prijmout-prihlasku/
+│   │   └── index.ts               příjem přihlášky z formuláře
+│   └── ares-lookup/
+│       └── index.ts               vyhledání fakturačních údajů v ARESu podle IČO
 └── README-supabase.md             tenhle soubor
 ```
 
@@ -255,10 +257,11 @@ Spustí jen to, co ještě neproběhlo. Už nasazenou migraci nikdy neupravujte 
 na změnu se přidává nový soubor. Název začíná časovým razítkem
 (`RRRRMMDDHHMMSS_kratky_popis.sql`), podle něj se řadí pořadí.
 
-**Změny ve funkci:**
+**Změny ve funkcích:**
 
 ```bash
 npx supabase functions deploy prijmout-prihlasku
+npx supabase functions deploy ares-lookup
 ```
 
 **Změny v nastavení:**
@@ -307,6 +310,8 @@ chrání skryté pole ve formuláři.
   a nepovinné `fakt_dic`
 - `napad_na_aktivitu` je nepovinné
 - **`web` je past na roboty** — musí zůstat prázdné, viz níž
+- formulář posílá u školy a organizace navíc `ico` (pomocné pole pro načtení
+  z ARESu). Funkce ho **ignoruje** — na faktuře platí `fakt_ic`.
 
 ### Co přijde zpátky
 
@@ -349,6 +354,60 @@ neuložila žádná přihláška ani nespotřeboval variabilní symbol.
 
 ---
 
+## Vyhledání v ARESu (`ares-lookup`)
+
+Druhá, mnohem menší funkce. Škola nebo organizace vyplní ve formuláři IČO,
+klikne na **Načíst z rejstříku** a fakturační údaje se předvyplní samy.
+
+```
+GET  https://kourmwqxkhdtahbxyuaq.supabase.co/functions/v1/ares-lookup?ico=29154901
+POST https://kourmwqxkhdtahbxyuaq.supabase.co/functions/v1/ares-lookup   {"ico":"29154901"}
+```
+
+Také **nevyžaduje přihlášení**. Nevrací nic, co by nebylo ve veřejném
+rejstříku, a nic neukládá — je to jen průchoďák. Prohlížeč se na ARES nemůže
+zeptat sám, protože rejstřík nemá pro cizí domény nastavené CORS hlavičky.
+
+Zdroj dat (veřejné rozhraní ARESu, bez klíče a bez registrace):
+
+```
+GET https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/{ico}
+```
+
+**Povedlo se:**
+
+```json
+{ "ok": true, "ico": "29154901", "nazev": "Právě teď! o.p.s.",
+  "adresa": "Fügnerovo náměstí 1808/3, Nové Město, 120 00 Praha 2" }
+```
+
+Pole `dic` v odpovědi je jen u plátců DPH. Když chybí, subjekt plátcem není —
+**není to chyba** a formulář to takhle i napíše.
+
+**Nepovedlo se:**
+
+```json
+{ "ok": false, "duvod": "nenalezeno",
+  "chyba": "Rejstřík ARES IČO 00000019 nezná. Zkontrolujte prosím číslice, nebo fakturační údaje vyplňte ručně." }
+```
+
+| `duvod` | HTTP | Kdy nastane |
+| --- | --- | --- |
+| `neplatne_ico` | 400 | IČO nemá osm číslic. Kontroluje se **dřív**, než se kamkoli sáhne. |
+| `nenalezeno` | 404 | ARES odpověděl, ale takové IČO nezná. Nejspíš překlep. |
+| `nedostupne` | 502 / 504 | ARES neodpověděl do osmi vteřin nebo vrátil chybu. |
+| `spatny_pozadavek` | 400 / 405 | Špatná metoda nebo nečitelné tělo požadavku. |
+
+`nenalezeno` a `nedostupne` se schválně rozlišuje — u překlepu má člověk
+opravit číslice, u výpadku rovnou vyplnit údaje ručně. **Výpadek rejstříku
+nesmí zablokovat registraci**, formulář jde vždycky doplnit rukou.
+
+Poštovní směrovací číslo se v adrese upraví do českého tvaru
+(`12000 Praha 2` → `120 00 Praha 2`). Všechna předvyplněná pole ve formuláři
+jde přepsat — ARES má adresu občas v jiném tvaru, než chce účetní.
+
+---
+
 ## Ověřeno na živém projektu
 
 | Co | Výsledek |
@@ -361,6 +420,10 @@ neuložila žádná přihláška ani nespotřeboval variabilní symbol.
 | serverová validace při obejití formuláře | HTTP 400 se seznamem chyb po polích |
 | čtení veřejným klíčem | HTTP 401, `permission denied for table prihlasky` |
 | číslování faktur | `26/03/001`, `26/03/002`, `26/07/003` |
+| ARES, existující IČO 29154901 | `{"ok":true,"ico":"29154901","nazev":"Právě teď! o.p.s.","adresa":"Fügnerovo náměstí 1808/3, Nové Město, 120 00 Praha 2"}` |
+| ARES, neexistující IČO 00000019 | HTTP 404, `{"ok":false,"duvod":"nenalezeno",…}` |
+| ARES, plátce DPH (27082440) | v odpovědi navíc `"dic":"CZ27082440"` |
+| ARES, špatný tvar IČO (`123`) | HTTP 400, `{"ok":false,"duvod":"neplatne_ico",…}`, na ARES se vůbec nesáhne |
 
 Testovací záznamy byly po zkoušce smazané a sekvence vrácené na začátek.
 

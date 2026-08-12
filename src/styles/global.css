@@ -83,6 +83,13 @@
     scroll-behavior: smooth;
   }
 
+  /* Kotvy z horního menu musí zastavit pod lištou, jinak by se nadpis
+     sekce schoval za ni. */
+  section[id],
+  main[id] {
+    scroll-margin-top: 5.5rem;
+  }
+
   body {
     background-color: var(--color-pozadi);
     color: var(--color-text);

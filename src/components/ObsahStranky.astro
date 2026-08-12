@@ -119,7 +119,7 @@ const kartaNaPlose = predel === "karta";
     Proč se do projektu zapojit, proč do toho jít?
   </NadpisSekce>
 
-  <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
     {
       duvody.map((duvod, i) => (
         <Karta
@@ -151,7 +151,7 @@ const kartaNaPlose = predel === "karta";
 <Sekce id="jak-to-funguje" predel={predel} plocha>
   <NadpisSekce poradi={0}>4 jednoduché kroky k realizaci</NadpisSekce>
 
-  <div class="mt-12 max-w-[760px]">
+  <div class="mt-10 max-w-[760px]">
     <Kroky kroky={kroky} />
   </div>
 </Sekce>
@@ -160,7 +160,7 @@ const kartaNaPlose = predel === "karta";
 <Sekce id="tipy-na-aktivity" predel={predel}>
   <NadpisSekce poradi={0}>Čím se můžete inspirovat a co připravit?</NadpisSekce>
 
-  <div class="mt-12 grid gap-5 sm:grid-cols-3">
+  <div class="mt-10 grid gap-5 sm:grid-cols-3">
     {
       tipy.map((tip, i) => (
         <Karta
@@ -196,7 +196,7 @@ const kartaNaPlose = predel === "karta";
 <Sekce id="podpora" predel={predel} linkaNahore>
   <NadpisSekce poradi={0}>Jakou podporu od nás získáte?</NadpisSekce>
 
-  <div class="mt-12 grid gap-5 sm:grid-cols-3">
+  <div class="mt-10 grid gap-5 sm:grid-cols-3">
     {
       podpora.map((polozka, i) => (
         <Karta
@@ -216,7 +216,7 @@ const kartaNaPlose = predel === "karta";
 <Sekce id="zasobnik" predel={predel} linkaNahore>
   <NadpisSekce poradi={0}>Co je to Zásobník nápadů?</NadpisSekce>
 
-  <div class="mt-12 grid gap-10 lg:grid-cols-[1fr_auto] lg:items-start">
+  <div class="mt-10 grid gap-10 lg:grid-cols-[1fr_auto] lg:items-start">
     <div class="najezd max-w-[720px] space-y-5" data-poradi="1">
       <p>
         Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí žáci
@@ -247,7 +247,7 @@ const kartaNaPlose = predel === "karta";
 <Sekce id="registrace" predel={predel} plocha>
   <NadpisSekce poradi={0}>Registrace a poplatek</NadpisSekce>
 
-  <div class="mt-12 grid gap-10 lg:grid-cols-[340px_1fr] lg:items-start">
+  <div class="mt-10 grid gap-10 lg:grid-cols-[340px_1fr] lg:items-start">
     <div class="space-y-5">
       <div class="najezd rounded-xl bg-white p-6" data-poradi="1">
         <p class="m-0 text-popisek">Přihlášení do projektu</p>
@@ -285,7 +285,7 @@ const kartaNaPlose = predel === "karta";
 <Sekce id="ke-stazeni" predel={predel}>
   <NadpisSekce poradi={0}>Ke stažení a kontakt</NadpisSekce>
 
-  <div class="najezd mt-12" data-poradi="1">
+  <div class="najezd mt-10" data-poradi="1">
     {/* [DOPLNIT: kompletní leták k akci v PDF] */}
     <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi">
       <Ikona jmeno="file-text" velikost={20} />
@@ -293,75 +293,35 @@ const kartaNaPlose = predel === "karta";
     </Tlacitko>
   </div>
 
-  <h3 class="najezd mt-14 text-xl" data-poradi="2">Pořadatelé akce</h3>
+  {/* Kontakt schválně jen jeden telefon a jeden e-mail. Dřív tu byly dva
+      velké boxy s popisy obou organizací, jenže totéž je i v patičce —
+      byla to dvakrát ta samá informace. Popis organizací vypadl,
+      v patičce zůstala loga. */}
+  <div
+    class="najezd mt-10 flex flex-wrap items-center gap-x-10 gap-y-4 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-6"
+    data-poradi="2"
+  >
+    <div>
+      <h3 class="text-xl">Nevíte si rady?</h3>
+      <p class="mt-1 mb-0">Ozvěte se nám, rádi poradíme.</p>
+    </div>
 
-  <div class="mt-6 grid gap-5 sm:grid-cols-2">
-    <article
-      class="najezd rounded-xl border border-merunka-tlumena bg-plocha-tyrkys p-6"
-      data-poradi="3"
-    >
-      <h4 class="text-lg font-semibold text-tyrkys">Právě teď! o.p.s.</h4>
-      <p class="mt-3">
-        Právě teď! o.p.s. udává směr modernímu, zdravému a aktivnímu stárnutí.
-        Prostřednictvím moderních aktivizačních programů pomáhá seniorům žít
-        aktivní život.
-      </p>
-      <dl class="mt-5 space-y-2 text-popisek">
-        <div class="flex gap-2">
-          <dt class="font-semibold">Kontaktní osoba:</dt>
-          <dd class="m-0">[DOPLNIT: jméno]</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt class="font-semibold">E-mail:</dt>
-          <dd class="m-0">[DOPLNIT: e-mail]</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt class="font-semibold">Telefon:</dt>
-          <dd class="m-0">[DOPLNIT: telefon]</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt class="font-semibold">Web:</dt>
-          <dd class="m-0">
-            <a href="https://www.pravetedops.cz" class="text-tyrkys underline">
-              www.pravetedops.cz
-            </a>
-          </dd>
-        </div>
-      </dl>
-    </article>
+    <div class="flex flex-wrap gap-x-8 gap-y-3">
+      <a
+        href="tel:[DOPLNIT: telefon]"
+        class="flex min-h-11 items-center gap-2 font-semibold text-tyrkys no-underline"
+      >
+        <Ikona jmeno="phone" velikost={22} />
+        [DOPLNIT: telefon]
+      </a>
 
-    <article
-      class="najezd rounded-xl border border-merunka-tlumena bg-plocha-tyrkys p-6"
-      data-poradi="4"
-    >
-      <h4 class="text-lg font-semibold text-tyrkys">ZŠ Magic Hill</h4>
-      <p class="mt-3">
-        ZŠ s rozšířenou výukou jazyků Magic Hill, s.r.o., kde díky
-        individuálnímu přístupu v malých kolektivech a důrazu na jazyky děti
-        získávají znalosti a dovednosti pro úspěch v 21. století.
-      </p>
-      <dl class="mt-5 space-y-2 text-popisek">
-        <div class="flex gap-2">
-          <dt class="font-semibold">Kontaktní osoba:</dt>
-          <dd class="m-0">[DOPLNIT: jméno]</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt class="font-semibold">E-mail:</dt>
-          <dd class="m-0">[DOPLNIT: e-mail]</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt class="font-semibold">Telefon:</dt>
-          <dd class="m-0">[DOPLNIT: telefon]</dd>
-        </div>
-        <div class="flex gap-2">
-          <dt class="font-semibold">Web:</dt>
-          <dd class="m-0">
-            <a href="https://www.magic-hill.cz" class="text-tyrkys underline">
-              www.magic-hill.cz
-            </a>
-          </dd>
-        </div>
-      </dl>
-    </article>
+      <a
+        href="mailto:[DOPLNIT: e-mail]"
+        class="flex min-h-11 items-center gap-2 font-semibold text-tyrkys no-underline"
+      >
+        <Ikona jmeno="mail" velikost={22} />
+        [DOPLNIT: e-mail]
+      </a>
+    </div>
   </div>
 </Sekce>

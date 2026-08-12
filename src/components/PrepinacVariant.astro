@@ -1,45 +1,46 @@
 ---
 /**
- * Přepínač variant předělů sekcí — POUZE PRO NÁHLED PŘI VÝVOJI.
+ * Přepínač verzí — POUZE PRO NÁHLED PŘI VÝVOJI.
  *
- * Slouží k tomu, aby šly obě varianty rychle porovnat na localhostu.
+ * Slouží k tomu, aby šly verze rychle porovnat na localhostu.
  * Do produkčního buildu se nedostane: `import.meta.env.DEV` je při
  * `npm run build` false, takže se nevykreslí vůbec nic.
  *
- * Až padne rozhodnutí, která varianta zůstane, smaže se tahle komponenta
- * i stránka /varianta-b/.
+ * Až padne rozhodnutí, která verze zůstane, smaže se tahle komponenta
+ * i stránky nevybraných verzí.
  */
 interface Props {
-  aktivni: "linka" | "karta";
+  aktivni: "linka" | "karta" | "kreativni";
 }
 
 const { aktivni } = Astro.props;
 const jeNahled = import.meta.env.DEV;
 
-const varianty = [
-  { klic: "linka", odkaz: "/", popis: "A — linka a prostor" },
+const verze = [
+  { klic: "linka", odkaz: "/", popis: "A — uzemněná" },
   { klic: "karta", odkaz: "/varianta-b/", popis: "B — bílé listy" },
+  { klic: "kreativni", odkaz: "/kreativni/", popis: "C — kreativní" },
 ];
 ---
 
 {
   jeNahled && (
-    <div class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-merunka-tlumena bg-white/95 px-2 py-2 shadow-lg backdrop-blur">
+    <div class="fixed bottom-4 left-1/2 z-[70] -translate-x-1/2 rounded-full border border-merunka-tlumena bg-white/95 px-2 py-2 shadow-lg backdrop-blur">
       <div class="flex items-center gap-1">
-        <span class="px-3 text-popisek font-semibold text-tyrkys">
-          Předěl sekcí:
+        <span class="hidden px-3 text-popisek font-semibold text-tyrkys sm:inline">
+          Verze:
         </span>
-        {varianty.map((varianta) => (
+        {verze.map((v) => (
           <a
-            href={varianta.odkaz}
+            href={v.odkaz}
             class:list={[
-              "rounded-full px-4 py-2 text-popisek no-underline transition-colors duration-150",
-              aktivni === varianta.klic
+              "rounded-full px-4 py-2 text-popisek whitespace-nowrap no-underline transition-colors duration-150",
+              aktivni === v.klic
                 ? "bg-tyrkys font-semibold text-white"
                 : "text-text hover:bg-plocha-tyrkys",
             ]}
           >
-            {varianta.popis}
+            {v.popis}
           </a>
         ))}
       </div>

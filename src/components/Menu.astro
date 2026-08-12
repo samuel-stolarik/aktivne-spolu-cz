@@ -1,0 +1,111 @@
+---
+/**
+ * Horní menu s kotvami na jednotlivé sekce.
+ *
+ * Drží se nahoře při scrollování, aby se návštěvník mohl kdykoliv přesunout
+ * jinam. Aktivní sekce se podbarvuje, takže je pořád vidět, kde člověk je.
+ *
+ * Na mobilu se odkazy nezalamují do několika řádků ani neschovávají pod
+ * hamburger — jedou vodorovně a dají se posunout prstem. Pro seniory je
+ * viditelný odkaz spolehlivější než skryté menu, které se musí najít.
+ *
+ * Kotvy počítají s výškou menu přes `scroll-margin-top` na sekcích
+ * (viz global.css), jinak by se nadpis schoval pod lištu.
+ */
+import Tlacitko from "./Tlacitko.astro";
+
+const odkazy = [
+  { cil: "#proc-se-zapojit", popis: "Proč se zapojit" },
+  { cil: "#jak-to-funguje", popis: "Jak to funguje" },
+  { cil: "#tipy-na-aktivity", popis: "Tipy na aktivity" },
+  { cil: "#podpora", popis: "Podpora" },
+  { cil: "#zasobnik", popis: "Zásobník nápadů" },
+  { cil: "#ke-stazeni", popis: "Kontakt" },
+];
+---
+
+<header
+  class="sticky top-0 z-40 border-b border-merunka-tlumena bg-pozadi/90 backdrop-blur"
+>
+  <div class="mx-auto flex max-w-obsah items-center gap-4 px-5 py-3">
+    <a href="#obsah" class="shrink-0" aria-label="Mezigeneračně aktivně spolu">
+      <img
+        src="/obrazky/logo.jpg"
+        alt="Mezigeneračně aktivně spolu"
+        width="170"
+        height="50"
+        class="h-auto w-[150px] sm:w-[170px]"
+      />
+    </a>
+
+    <nav
+      class="menu-odkazy -mx-2 flex min-w-0 flex-1 gap-1 overflow-x-auto px-2"
+      aria-label="Sekce stránky"
+    >
+      {
+        odkazy.map((odkaz) => (
+          <a
+            href={odkaz.cil}
+            data-kotva={odkaz.cil}
+            class="flex min-h-11 shrink-0 items-center rounded-lg px-3 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys"
+          >
+            {odkaz.popis}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="hidden shrink-0 lg:block">
+      <Tlacitko odkaz="#registrace" trida="px-5 py-2">Chci se zapojit</Tlacitko>
+    </div>
+  </div>
+</header>
+
+<style>
+  /* Posuvník odkazů na mobilu schováme, posouvá se prstem. */
+  .menu-odkazy {
+    scrollbar-width: none;
+  }
+  .menu-odkazy::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Aktivní sekce — podbarvení, ne červená. Červená patří jen tlačítkům. */
+  :global(.menu-odkazy a[aria-current="true"]) {
+    background-color: var(--color-plocha-tyrkys);
+    font-weight: 600;
+    color: var(--color-tyrkys);
+  }
+</style>
+
+<script>
+  // Zvýraznění sekce, ve které návštěvník právě je.
+  // Sledujeme, která sekce je nejvýš v obrazovce, a podle toho označíme odkaz.
+  const odkazy = document.querySelectorAll<HTMLAnchorElement>("[data-kotva]");
+  const sekce = Array.from(odkazy)
+    .map((odkaz) => document.querySelector<HTMLElement>(odkaz.dataset.kotva!))
+    .filter((prvek): prvek is HTMLElement => prvek !== null);
+
+  if (sekce.length > 0) {
+    const pozorovatel = new IntersectionObserver(
+      (zaznamy) => {
+        zaznamy.forEach((zaznam) => {
+          if (!zaznam.isIntersecting) return;
+
+          const id = `#${zaznam.target.id}`;
+          odkazy.forEach((odkaz) => {
+            const jeAktivni = odkaz.dataset.kotva === id;
+            if (jeAktivni) odkaz.setAttribute("aria-current", "true");
+            else odkaz.removeAttribute("aria-current");
+          });
+        });
+      },
+      {
+        // Sekce se počítá jako aktivní, když je v horní třetině obrazovky.
+        rootMargin: "-20% 0px -70% 0px",
+      },
+    );
+
+    sekce.forEach((prvek) => pozorovatel.observe(prvek));
+  }
+</script>

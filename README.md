@@ -20,6 +20,8 @@ se ZŠ Magic Hill.
 - Dvě právní podstránky
 - Registrační formulář, který uloží přihlášku, přidělí variabilní symbol
   a pošle potvrzovací e-mail s platebními údaji a QR kódem
+- Škole a organizaci předvyplní fakturační údaje z rejstříku ARES podle IČO
+  (na stisk tlačítka, nikdy samo od sebe)
 - Volitelně spustí vystavení faktury (scénář v Make)
 
 Na hostingu běží **jen statické soubory**. Žádné PHP, žádný server.
@@ -147,9 +149,27 @@ curl "$PUBLIC_SUPABASE_URL/rest/v1/prihlasky?select=*" \
 npx supabase link --project-ref kourmwqxkhdtahbxyuaq
 npx supabase db push                          # migrace databáze
 npx supabase functions deploy prijmout-prihlasku
+npx supabase functions deploy ares-lookup
 ```
 
 Podrobnosti v [supabase/README-supabase.md](supabase/README-supabase.md).
+
+### Načítání z ARESu
+
+Když se hlásí škola nebo organizace, formulář se zeptá na IČO a na stisk
+tlačítka **Načíst z rejstříku** předvyplní název, adresu a případně DIČ.
+
+- Data dodává Edge Funkce `ares-lookup` — prohlížeč na ARES sám nedosáhne
+  kvůli chybějícím CORS hlavičkám.
+- Načítá se **výhradně po stisku tlačítka**. Nikdy tiše při otevření stránky.
+- Všechna předvyplněná pole jde přepsat. ARES má adresu občas v jiném tvaru,
+  než chce účetní.
+- Chybějící DIČ znamená neplátce DPH, ne chybu.
+- Když rejstřík IČO nezná nebo neodpovídá, řekne se to slovně a formulář jde
+  vyplnit ručně. **Výpadek ARESu registraci nezablokuje.**
+
+Kód: `src/lib/ares.ts` (volání z prohlížeče) a
+`supabase/functions/ares-lookup/index.ts` (průchoďák na ARES).
 
 ---
 
@@ -193,8 +213,6 @@ Dokud se tak nestane, e-maily mohou padat do spamu.
 
 ## Co se doplní v další fázi
 
-- **Načítání fakturačních údajů z ARESu podle IČ.** Připravené místo je
-  v `src/lib/ares.ts` — funkce má hlavičku a popis, ale zatím nic nedělá.
 - **Zásobník mezigeneračních aktivit** — samostatná aplikace, kterou staví
   kroužek na ZŠ Magic Hill. Spouští se 1. listopadu.
 
