@@ -106,6 +106,47 @@ const podpora = [
   },
 ];
 
+/**
+ * Pořadatelé akce — plná informace o obou organizacích.
+ *
+ * Texty popisů i webové adresy jsou doslova z podklady/texty.md, sekce 8.
+ * Nepřepisují se a nezkracují.
+ *
+ * Kontaktní údaje zadavatel zatím nedodal — v podkladech jsou jako
+ * `[doplnit …]`, tady je vedeme v tvaru `[DOPLNIT: …]`, který používá
+ * zbytek projektu, aby se daly najít jedním hledáním.
+ *
+ * `logo: null` znamená, že logo organizace ještě nedorazilo. Do té doby se
+ * vysází název typograficky (viz níž). Až logo přijde, stačí sem doplnit
+ * cestu k souboru — rozvržení boxu se nemění.
+ * POZOR: /obrazky/logo.png je logo PROJEKTU (Mezigeneračně aktivně spolu),
+ * ne log pořadatelů. Jako logo organizace se použít nesmí.
+ */
+const poradatele = [
+  {
+    nazev: "Právě teď! o.p.s.",
+    logo: null, // [DOPLNIT: logo Právě teď! o.p.s. (SVG nebo PNG, poměr ~3:1)]
+    popis:
+      "Právě teď! o.p.s. udává směr modernímu, zdravému a aktivnímu stárnutí. Prostřednictvím moderních aktivizačních programů pomáhá seniorům žít aktivní život.",
+    osoba: "[DOPLNIT: jméno kontaktní osoby — Právě teď! o.p.s.]",
+    email: "[DOPLNIT: e-mail — Právě teď! o.p.s.]",
+    telefon: "[DOPLNIT: telefon — Právě teď! o.p.s.]",
+    webPopis: "www.pravetedops.cz",
+    webOdkaz: "https://www.pravetedops.cz",
+  },
+  {
+    nazev: "ZŠ Magic Hill",
+    logo: null, // [DOPLNIT: logo ZŠ Magic Hill (SVG nebo PNG, poměr ~3:1)]
+    popis:
+      "ZŠ s rozšířenou výukou jazyků Magic Hill, s.r.o., kde díky individuálnímu přístupu v malých kolektivech a důrazu na jazyky děti získávají znalosti a dovednosti pro úspěch v 21. století.",
+    osoba: "[DOPLNIT: jméno kontaktní osoby — ZŠ Magic Hill]",
+    email: "[DOPLNIT: e-mail — ZŠ Magic Hill]",
+    telefon: "[DOPLNIT: telefon — ZŠ Magic Hill]",
+    webPopis: "www.magic-hill.cz",
+    webOdkaz: "https://www.magic-hill.cz",
+  },
+];
+
 // Ve variantě "karta" sedí obsah na bílém listu, takže karty uvnitř
 // nesmí být taky bílé — jinak by splynuly. Dostanou tyrkysovou plochu.
 const kartaNaPlose = predel === "karta";
@@ -293,10 +334,9 @@ const kartaNaPlose = predel === "karta";
     </Tlacitko>
   </div>
 
-  {/* Kontakt schválně jen jeden telefon a jeden e-mail. Dřív tu byly dva
-      velké boxy s popisy obou organizací, jenže totéž je i v patičce —
-      byla to dvakrát ta samá informace. Popis organizací vypadl,
-      v patičce zůstala loga. */}
+  {/* Rychlý kontakt pro návštěvníka, který neřeší, která organizace je která —
+      jeden univerzální telefon a e-mail. Konkrétní kontakty na jednotlivé
+      pořadatele jsou níž v jejich boxech. */}
   <div
     class="najezd mt-10 flex flex-wrap items-center gap-x-10 gap-y-4 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-6"
     data-poradi="2"
@@ -323,5 +363,102 @@ const kartaNaPlose = predel === "karta";
         [DOPLNIT: e-mail]
       </a>
     </div>
+  </div>
+
+  {/* --- Pořadatelé akce ------------------------------------------------
+      Tady je JEDINÉ místo na webu, kde jsou organizace popsané a kde jsou
+      na ně kontakty. Patička o nich záměrně mlčí — dřív tam byla věta
+      "Akci pořádá organizace… ve spolupráci se…" plus loga s odkazy
+      a zadavatel právem vytkl, že je to dvakrát to samé. Jestli sem někdy
+      budeš chtít přidat další údaj o pořadateli, patří sem, ne do patičky. */}
+  <div class="najezd mt-14" data-poradi="3">
+    <h3 class="text-xl">Pořadatelé akce</h3>
+    <p class="mt-1 mb-0">
+      Akci pořádá organizace Právě teď! o.p.s. ve spolupráci se ZŠ Magic Hill.
+    </p>
+  </div>
+
+  <div class="mt-6 grid gap-6 md:grid-cols-2">
+    {
+      poradatele.map((organizace, index) => (
+        <div
+          class:list={[
+            "najezd rounded-xl border border-merunka-tlumena p-6",
+            kartaNaPlose ? "bg-plocha-tyrkys" : "bg-white",
+          ]}
+          data-poradi={4 + index}
+        >
+          {/* Logo prokliknutelné na web organizace.
+              Plocha má pevnou výšku a poměr ~3:1, tedy tvar, v jakém loga
+              obvykle chodí — až dorazí, vymění se obsah odkazu za <img>
+              a nic kolem se nehne.
+
+              Dokud logo není, NEDĚLÁME prázdný rámeček čekající na obrázek.
+              Místo něj je název organizace vysázený typograficky. Vypadá to
+              jako záměrná textová značka, ne jako díra v layoutu. */}
+          <a
+            href={organizace.webOdkaz}
+            rel="noopener"
+            class="flex h-16 max-w-[220px] items-center no-underline"
+            aria-label={`Přejít na web organizace ${organizace.nazev}`}
+          >
+            {organizace.logo ? (
+              <img
+                src={organizace.logo}
+                alt={`Logo ${organizace.nazev}`}
+                class="max-h-full w-auto"
+              />
+            ) : (
+              <span class="text-2xl leading-tight font-semibold text-tyrkys">
+                {organizace.nazev}
+              </span>
+            )}
+          </a>
+
+          <p class="mt-4 mb-0">{organizace.popis}</p>
+
+          {/* Kontakty nejsou červené — červená na webu znamená výhradně
+              tlačítko. Klikací řádky mají min. 44 px na výšku (min-h-11),
+              aby se daly trefit prstem i méně jistou rukou. */}
+          <ul class="mt-4 list-none space-y-1 p-0">
+            <li class="flex min-h-11 items-center gap-3">
+              <Ikona jmeno="user" velikost={22} />
+              <span>{organizace.osoba}</span>
+            </li>
+
+            <li>
+              <a
+                href={`mailto:${organizace.email}`}
+                class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+              >
+                <Ikona jmeno="mail" velikost={22} />
+                {organizace.email}
+              </a>
+            </li>
+
+            <li>
+              <a
+                href={`tel:${organizace.telefon}`}
+                class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+              >
+                <Ikona jmeno="phone" velikost={22} />
+                {organizace.telefon}
+              </a>
+            </li>
+
+            <li>
+              <a
+                href={organizace.webOdkaz}
+                rel="noopener"
+                class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+              >
+                <Ikona jmeno="globe" velikost={22} />
+                {organizace.webPopis}
+              </a>
+            </li>
+          </ul>
+        </div>
+      ))
+    }
   </div>
 </Sekce>

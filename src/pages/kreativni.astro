@@ -25,7 +25,46 @@ import Ikona from "../components/Ikona.astro";
 import Tlacitko from "../components/Tlacitko.astro";
 import Formular from "../components/Formular.astro";
 import PrepinacVariant from "../components/PrepinacVariant.astro";
+import Stitek from "../components/Stitek.astro";
 import "../styles/kreativni.css";
+
+// Tipy na aktivity rozdělené do tří kategorií přesně podle podkladů.
+// Každá kategorie má vlastní barvu puntíku, ať jdou od sebe rozeznat
+// i letmým pohledem.
+const kategorieTipu = [
+  {
+    nazev: "Kultura a tvořivost",
+    ikona: "palette",
+    barva: "var(--color-merunka)",
+    polozky: [
+      "Společný zpěv",
+      "Výtvarná dílna",
+      "Tvoření dekorací",
+      "Společné čtení",
+    ],
+  },
+  {
+    nazev: "Pohyb a pobyt venku",
+    ikona: "footprints",
+    barva: "var(--color-tyrkys)",
+    polozky: [
+      "Nenáročná procházka",
+      "Zahradní hry",
+      "Mölkky",
+      "Pétanque",
+    ],
+  },
+  {
+    nazev: "Sdílení a setkávání",
+    ikona: "message-circle",
+    barva: "var(--color-potvrzeni)",
+    polozky: [
+      "Hraní stolních her",
+      "Vyprávění příběhů",
+      "Vzájemné učení",
+    ],
+  },
+];
 
 // Cílové skupiny přesně podle podkladů (hero, doplňkový vizuální prvek).
 const skupiny = [
@@ -113,20 +152,6 @@ const kroky = [
   },
 ];
 
-// Nápady na pás — doslova z podkladů, sekce Tipy na aktivity.
-const napady = [
-  "Společný zpěv",
-  "Výtvarná dílna",
-  "Tvoření dekorací",
-  "Společné čtení",
-  "Nenáročná procházka",
-  "Zahradní hry",
-  "Mölkky",
-  "Pétanque",
-  "Stolní hry",
-  "Vyprávění příběhů",
-  "Vzájemné učení",
-];
 
 const nadpisHero = "Propojujeme generace.";
 const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
@@ -135,7 +160,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
 <Layout
   titulek="Mezigeneračně aktivně spolu — kreativní verze"
   popis="Zorganizujte mezigenerační setkání se seniory v týdnu kolem 1. října a staňte se součástí celostátního Zásobníku nápadů."
-  sMenu={false}
+  sMenu={true}
 >
   <PrepinacVariant aktivni="kreativni" />
 
@@ -150,7 +175,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
   >
     <div class="relative z-10 mx-auto max-w-obsah">
       <img
-        src="/obrazky/logo.jpg"
+        src="/obrazky/logo.png"
         alt="Mezigeneračně aktivně spolu"
         width="200"
         height="59"
@@ -171,32 +196,28 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
         s námi Mezinárodní den seniorů (v týdnu kolem 1.&nbsp;10.).
       </p>
 
-      {/* Odpočet — jediné číslo na stránce, které je skutečné.
-          Žádné vymyšlené statistiky typu "už se zapojilo 500 škol". */}
-      <div class="mt-12 flex flex-wrap items-end gap-8">
-        <div>
-          <p class="m-0 text-popisek font-semibold text-tyrkys">
-            Do Mezinárodního dne seniorů zbývá
-          </p>
-          <p class="odpocet-cislo m-0 text-tyrkys">
-            <span id="odpocet-dnu">—</span>
-            <span class="text-xl font-normal">dní</span>
-          </p>
-        </div>
+      <div class="mt-12 flex flex-wrap gap-4">
+        <Tlacitko odkaz="#registrace" trida="magnet text-lg">
+          Chci se zapojit
+          <Ikona jmeno="arrow-right" velikost={22} trida="text-white" />
+        </Tlacitko>
 
-        <div class="flex flex-wrap gap-4">
-          <Tlacitko odkaz="#registrace" trida="magnet text-lg">
-            Chci se zapojit
-            <Ikona jmeno="arrow-right" velikost={22} trida="text-white" />
-          </Tlacitko>
-
-          {/* [DOPLNIT: informační leták v PDF] */}
-          <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi" trida="magnet">
-            <Ikona jmeno="download" velikost={20} />
-            Stáhnout leták
-          </Tlacitko>
-        </div>
+        {/* [DOPLNIT: informační leták v PDF] */}
+        <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi" trida="magnet">
+          <Ikona jmeno="download" velikost={20} />
+          Stáhnout leták
+        </Tlacitko>
       </div>
+
+      {/* Pobídka ke scrollu. Stejný nápad jako u kroků realizace,
+          jen na začátku stránky. */}
+      <a
+        href="#kdo-jste"
+        class="mt-16 inline-flex min-h-11 items-center gap-3 text-popisek font-semibold text-tyrkys no-underline"
+      >
+        <Ikona jmeno="chevron-down" velikost={26} trida="sipka-dolu" />
+        Kdo jste? Ukážeme vám, co z toho máte
+      </a>
     </div>
 
     {/* Velké měkké tvary v pozadí */}
@@ -225,10 +246,19 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
           skupiny.map((skupina) => (
             <button
               type="button"
-              class="skupina naklon min-h-11 cursor-pointer rounded-2xl border-2 border-merunka-tlumena bg-white p-6 text-left"
+              class="skupina naklon relative min-h-11 cursor-pointer rounded-2xl border-2 border-merunka-tlumena bg-white p-6 text-left"
               data-skupina={skupina.klic}
               aria-pressed="false"
             >
+              {/* Fajfka se objeví až po výběru. Bez ní nebylo poznat,
+                  že se kliknutím vůbec něco stalo. */}
+              <span
+                class="znacka-vybrano absolute top-4 right-4 flex h-7 w-7 items-center justify-center rounded-full bg-tyrkys text-white opacity-0"
+                aria-hidden="true"
+              >
+                <Ikona jmeno="check" velikost={18} trida="text-white" />
+              </span>
+
               <Ikona jmeno={skupina.ikona} velikost={40} />
               <h3 class="mt-4 text-xl">{skupina.popis}</h3>
               <p class="mt-2 mb-0 text-popisek">{skupina.lakadlo}</p>
@@ -236,44 +266,125 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
           ))
         }
       </div>
+
+      {/* Slovní potvrzení výběru. Samotné ztlumení karet níž na stránce
+          bylo k ničemu — dělo se to mimo obrazovku, takže to vypadalo,
+          že kliknutí nic nedělá. */}
+      <div
+        id="vysledek-vyberu"
+        class="mt-6 hidden items-center gap-4 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-5"
+        role="status"
+      >
+        <Ikona jmeno="circle-check" velikost={28} />
+        <p class="m-0 flex-1" data-text-vyberu></p>
+        <a
+          href="#proc-se-zapojit"
+          class="flex min-h-11 items-center gap-2 font-semibold text-tyrkys no-underline"
+        >
+          Ukázat
+          <Ikona jmeno="arrow-right" velikost={20} />
+        </a>
+      </div>
     </div>
   </section>
 
-  {/* ================= PROČ SE ZAPOJIT ================= */}
+  {/* ================= PROČ SE ZAPOJIT — VARIANTA D ================= */}
+  {/* D: nadpisy jsou vidět všechny, text se rozbalí až po kliknutí.
+      Návštěvník si přečte pět krátkých titulků a rozklikne jen to,
+      co ho zajímá. Nejmíň textu najednou ze všech variant. */}
   <section id="proc-se-zapojit" class="bg-pozadi px-5 py-16">
     <div class="mx-auto max-w-obsah">
-      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
+      <Stitek>Varianta D — rozbalovací</Stitek>
+
+      <h2 class="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
         Proč se do projektu zapojit, proč do toho jít?
       </h2>
       <span class="podtrzeni"></span>
 
-      <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="mt-10 max-w-[820px]">
         {
-          duvody.map((duvod) => (
-            <article
-              class="pro-skupinu naklon rounded-2xl border border-merunka-tlumena bg-white p-7"
+          duvody.map((duvod, i) => (
+            <div
+              class="pro-skupinu border-b border-merunka-tlumena"
               data-pro={duvod.pro.join(" ")}
             >
-              <Ikona jmeno={duvod.ikona} velikost={36} />
-              <h3 class="mt-4 text-xl">{duvod.nadpis}</h3>
-              <p class="mt-3 mb-0">{duvod.text}</p>
-            </article>
+              <button
+                type="button"
+                class="rozbalovac flex min-h-11 w-full cursor-pointer items-center gap-4 bg-transparent py-5 text-left"
+                aria-expanded={i === 0 ? "true" : "false"}
+                aria-controls={`duvod-${i}`}
+              >
+                <Ikona jmeno={duvod.ikona} velikost={30} />
+                <span class="flex-1 text-xl font-semibold text-tyrkys">
+                  {duvod.nadpis}
+                </span>
+                <Ikona
+                  jmeno="chevron-down"
+                  velikost={24}
+                  trida="sipka-rozbaleni"
+                />
+              </button>
+
+              <div id={`duvod-${i}`} class="rozbaleny-obsah">
+                <p class="pb-5 pl-[46px]">{duvod.text}</p>
+              </div>
+            </div>
           ))
         }
+      </div>
 
-        <article
-          class="flex flex-col justify-center rounded-2xl p-7 text-white"
-          style="background: linear-gradient(135deg, var(--color-tyrkys), #0d5560)"
-        >
-          <Ikona jmeno="target" velikost={36} trida="text-white" />
-          <h3 class="mt-4 text-xl text-white">Cíl akce</h3>
-          <p class="mt-3 mb-0">
+      <div
+        class="mt-8 flex max-w-[820px] gap-4 rounded-2xl p-7 text-white"
+        style="background: linear-gradient(135deg, var(--color-tyrkys), #0d5560)"
+      >
+        <Ikona jmeno="target" velikost={36} trida="text-white" />
+        <div>
+          <h3 class="text-xl text-white">Cíl akce</h3>
+          <p class="mt-2 mb-0">
             Podpora mezigenerační solidarity, vytváření přirozených vazeb mezi
             nejmladší a nejstarší generací a oslava Mezinárodního dne seniorů
             v duchu vzájemného respektu, lidskosti a radosti ze společně
             stráveného času.
           </p>
-        </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ================= PROČ SE ZAPOJIT — VARIANTA E ================= */}
+  {/* E: jeden důvod přes celou obrazovku. Nadpis zůstává přilepený vlevo
+      a důvody se pod ním střídají, jak scrolluješ. Textu je na obrazovce
+      vždycky jen jeden odstavec, ale nic se neschovává za klikání. */}
+  <section id="proc-se-zapojit-e" class="bg-plocha-tyrkys px-5 py-16">
+    <div class="mx-auto max-w-obsah">
+      <Stitek>Varianta E — jeden důvod na obrazovku</Stitek>
+
+      <div class="mt-4 grid gap-10 lg:grid-cols-[320px_1fr] lg:items-start">
+        <div class="lg:sticky lg:top-24">
+          <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
+            Proč do toho jít?
+          </h2>
+          <span class="podtrzeni"></span>
+          <p class="mt-4 text-popisek" id="pocitadlo-duvodu">
+            1 z {duvody.length}
+          </p>
+        </div>
+
+        <div id="duvody-e" class="space-y-6">
+          {
+            duvody.map((duvod, i) => (
+              <article
+                class="duvod-e pro-skupinu rounded-2xl bg-white p-8 sm:p-10"
+                data-pro={duvod.pro.join(" ")}
+                data-poradi-duvodu={i + 1}
+              >
+                <Ikona jmeno={duvod.ikona} velikost={44} />
+                <h3 class="mt-5 text-2xl sm:text-3xl">{duvod.nadpis}</h3>
+                <p class="mt-4 mb-0 text-lg">{duvod.text}</p>
+              </article>
+            ))
+          }
+        </div>
       </div>
     </div>
   </section>
@@ -336,33 +447,109 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
     </div>
   </section>
 
-  {/* ================= PÁS NÁPADŮ ================= */}
+  {/* ========= TIPY — VARIANTA 1: tři pásy, každý svou kategorii ========= */}
+  {/* Kategorie jsou z podkladů. Každý pás jede jiným směrem a má vlastní
+      barvu puntíku, takže je na první pohled poznat, že jde o tři různé
+      okruhy, ne o jednu hromadu nápadů. Po najetí myší se pás zastaví,
+      aby se dal přečíst. */}
   <section id="tipy-na-aktivity" class="overflow-hidden bg-pozadi py-16">
     <div class="mx-auto max-w-obsah px-5">
-      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
+      <Stitek>Varianta 1 — jedoucí pásy</Stitek>
+
+      <h2 class="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
         Čím se můžete inspirovat?
       </h2>
       <span class="podtrzeni"></span>
     </div>
 
-    {/* Pás jede pořád dokola. Po najetí myší se zastaví, ať se dá přečíst. */}
-    <div class="pas-obal mt-10 overflow-hidden">
-      <div class="pas gap-4">
+    <div class="mt-10 space-y-6">
+      {
+        kategorieTipu.map((kategorie, i) => (
+          <div>
+            <div class="mx-auto mb-3 flex max-w-obsah items-center gap-3 px-5">
+              <span
+                class="h-3.5 w-3.5 shrink-0 rounded-full"
+                style={`background-color: ${kategorie.barva}`}
+              />
+              <h3 class="m-0 text-lg">{kategorie.nazev}</h3>
+            </div>
+
+            <div class="pas-obal overflow-hidden">
+              <div
+                class:list={["pas gap-4", i % 2 === 1 && "pas-zpet"]}
+                style={`--doba-pasu: ${30 + i * 8}s`}
+              >
+                {[...kategorie.polozky, ...kategorie.polozky, ...kategorie.polozky, ...kategorie.polozky].map(
+                  (polozka) => (
+                    <span class="flex items-center gap-3 rounded-full border-2 border-merunka-tlumena bg-white px-7 py-4 text-xl whitespace-nowrap">
+                      <span
+                        class="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={`background-color: ${kategorie.barva}`}
+                      />
+                      {polozka}
+                    </span>
+                  ),
+                )}
+              </div>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  {/* ========= TIPY — VARIANTA 2: tři sloupce, bez pohybu ========= */}
+  {/* Klidnější varianta. Všechno je vidět naráz a nic neujíždí,
+      což ocení hlavně někdo, kdo čte pomalu. */}
+  <section id="tipy-na-aktivity-2" class="bg-plocha-tyrkys px-5 py-16">
+    <div class="mx-auto max-w-obsah">
+      <Stitek>Varianta 2 — klidné sloupce</Stitek>
+
+      <h2 class="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
+        Čím se můžete inspirovat?
+      </h2>
+      <span class="podtrzeni"></span>
+
+      <div class="mt-10 grid gap-5 md:grid-cols-3">
         {
-          [...napady, ...napady].map((napad) => (
-            <span class="flex items-center gap-3 rounded-full border-2 border-merunka-tlumena bg-white px-7 py-4 text-xl whitespace-nowrap">
-              <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-merunka" />
-              {napad}
-            </span>
+          kategorieTipu.map((kategorie) => (
+            <article class="naklon rounded-2xl bg-white p-7">
+              <span
+                class="flex h-14 w-14 items-center justify-center rounded-2xl"
+                style={`background-color: ${kategorie.barva}1f`}
+              >
+                <Ikona
+                  jmeno={kategorie.ikona}
+                  velikost={30}
+                  trida="text-tyrkys"
+                />
+              </span>
+
+              <h3 class="mt-5 flex items-center gap-3 text-xl">
+                <span
+                  class="h-3 w-3 shrink-0 rounded-full"
+                  style={`background-color: ${kategorie.barva}`}
+                />
+                {kategorie.nazev}
+              </h3>
+
+              <ul class="mt-4 space-y-2.5">
+                {kategorie.polozky.map((polozka) => (
+                  <li class="flex items-start gap-3">
+                    <span
+                      class="mt-2.5 h-2 w-2 shrink-0 rounded-full"
+                      style={`background-color: ${kategorie.barva}`}
+                    />
+                    <span>{polozka}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
           ))
         }
       </div>
-    </div>
 
-    <div class="mx-auto mt-12 max-w-obsah px-5">
-      <div
-        class="flex gap-4 rounded-2xl border-l-4 border-merunka bg-plocha-tyrkys p-7"
-      >
+      <div class="mt-8 flex gap-4 rounded-2xl border-l-4 border-merunka bg-white p-7">
         <Ikona jmeno="shield-check" velikost={36} />
         <div>
           <h3 class="text-xl">Na co myslet při přípravě</h3>
@@ -555,22 +742,6 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
   const chceMenePohybu = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
-
-  // --- Odpočet do Mezinárodního dne seniorů -------------------------------
-  // Jediné číslo na stránce, které je skutečné. Vymyšlené statistiky
-  // typu "už se zapojilo 500 škol" tu schválně nejsou.
-  (function odpocet() {
-    const misto = document.querySelector<HTMLElement>("#odpocet-dnu");
-    if (!misto) return;
-
-    const dnes = new Date();
-    let cil = new Date(dnes.getFullYear(), 9, 1); // 1. října
-    if (cil < dnes) cil = new Date(dnes.getFullYear() + 1, 9, 1);
-
-    const den = 1000 * 60 * 60 * 24;
-    const zbyva = Math.ceil((cil.getTime() - dnes.getTime()) / den);
-    misto.textContent = String(zbyva);
-  })();
 
   // --- Ukazatel průběhu čtení ---------------------------------------------
   (function pruhPostupu() {
@@ -768,20 +939,106 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
     window.addEventListener("resize", prekresli, { passive: true });
   })();
 
+  // --- Rozbalovací důvody (varianta D) ------------------------------------
+  // První je otevřený, ať je hned vidět, o co jde. Ostatní se rozbalí
+  // kliknutím. Zavírat ostatní schválně nebudeme — porovnávat dva důvody
+  // vedle sebe je legitimní a nucené zavírání by tomu bránilo.
+  (function rozbalovaciDuvody() {
+    document
+      .querySelectorAll<HTMLButtonElement>(".rozbalovac")
+      .forEach((tlacitko) => {
+        tlacitko.addEventListener("click", () => {
+          const jeOtevreny = tlacitko.getAttribute("aria-expanded") === "true";
+          tlacitko.setAttribute("aria-expanded", String(!jeOtevreny));
+        });
+      });
+  })();
+
+  // --- Zvýraznění právě čteného důvodu (varianta E) -----------------------
+  (function aktivniDuvod() {
+    const duvody = document.querySelectorAll<HTMLElement>(".duvod-e");
+    const pocitadlo = document.querySelector<HTMLElement>("#pocitadlo-duvodu");
+    if (duvody.length === 0) return;
+
+    if (chceMenePohybu) {
+      duvody.forEach((d) => d.classList.add("je-aktivni"));
+      return;
+    }
+
+    const pozorovatel = new IntersectionObserver(
+      (zaznamy) => {
+        zaznamy.forEach((zaznam) => {
+          const prvek = zaznam.target as HTMLElement;
+          prvek.classList.toggle("je-aktivni", zaznam.isIntersecting);
+
+          if (zaznam.isIntersecting && pocitadlo) {
+            pocitadlo.textContent = `${prvek.dataset.poradiDuvodu} z ${duvody.length}`;
+          }
+        });
+      },
+      // Úzký pruh uprostřed obrazovky — aktivní je vždy jen jeden.
+      { rootMargin: "-40% 0px -40% 0px" },
+    );
+
+    duvody.forEach((d) => pozorovatel.observe(d));
+  })();
+
+  // --- Plynulý příchod sekcí ----------------------------------------------
+  // Aby scrollování působilo jako pochod, ne jako listování dokumentem.
+  (function najizdeniSekci() {
+    const sekce = document.querySelectorAll<HTMLElement>("section[id]");
+
+    sekce.forEach((s, i) => {
+      // Hero necháváme být — ten je vidět hned a neměl by naskakovat.
+      if (i === 0) return;
+      s.classList.add("sekce-najizdi");
+    });
+
+    const kNajezdu = document.querySelectorAll<HTMLElement>(".sekce-najizdi");
+
+    if (chceMenePohybu) {
+      kNajezdu.forEach((s) => s.classList.add("je-videt"));
+      return;
+    }
+
+    const pozorovatel = new IntersectionObserver(
+      (zaznamy) => {
+        zaznamy.forEach((zaznam) => {
+          if (!zaznam.isIntersecting) return;
+          zaznam.target.classList.add("je-videt");
+          pozorovatel.unobserve(zaznam.target);
+        });
+      },
+      { rootMargin: "0px 0px -120px 0px", threshold: 0.05 },
+    );
+
+    kNajezdu.forEach((s) => pozorovatel.observe(s));
+  })();
+
   // --- Výběr cílové skupiny ------------------------------------------------
   // Po výběru se zvýrazní obsah, který se dané skupiny týká. Ostatní
   // se jen ztlumí, nezmizí — schovávat obsah před člověkem, který si
   // vybral špatně, by bylo horší než ho nechat vidět.
   (function vyberSkupiny() {
     const obal = document.querySelector<HTMLElement>("#skupiny");
-    if (!obal) return;
+    const vysledek = document.querySelector<HTMLElement>("#vysledek-vyberu");
+    if (!obal || !vysledek) return;
 
     const tlacitka = obal.querySelectorAll<HTMLButtonElement>("[data-skupina]");
     const bloky = document.querySelectorAll<HTMLElement>(".pro-skupinu");
+    const textVysledku = vysledek.querySelector<HTMLElement>("[data-text-vyberu]");
     const vybrane = new Set<string>();
+
+    function sklonuj(pocet: number): string {
+      if (pocet === 1) return "1 důvod";
+      if (pocet >= 2 && pocet <= 4) return `${pocet} důvody`;
+      return `${pocet} důvodů`;
+    }
 
     function prekresli() {
       obal!.classList.toggle("skupiny-maji-vybrano", vybrane.size > 0);
+
+      let sedicich = 0;
 
       bloky.forEach((blok) => {
         if (vybrane.size === 0) {
@@ -791,7 +1048,26 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
         const patriK = (blok.dataset.pro ?? "").split(" ");
         const sedi = patriK.some((klic) => vybrane.has(klic));
         blok.classList.toggle("utlumeno", !sedi);
+        if (sedi) sedicich++;
       });
+
+      // Potvrzení výběru přímo u karet, ať je hned vidět, že klik něco udělal.
+      if (vybrane.size === 0) {
+        vysledek!.classList.add("hidden");
+        vysledek!.classList.remove("flex");
+        return;
+      }
+
+      const nazvy = Array.from(obal!.querySelectorAll<HTMLElement>(
+        '[data-skupina][aria-pressed="true"] h3',
+      )).map((n) => n.textContent?.trim() ?? "");
+
+      if (textVysledku) {
+        textVysledku.textContent =
+          `Níže zvýrazňujeme ${sklonuj(sedicich)}, které se týkají vás: ${nazvy.join(", ")}.`;
+      }
+      vysledek!.classList.remove("hidden");
+      vysledek!.classList.add("flex");
     }
 
     tlacitka.forEach((tlacitko) => {

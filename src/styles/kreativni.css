@@ -91,13 +91,21 @@
   will-change: transform;
 }
 
-/* --- Nekonečný pás s nápady -------------------------------------------- */
+/* --- Nekonečné pásy s nápady -------------------------------------------- */
+/* Každá kategorie má vlastní pás a vlastní rychlost (--doba-pasu).
+   Sudé pásy jedou opačným směrem, aby to nepůsobilo jako jeden dlouhý
+   seznam rozsekaný na tři řádky. */
 .pas {
   display: flex;
   width: max-content;
-  animation: pas-jede 42s linear infinite;
+  animation: pas-jede var(--doba-pasu, 36s) linear infinite;
 }
 
+.pas-zpet {
+  animation-name: pas-jede-zpet;
+}
+
+/* Po najetí myší se pás zastaví, ať se dá v klidu přečíst. */
 .pas-obal:hover .pas {
   animation-play-state: paused;
 }
@@ -107,8 +115,91 @@
     transform: translateX(0);
   }
   to {
-    /* Obsah je v šabloně dvakrát, takže posun o polovinu je bezešvý. */
-    transform: translateX(-50%);
+    /* Obsah je v šabloně čtyřikrát, takže posun o čtvrtinu je bezešvý. */
+    transform: translateX(-25%);
+  }
+}
+
+@keyframes pas-jede-zpet {
+  from {
+    transform: translateX(-25%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* --- Rozbalovací důvody (varianta D) ------------------------------------ */
+.rozbaleny-obsah {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rozbaleny-obsah > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.rozbalovac[aria-expanded="true"] + .rozbaleny-obsah {
+  grid-template-rows: 1fr;
+}
+
+.sipka-rozbaleni {
+  transition: transform 250ms ease-out;
+}
+
+.rozbalovac[aria-expanded="true"] .sipka-rozbaleni {
+  transform: rotate(180deg);
+}
+
+/* --- Jeden důvod na obrazovku (varianta E) ------------------------------ */
+/* Důvod, který je právě uprostřed obrazovky, je plně čitelný.
+   Ostatní jsou lehce ztlumené, takže oko ví, kam se dívat. */
+.duvod-e {
+  opacity: 0.45;
+  transform: scale(0.98);
+  transition:
+    opacity 350ms ease-out,
+    transform 350ms ease-out;
+}
+
+.duvod-e.je-aktivni {
+  opacity: 1;
+  transform: scale(1);
+  box-shadow: 0 20px 50px -24px rgba(69, 68, 63, 0.35);
+}
+
+/* --- Plynulý příchod sekcí ---------------------------------------------- */
+/* Sekce nepřiskočí, ale nadejde. Drží to scrollování pohromadě,
+   takže stránka působí jako pochod, ne jako dokument. */
+.sekce-najizdi {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sekce-najizdi.je-videt {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- Šipka pobízející ke scrollu ---------------------------------------- */
+.sipka-dolu {
+  animation: sipka-poskakuje 2.4s ease-in-out infinite;
+}
+
+@keyframes sipka-poskakuje {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 1;
   }
 }
 
@@ -146,7 +237,23 @@
 
 .skupina[aria-pressed="true"] {
   transform: translateY(-6px);
+  border-color: var(--color-tyrkys);
+  background-color: var(--color-plocha-tyrkys);
   box-shadow: 0 18px 40px -18px rgba(18, 112, 127, 0.55);
+}
+
+/* Fajfka v rohu vybrané karty. Bez viditelného potvrzení působilo
+   kliknutí jako by se nic nestalo. */
+.znacka-vybrano {
+  transform: scale(0.6);
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.skupina[aria-pressed="true"] .znacka-vybrano {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* --- Zvýraznění obsahu podle skupiny ----------------------------------- */
@@ -203,5 +310,28 @@
 
   .skupina[aria-pressed="true"] {
     transform: none;
+  }
+
+  .znacka-vybrano {
+    transform: none !important;
+  }
+
+  .duvod-e {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .sekce-najizdi {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .sipka-dolu {
+    animation: none;
+  }
+
+  /* Rozbalování necháváme funkční, jen bez animace výšky. */
+  .rozbaleny-obsah {
+    transition: none;
   }
 }

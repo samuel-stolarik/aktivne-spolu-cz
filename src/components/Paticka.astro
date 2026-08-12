@@ -2,51 +2,54 @@
 /**
  * Patička.
  *
- * Záměrně střídmá: loga pořadatelů, právní odkazy, copyright. Nic víc.
+ * Záměrně střídmá: logo projektu, právní odkazy, copyright. Nic víc.
  *
- * Dřív tu byla i věta "Akci pořádá organizace… ve spolupráci se…" a v sekci
- * Ke stažení a kontakt k tomu ještě dva velké boxy s popisy obou organizací.
- * Bylo to dvakrát to samé. Popis organizací vypadl, tady zůstala jen loga.
+ * Historie tohohle souboru je poučná. Nejdřív tu byla věta "Akci pořádá
+ * organizace… ve spolupráci se…" a v sekci Ke stažení a kontakt k tomu ještě
+ * boxy s popisy obou organizací — dvakrát to samé. Popisy se proto smazaly
+ * a tady zůstala loga pořadatelů s odkazy na jejich weby.
  *
- * Vektorová loga zatím nemáme — [DOPLNIT] níž. Box proto zatím nese název
- * organizace vysázený typograficky. Není to prázdné místo čekající
- * na obrázek, je to plnohodnotná varianta: až loga dorazí, vymění se
- * obsah boxu a rozvržení zůstane.
+ * Teď se popisy vrátily, ale výhradně do sekce Ke stažení a kontakt, kde jsou
+ * i kontakty a prokliky na weby. Kdyby tu zůstala loga pořadatelů s odkazy,
+ * duplicita by se vrátila zadními vrátky — jen v jiné podobě. Vypadla proto
+ * i ta. Dělicí čára je jednoduchá:
+ *
+ *   Kdo akci pořádá, co dělá a jak se s ním spojit → sekce Ke stažení a kontakt.
+ *   Právní náležitosti a identita webu                → patička.
+ *
+ * Logo, které tu zůstalo, je logo PROJEKTU (Mezigeneračně aktivně spolu),
+ * ne logo některého z pořadatelů. Nic neduplikuje, jen uzavírá stránku
+ * tím, čím začala v horní liště.
  */
 ---
 
 <footer class="border-t border-merunka-tlumena bg-pozadi px-5 py-12">
-  <div class="mx-auto max-w-obsah">
-    <div class="grid gap-5 sm:grid-cols-2">
-      {/* [DOPLNIT: logo Právě teď! o.p.s. ve vektorovém formátu (SVG)] */}
-      <a
-        href="https://www.pravetedops.cz"
-        rel="noopener"
-        class="flex min-h-24 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-6 text-center no-underline"
-      >
-        <span class="text-lg font-semibold text-tyrkys">Právě teď! o.p.s.</span>
-      </a>
+  <div class="mx-auto flex max-w-obsah flex-col items-center gap-6">
+    <img
+      src="/obrazky/logo.png"
+      alt="Mezigeneračně aktivně spolu"
+      width="546"
+      height="161"
+      class="h-10 w-auto"
+      loading="lazy"
+    />
 
-      {/* [DOPLNIT: logo ZŠ Magic Hill ve vektorovém formátu (SVG)] */}
+    <nav class="flex flex-wrap justify-center gap-x-8 gap-y-1">
       <a
-        href="https://www.magic-hill.cz"
-        rel="noopener"
-        class="flex min-h-24 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-6 text-center no-underline"
+        href="/obchodni-podminky/"
+        class="flex min-h-11 items-center text-tyrkys underline"
       >
-        <span class="text-lg font-semibold text-tyrkys">ZŠ Magic Hill</span>
-      </a>
-    </div>
-
-    <nav class="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3">
-      <a href="/obchodni-podminky/" class="text-tyrkys underline">
         Obchodní podmínky
       </a>
-      <a href="/zpracovani-osobnich-udaju/" class="text-tyrkys underline">
+      <a
+        href="/zpracovani-osobnich-udaju/"
+        class="flex min-h-11 items-center text-tyrkys underline"
+      >
         Zpracování osobních údajů
       </a>
     </nav>
 
-    <p class="mt-6 text-center text-popisek">
+    <p class="m-0 text-center text-popisek">
       © {new Date().getFullYear()} Právě teď! o.p.s.
     </p>
   </div>
