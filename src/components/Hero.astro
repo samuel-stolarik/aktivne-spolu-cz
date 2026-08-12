@@ -1,0 +1,119 @@
+---
+/**
+ * Úvodní obrazovka.
+ *
+ * Jediný živý prvek na webu: dva velké měkké tvary za obsahem, jeden
+ * v tyrkysové ploše a druhý v tlumené meruňkové, opacity 0,4. Pomalu
+ * a nepravidelně se posouvají — cyklus 24 s, maximální výchylka 12 px.
+ * Mají pointer-events: none a leží pod obsahem, takže nikdy nesníží
+ * čitelnost textu nad nimi. Při prefers-reduced-motion se zastaví úplně.
+ */
+import Ikona from "./Ikona.astro";
+import Tlacitko from "./Tlacitko.astro";
+
+const cilovky = [
+  { ikona: "school", text: "Školy a školky" },
+  { ikona: "building-2", text: "Mladé kolektivy a firmy" },
+  { ikona: "heart-handshake", text: "Neziskovky a komunity" },
+  { ikona: "sparkles", text: "Gen Z a nadšenci" },
+];
+---
+
+<section class="relative overflow-hidden bg-pozadi px-5 pt-10 pb-24 sm:pb-28">
+  {/* Živé tvary v pozadí. aria-hidden, protože nenesou žádný obsah. */}
+  <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+    <div class="tvar tvar-a"></div>
+    <div class="tvar tvar-b"></div>
+  </div>
+
+  <div class="mx-auto max-w-obsah">
+    <img
+      src="/obrazky/logo.jpg"
+      alt="Mezigeneračně aktivně spolu"
+      width="273"
+      height="80"
+      class="h-auto w-[240px] sm:w-[273px]"
+    />
+
+    <div class="mt-14 max-w-[880px]">
+      <h1 class="najezd text-4xl sm:text-5xl" data-poradi="0">
+        Propojujeme generace. Vytvořte setkání, na které se nezapomíná.
+      </h1>
+      <span class="podtrzeni" data-poradi="0"></span>
+
+      <p class="najezd mt-8 text-xl sm:text-2xl" data-poradi="1">
+        Ať už vedete školu, tvoříte mladý pracovní kolektiv, působíte
+        v neziskovce nebo chcete s přáteli udělat něco smysluplného — oslavte
+        s námi Mezinárodní den seniorů (v týdnu kolem 1.&nbsp;10.). Zorganizujte
+        přátelské mezigenerační setkání ve svém okolí. A poté zanechte svou
+        stopu a staňte se součástí celostátního Zásobníku nápadů.
+      </p>
+
+      <div class="najezd mt-10 flex flex-wrap gap-4" data-poradi="2">
+        <Tlacitko odkaz="#registrace">
+          Chci se zapojit
+          <Ikona jmeno="arrow-right" velikost={20} trida="text-white" />
+        </Tlacitko>
+
+        {/* [DOPLNIT: informační leták v PDF] */}
+        <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi">
+          <Ikona jmeno="download" velikost={20} />
+          Stáhnout informační leták (PDF)
+        </Tlacitko>
+      </div>
+
+      <ul
+        class="najezd mt-12 flex list-none flex-wrap gap-x-8 gap-y-3 p-0"
+        data-poradi="3"
+      >
+        {
+          cilovky.map((cilovka) => (
+            <li class="flex items-center gap-2">
+              <Ikona jmeno={cilovka.ikona} velikost={22} />
+              <span>{cilovka.text}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tvar {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.4;
+    filter: blur(8px);
+  }
+
+  .tvar-a {
+    top: -140px;
+    right: -120px;
+    width: 520px;
+    height: 520px;
+    background-color: var(--color-plocha-tyrkys);
+    animation: hero-plovani-a 24s ease-in-out infinite;
+  }
+
+  .tvar-b {
+    right: 140px;
+    bottom: -180px;
+    width: 380px;
+    height: 380px;
+    background-color: var(--color-merunka-tlumena);
+    animation: hero-plovani-b 24s ease-in-out infinite;
+  }
+
+  @media (max-width: 640px) {
+    .tvar-a {
+      width: 320px;
+      height: 320px;
+    }
+    .tvar-b {
+      right: -80px;
+      width: 260px;
+      height: 260px;
+    }
+  }
+</style>

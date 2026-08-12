@@ -1,0 +1,107 @@
+---
+import "../styles/global.css";
+import Paticka from "../components/Paticka.astro";
+
+interface Props {
+  titulek: string;
+  popis: string;
+}
+
+const { titulek, popis } = Astro.props;
+---
+
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulek}</title>
+    <meta name="description" content={popis} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Písmo načítáme s přednačtením, ať text neposkočí po dotažení fontu. -->
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin-ext.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:title" content={titulek} />
+    <meta property="og:description" content={popis} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="cs_CZ" />
+  </head>
+
+  <body>
+    <!-- Přeskočení na obsah pro čtečky obrazovky a ovládání z klávesnice. -->
+    <a
+      href="#obsah"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded focus:bg-tyrkys focus:px-4 focus:py-2 focus:text-white"
+    >
+      Přeskočit na obsah
+    </a>
+
+    <main id="obsah">
+      <slot />
+    </main>
+
+    <Paticka />
+
+    <script>
+      // Najíždění obsahu při scrollu.
+      // Jen jednou — po odhalení prvek přestaneme sledovat, takže se animace
+      // neopakuje při scrollu zpět nahoru.
+      //
+      // Při zapnutém prefers-reduced-motion pozorovatele vůbec nespouštíme
+      // a obsah rovnou odhalíme. CSS to sice řeší taky, ale takhle si
+      // ušetříme i práci navíc na slabších zařízeních.
+      const chceMenePohybu = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      const prvky = document.querySelectorAll<HTMLElement>(
+        ".najezd, .podtrzeni",
+      );
+
+      if (chceMenePohybu) {
+        prvky.forEach((prvek) => prvek.classList.add("je-videt"));
+      } else {
+        const pozorovatel = new IntersectionObserver(
+          (zaznamy) => {
+            zaznamy.forEach((zaznam) => {
+              if (!zaznam.isIntersecting) return;
+
+              const prvek = zaznam.target as HTMLElement;
+
+              // Prvky uvnitř jedné sekce naskakují se zpožděním 60 ms po sobě.
+              const poradi = Number(prvek.dataset.poradi ?? 0);
+              window.setTimeout(
+                () => prvek.classList.add("je-videt"),
+                poradi * 60,
+              );
+
+              pozorovatel.unobserve(prvek);
+            });
+          },
+          {
+            // Spustí se, až je prvek kousek uvnitř obrazovky,
+            // ne hned na její hraně.
+            rootMargin: "0px 0px -80px 0px",
+            threshold: 0.1,
+          },
+        );
+
+        prvky.forEach((prvek) => pozorovatel.observe(prvek));
+      }
+    </script>
+  </body>
+</html>

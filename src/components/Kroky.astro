@@ -1,0 +1,119 @@
+---
+/**
+ * Číslovaná kolečka pro sekci "Jak to funguje".
+ *
+ * Nikde jinde než tady se čísla ani kolečka nepoužívají.
+ *
+ * Kolečko: průměr 40 px, výplň meruňková, číslo tmavým textem.
+ * Spojnice: svislá linka v tlumené meruňkové, šířka 3 px, vedená středem
+ * koleček. Musí být světlejší než kolečka — proto merunka-tlumena.
+ *
+ * Animace: kolečka naskakují postupně, spojnice mezi nimi doroste zdola
+ * nahoru. Obojí se vypne při prefers-reduced-motion.
+ */
+interface Krok {
+  nadpis: string;
+  text: string;
+}
+
+interface Props {
+  kroky: Krok[];
+}
+
+const { kroky } = Astro.props;
+---
+
+<ol class="relative m-0 list-none space-y-10 p-0">
+  {
+    kroky.map((krok, i) => (
+      <li class="relative flex gap-5">
+        {/* Spojnice vede od středu tohohle kolečka ke středu dalšího.
+            U posledního kroku už žádná není. */}
+        {i < kroky.length - 1 && (
+          <span
+            class="spojnice absolute top-10 left-[18.5px] w-[3px] bg-merunka-tlumena"
+            data-poradi={i}
+            aria-hidden="true"
+          />
+        )}
+
+        <span
+          class="najezd z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-merunka font-semibold text-text"
+          data-poradi={i}
+          aria-hidden="true"
+        >
+          {i + 1}
+        </span>
+
+        <div class="najezd pt-1" data-poradi={i}>
+          <h3 class="text-xl">{krok.nadpis}</h3>
+          <p class="mt-2" set:html={krok.text} />
+        </div>
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  /* Spojnice doroste zdola nahoru. Výšku dopočítá skript níž, protože
+     závisí na tom, jak vysoký je text u konkrétního kroku. */
+  .spojnice {
+    height: 0;
+    transform-origin: bottom center;
+    transform: scaleY(0);
+    transition: transform 400ms ease-out;
+  }
+
+  .spojnice.je-videt {
+    transform: scaleY(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spojnice {
+      transform: scaleY(1) !important;
+    }
+  }
+</style>
+
+<script>
+  // Spojnice musí sahat přesně od spodní hrany jednoho kolečka
+  // k horní hraně dalšího. Počítáme to až v prohlížeči, protože výška
+  // kroku závisí na délce textu a na šířce okna.
+  function dopocitatSpojnice() {
+    document.querySelectorAll<HTMLElement>("li:has(> .spojnice)").forEach((polozka) => {
+      const spojnice = polozka.querySelector<HTMLElement>(".spojnice");
+      const dalsi = polozka.nextElementSibling as HTMLElement | null;
+      if (!spojnice || !dalsi) return;
+
+      const vyskaKolecka = 40;
+      const mezera = dalsi.offsetTop - polozka.offsetTop - vyskaKolecka;
+      spojnice.style.height = `${Math.max(mezera, 0)}px`;
+    });
+  }
+
+  dopocitatSpojnice();
+  window.addEventListener("resize", dopocitatSpojnice);
+
+  // Spojnice odhalujeme stejným pozorovatelem jako zbytek obsahu,
+  // jen s malým zpožděním, ať kolečko naskočí dřív než linka pod ním.
+  const chceMenePohybu = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const spojnice = document.querySelectorAll<HTMLElement>(".spojnice");
+
+  if (chceMenePohybu) {
+    spojnice.forEach((s) => s.classList.add("je-videt"));
+  } else {
+    const pozorovatel = new IntersectionObserver(
+      (zaznamy) => {
+        zaznamy.forEach((zaznam) => {
+          if (!zaznam.isIntersecting) return;
+          const prvek = zaznam.target as HTMLElement;
+          const poradi = Number(prvek.dataset.poradi ?? 0);
+          window.setTimeout(() => prvek.classList.add("je-videt"), poradi * 60 + 120);
+          pozorovatel.unobserve(prvek);
+        });
+      },
+      { rootMargin: "0px 0px -80px 0px", threshold: 0.1 },
+    );
+    spojnice.forEach((s) => pozorovatel.observe(s));
+  }
+</script>

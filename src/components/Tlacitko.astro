@@ -1,0 +1,53 @@
+---
+/**
+ * Tlačítko.
+ *
+ * Červená se na webu objevuje VÝHRADNĚ tady. Nikde jinde — ani v ikonách,
+ * ani v nadpisech. Jakmile by se použila jinde, přestane fungovat jako
+ * signál "tady se kliká".
+ *
+ * Vedlejší tlačítko proto není červené, ale ohraničené tyrkysovou.
+ *
+ * Klikací plocha je nejméně 44×44 px (min-h-11 + vodorovné odsazení).
+ */
+interface Props {
+  odkaz?: string;
+  typ?: "submit" | "button";
+  /** "hlavni" = plná červená, "vedlejsi" = tyrkysový rámeček */
+  varianta?: "hlavni" | "vedlejsi";
+  poradi?: number;
+  trida?: string;
+  [key: string]: unknown;
+}
+
+const {
+  odkaz,
+  typ = "button",
+  varianta = "hlavni",
+  poradi = 0,
+  trida = "",
+  ...zbytek
+} = Astro.props;
+
+const spolecne =
+  "tlacitko-pohyb inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-6 py-3 font-semibold no-underline";
+
+const podleVarianty =
+  varianta === "hlavni"
+    ? "bg-tlacitko text-white hover:bg-tlacitko-hover"
+    : "border-2 border-tyrkys bg-transparent text-tyrkys hover:bg-plocha-tyrkys";
+
+const tridy = [spolecne, podleVarianty, trida];
+---
+
+{
+  odkaz ? (
+    <a href={odkaz} class:list={tridy} data-poradi={poradi} {...zbytek}>
+      <slot />
+    </a>
+  ) : (
+    <button type={typ} class:list={tridy} data-poradi={poradi} {...zbytek}>
+      <slot />
+    </button>
+  )
+}

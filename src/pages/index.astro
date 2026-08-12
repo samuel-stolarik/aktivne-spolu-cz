@@ -1,0 +1,23 @@
+---
+/**
+ * Úvodní stránka — varianta předělů "linka".
+ *
+ * Sekce odděluje velkorysý svislý prostor, změna plochy tam, kde se plocha
+ * mění, a jemná meruňková linka tam, kde spolu sousedí dvě sekce
+ * na stejném pozadí.
+ *
+ * Druhou variantu ("karta") najdeš na /varianta-b/. Obě běží nad úplně
+ * stejným obsahem, liší se jen předělem — viz src/components/Sekce.astro.
+ */
+import Layout from "../layouts/Layout.astro";
+import ObsahStranky from "../components/ObsahStranky.astro";
+import PrepinacVariant from "../components/PrepinacVariant.astro";
+---
+
+<Layout
+  titulek="Mezigeneračně aktivně spolu — zapojte se do Mezinárodního dne seniorů"
+  popis="Zorganizujte mezigenerační setkání se seniory v týdnu kolem 1. října a staňte se součástí celostátního Zásobníku nápadů."
+>
+  <PrepinacVariant aktivni="linka" />
+  <ObsahStranky predel="linka" />
+</Layout>

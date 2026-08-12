@@ -1,0 +1,51 @@
+---
+/**
+ * Patička.
+ *
+ * Loga pořadatelů mají být každé ve vlastním bílém boxu. Vektorová loga
+ * zatím nemáme (viz [DOPLNIT] níž), takže box zatím nese název organizace
+ * vysázený typograficky. Není to prázdné místo čekající na obrázek —
+ * je to plnohodnotná varianta, která po dodání log jen vymění obsah boxu.
+ */
+---
+
+<footer class="border-t border-merunka-tlumena bg-pozadi px-5 py-16">
+  <div class="mx-auto max-w-obsah">
+    <p class="text-center font-semibold text-tyrkys">
+      Akci pořádá organizace Právě teď! o.p.s. ve spolupráci se ZŠ Magic Hill.
+    </p>
+
+    <div class="mt-8 grid gap-5 sm:grid-cols-2">
+      {/* [DOPLNIT: logo Právě teď! o.p.s. ve vektorovém formátu (SVG)] */}
+      <a
+        href="https://www.pravetedops.cz"
+        rel="noopener"
+        class="flex min-h-28 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-8 text-center no-underline"
+      >
+        <span class="text-lg font-semibold text-tyrkys">Právě teď! o.p.s.</span>
+      </a>
+
+      {/* [DOPLNIT: logo ZŠ Magic Hill ve vektorovém formátu (SVG)] */}
+      <a
+        href="https://www.magic-hill.cz"
+        rel="noopener"
+        class="flex min-h-28 items-center justify-center rounded-xl border border-merunka-tlumena bg-white px-6 py-8 text-center no-underline"
+      >
+        <span class="text-lg font-semibold text-tyrkys">ZŠ Magic Hill</span>
+      </a>
+    </div>
+
+    <nav class="mt-12 flex flex-wrap justify-center gap-x-8 gap-y-3">
+      <a href="/obchodni-podminky/" class="text-tyrkys underline">
+        Obchodní podmínky
+      </a>
+      <a href="/zpracovani-osobnich-udaju/" class="text-tyrkys underline">
+        Zpracování osobních údajů
+      </a>
+    </nav>
+
+    <p class="mt-8 text-center text-popisek">
+      © {new Date().getFullYear()} Právě teď! o.p.s.
+    </p>
+  </div>
+</footer>

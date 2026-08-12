@@ -1,0 +1,76 @@
+---
+/**
+ * Obal jedné sekce stránky.
+ *
+ * Rytmus ploch: tyrkysová plocha se NESTŘÍDÁ pravidelně. Označuje sekce,
+ * kde má návštěvník něco udělat nebo pochopit postup — konkrétně
+ * "Jak to funguje" a "Registrace a poplatek". Všechny ostatní sekce
+ * jsou na základním pozadí.
+ *
+ * Barevná plocha jde až k okrajům obrazovky, obsah uvnitř drží
+ * maximální šířku 1080 px.
+ *
+ * PŘEDĚL MEZI SEKCEMI — dvě varianty k porovnání:
+ *
+ *   "linka"  Velkorysý svislý prostor + změna plochy tam, kde se plocha mění,
+ *            a jemná meruňková linka tam, kde spolu sousedí dvě sekce
+ *            na stejném pozadí. Klidnější, tiskovější.
+ *
+ *   "karta"  Sekce na základním pozadí sedí jako bílé listy se zaoblenými
+ *            rohy a měkkým stínem. Hranicí je samotný okraj listu, takže
+ *            předěl je znát i letmým pohledem. Tyrkysové plochy zůstávají
+ *            přes celou šířku, aby si držely váhu.
+ *
+ * Výchozí je "linka". Variantu "karta" si můžeš prohlédnout na /varianta-b/.
+ */
+interface Props {
+  id: string;
+  /** true = tyrkysová plocha (sekce, kde se něco dělá) */
+  plocha?: boolean;
+  /** true = nakreslit nahoře jemnou dělicí linku (jen ve variantě "linka") */
+  linkaNahore?: boolean;
+  /** Způsob oddělení sekcí */
+  predel?: "linka" | "karta";
+  trida?: string;
+}
+
+const {
+  id,
+  plocha = false,
+  linkaNahore = false,
+  predel = "linka",
+  trida = "",
+} = Astro.props;
+
+const jeKarta = predel === "karta" && !plocha;
+---
+
+{
+  jeKarta ? (
+    /* Varianta "karta" — bílý list na základním pozadí. */
+    <section id={id} class:list={["bg-pozadi px-5 py-6", trida]}>
+      <div class="mx-auto max-w-obsah rounded-3xl bg-white px-6 py-16 shadow-[0_1px_3px_rgba(69,68,63,0.06),0_12px_32px_-12px_rgba(69,68,63,0.12)] sm:px-10 sm:py-20">
+        <slot />
+      </div>
+    </section>
+  ) : (
+    <section
+      id={id}
+      class:list={[
+        "px-5 py-20 sm:py-24",
+        plocha ? "bg-plocha-tyrkys" : "bg-pozadi",
+        trida,
+      ]}
+    >
+      {linkaNahore && predel === "linka" && (
+        <div class="mx-auto mb-20 max-w-obsah sm:mb-24">
+          <hr class="border-0 border-t border-merunka-tlumena" />
+        </div>
+      )}
+
+      <div class="mx-auto max-w-obsah">
+        <slot />
+      </div>
+    </section>
+  )
+}

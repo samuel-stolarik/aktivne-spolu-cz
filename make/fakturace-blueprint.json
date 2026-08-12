@@ -1,0 +1,741 @@
+{
+    "name": "aktivne-spolu.cz – vystavení faktury za registrační poplatek",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0,
+                    "name": "1. Webhook – přihláška k vyfakturování"
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "aktivne-spolu – fakturace (po importu vytvoř NOVÝ webhook)"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook",
+                        "label": "Webhook",
+                        "required": true,
+                        "spec": []
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximální počet výsledků"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "prihlaska_id",
+                        "type": "text",
+                        "label": "ID přihlášky v tabulce public.prihlasky (uuid)"
+                    },
+                    {
+                        "name": "forma_platby",
+                        "type": "text",
+                        "label": "Forma platby zvolená ve formuláři"
+                    },
+                    {
+                        "name": "email",
+                        "type": "text",
+                        "label": "E-mail přihlašujícího (jen pro kontrolu, závazný je údaj ze Supabase)"
+                    }
+                ],
+                "notes": "Sem posílá data Edge Function po uložení přihlášky. Do těla stačí poslat prihlaska_id – všechny ostatní údaje si scénář načte přímo ze Supabase, aby nešly podvrhnout z prohlížeče."
+            }
+        },
+        {
+            "id": 2,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Jen platba převodem s fakturou",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.forma_platby}}",
+                            "b": "faktur",
+                            "o": "text:contains"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "variables": [
+                    {
+                        "name": "vystavovatel_nazev",
+                        "value": "Právě teď! o.p.s."
+                    },
+                    {
+                        "name": "vystavovatel_adresa",
+                        "value": "Fügnerovo náměstí 1808/3, Nové Město"
+                    },
+                    {
+                        "name": "vystavovatel_mesto_psc",
+                        "value": "120 00 Praha 2"
+                    },
+                    {
+                        "name": "vystavovatel_ic",
+                        "value": "29154901"
+                    },
+                    {
+                        "name": "vystavovatel_rejstrik",
+                        "value": "[DOPLNIT: zápis v rejstříku o.p.s. – soud, oddíl a vložka]"
+                    },
+                    {
+                        "name": "vystavovatel_email",
+                        "value": "[DOPLNIT: fakturační e-mail Právě teď! o.p.s.]"
+                    },
+                    {
+                        "name": "vystavovatel_telefon",
+                        "value": "[DOPLNIT: telefon kontaktní osoby pro fakturaci]"
+                    },
+                    {
+                        "name": "vystavovatel_web",
+                        "value": "www.pravetedops.cz"
+                    },
+                    {
+                        "name": "banka_nazev",
+                        "value": "Československá obchodní banka, a. s. (ČSOB)"
+                    },
+                    {
+                        "name": "banka_ucet",
+                        "value": "258492161/0300"
+                    },
+                    {
+                        "name": "banka_iban",
+                        "value": "CZ2303000000000258492161"
+                    },
+                    {
+                        "name": "banka_swift",
+                        "value": "CEKOCZPP"
+                    },
+                    {
+                        "name": "zprava_pro_prijemce",
+                        "value": "AKTIVNE SPOLU"
+                    },
+                    {
+                        "name": "rada_faktur",
+                        "value": "[DOPLNIT: dvoumístné interní číslo řady faktur, např. 03]"
+                    },
+                    {
+                        "name": "polozka_nazev",
+                        "value": "Registrační poplatek – Mezinárodní den seniorů, projekt Aktivně spolu"
+                    },
+                    {
+                        "name": "polozka_castka",
+                        "value": "500"
+                    },
+                    {
+                        "name": "veta_neplatce_dph",
+                        "value": "Právě teď! o.p.s. není plátcem DPH a nemá přiděleno DIČ. Fakturovaná částka je konečná, daň se neuplatňuje."
+                    },
+                    {
+                        "name": "splatnost_dnu",
+                        "value": "7"
+                    },
+                    {
+                        "name": "supabase_url",
+                        "value": "https://kourmwqxkhdtahbxyuaq.supabase.co"
+                    },
+                    {
+                        "name": "storage_bucket",
+                        "value": "faktury"
+                    },
+                    {
+                        "name": "gdocs_sablona_id",
+                        "value": "[DOPLNIT: ID Google Docs šablony faktury]"
+                    },
+                    {
+                        "name": "gdrive_slozka_id",
+                        "value": "[DOPLNIT: ID složky na Google Drive pro dočasné dokumenty]"
+                    },
+                    {
+                        "name": "odesilatel_email",
+                        "value": "[DOPLNIT: adresa v Google Workspace, ze které faktury odcházejí]"
+                    },
+                    {
+                        "name": "kopie_email",
+                        "value": "[DOPLNIT: e-mail účetní, kam má chodit kopie každé faktury]"
+                    }
+                ],
+                "scope": "roundtrip"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0,
+                    "name": "2. Nastavení – údaje vystavovatele a konfigurace"
+                },
+                "restore": {
+                    "expect": {
+                        "variables": {
+                            "mode": "chose"
+                        },
+                        "scope": {
+                            "label": "Jeden běh scénáře"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "variables",
+                        "type": "array",
+                        "label": "Proměnné"
+                    },
+                    {
+                        "name": "scope",
+                        "type": "select",
+                        "label": "Platnost proměnné"
+                    }
+                ],
+                "notes": "VŠECHNY údaje, které se mění podle organizace, jsou tady na jednom místě. Žádný jiný modul se needituje. Klíče a hesla sem NEPATŘÍ – ty jsou v připojení (viz README)."
+            }
+        },
+        {
+            "id": 3,
+            "module": "http:ActionSendDataAPIKeyAuth",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "url": "{{2.supabase_url}}/rest/v1/prihlasky?id=eq.{{1.prihlaska_id}}&select=id,email,kontaktni_osoba,variabilni_symbol,stav,forma_platby,fakt_nazev,fakt_adresa,fakt_ic,fakt_dic,faktura_cislo,faktura_url",
+                "method": "get",
+                "headers": [
+                    {
+                        "name": "Accept",
+                        "value": "application/vnd.pgrst.object+json"
+                    }
+                ],
+                "qs": [],
+                "bodyType": "raw",
+                "parseResponse": true,
+                "timeout": 60,
+                "shareCookies": false,
+                "ca": null,
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "gzip": true,
+                "useMtls": false,
+                "followAllRedirects": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0,
+                    "name": "3. Supabase – načtení údajů přihlášky"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Supabase service_role (po importu vytvořit znovu)"
+                        }
+                    }
+                },
+                "notes": "Hlavička Accept: application/vnd.pgrst.object+json zajistí, že se vrátí jeden objekt, ne pole. RLS je zapnuté a anon nemá na tabulku prihlasky žádná práva – tenhle modul MUSÍ jet přes service_role klíč. Variabilní symbol si Make nevymýšlí, přebírá ho z tohoto načtení."
+            }
+        },
+        {
+            "id": 4,
+            "module": "http:ActionSendDataAPIKeyAuth",
+            "version": 3,
+            "filter": {
+                "name": "Jen když faktura ještě nebyla vystavena",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{3.data.faktura_cislo}}",
+                            "o": "text:notexist"
+                        }
+                    ]
+                ]
+            },
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "url": "{{2.supabase_url}}/rest/v1/rpc/dalsi_cislo_faktury",
+                "method": "post",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "name": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "qs": [],
+                "bodyType": "raw",
+                "contentType": "application/json",
+                "data": "{\n  \"rok\": {{formatDate(now; \"YY\")}},\n  \"rada\": \"{{2.rada_faktur}}\"\n}",
+                "parseResponse": true,
+                "timeout": 60,
+                "shareCookies": false,
+                "ca": null,
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "gzip": true,
+                "useMtls": false,
+                "followAllRedirects": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0,
+                    "name": "4. Supabase – přidělení čísla faktury (RPC)"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Supabase service_role (po importu vytvořit znovu)"
+                        }
+                    }
+                },
+                "notes": "Číslo faktury si Make NEGENERUJE. Vyžádá si ho z databázové funkce public.dalsi_cislo_faktury(rok, rada), která vrátí hotový text ve tvaru RR/SS/NNN (např. 26/03/001). Řada je jediná a atomická, protože pořadové číslo dává Postgres sekvence. Volání posouvá sekvenci, proto je před ním filtr – při opakovaném doručení webhooku se číslo nespálí podruhé."
+            }
+        },
+        {
+            "id": 5,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "variables": [
+                    {
+                        "name": "cislo_faktury",
+                        "value": "{{4.data}}"
+                    },
+                    {
+                        "name": "cislo_pro_soubor",
+                        "value": "{{replace(replace(4.data; \"/\"; \"-\"); \" \"; \"\")}}"
+                    },
+                    {
+                        "name": "nazev_souboru",
+                        "value": "faktura-{{replace(4.data; \"/\"; \"-\")}}.pdf"
+                    },
+                    {
+                        "name": "cesta_ve_storage",
+                        "value": "{{formatDate(now; \"YYYY\")}}/faktura-{{replace(4.data; \"/\"; \"-\")}}.pdf"
+                    },
+                    {
+                        "name": "datum_vystaveni",
+                        "value": "{{formatDate(now; \"D.M.YYYY\")}}"
+                    },
+                    {
+                        "name": "datum_splatnosti",
+                        "value": "{{formatDate(addDays(now; 7); \"D.M.YYYY\")}}"
+                    },
+                    {
+                        "name": "variabilni_symbol",
+                        "value": "{{3.data.variabilni_symbol}}"
+                    },
+                    {
+                        "name": "castka_text",
+                        "value": "500 Kč"
+                    },
+                    {
+                        "name": "odberatel_nazev",
+                        "value": "{{ifempty(3.data.fakt_nazev; 3.data.kontaktni_osoba)}}"
+                    },
+                    {
+                        "name": "odberatel_adresa",
+                        "value": "{{ifempty(3.data.fakt_adresa; \"\")}}"
+                    },
+                    {
+                        "name": "odberatel_ic",
+                        "value": "{{ifempty(3.data.fakt_ic; \"—\")}}"
+                    },
+                    {
+                        "name": "odberatel_dic",
+                        "value": "{{ifempty(3.data.fakt_dic; \"—\")}}"
+                    }
+                ],
+                "scope": "roundtrip"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0,
+                    "name": "5. Sestavení faktury – odvozené údaje"
+                },
+                "restore": {
+                    "expect": {
+                        "variables": {
+                            "mode": "chose"
+                        },
+                        "scope": {
+                            "label": "Jeden běh scénáře"
+                        }
+                    }
+                },
+                "notes": "Připraví hodnoty, které se dosazují do šablony faktury. Splatnost je 7 dní – když ji chceš změnit, uprav addDays(now; 7) i proměnnou splatnost_dnu v modulu 2, musí sedět obojí."
+            }
+        },
+        {
+            "id": 6,
+            "module": "google-docs:createADocumentFromTemplate",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "document": "{{2.gdocs_sablona_id}}",
+                "name": "Faktura {{5.cislo_faktury}} – {{5.odberatel_nazev}}",
+                "destination": "drive",
+                "folderId": "{{2.gdrive_slozka_id}}",
+                "values": {
+                    "cislo_faktury": "{{5.cislo_faktury}}",
+                    "datum_vystaveni": "{{5.datum_vystaveni}}",
+                    "datum_splatnosti": "{{5.datum_splatnosti}}",
+                    "variabilni_symbol": "{{5.variabilni_symbol}}",
+                    "vystavovatel_nazev": "{{2.vystavovatel_nazev}}",
+                    "vystavovatel_adresa": "{{2.vystavovatel_adresa}}",
+                    "vystavovatel_mesto_psc": "{{2.vystavovatel_mesto_psc}}",
+                    "vystavovatel_ic": "{{2.vystavovatel_ic}}",
+                    "vystavovatel_rejstrik": "{{2.vystavovatel_rejstrik}}",
+                    "vystavovatel_email": "{{2.vystavovatel_email}}",
+                    "vystavovatel_telefon": "{{2.vystavovatel_telefon}}",
+                    "banka_nazev": "{{2.banka_nazev}}",
+                    "banka_ucet": "{{2.banka_ucet}}",
+                    "banka_iban": "{{2.banka_iban}}",
+                    "banka_swift": "{{2.banka_swift}}",
+                    "zprava_pro_prijemce": "{{2.zprava_pro_prijemce}}",
+                    "odberatel_nazev": "{{5.odberatel_nazev}}",
+                    "odberatel_adresa": "{{5.odberatel_adresa}}",
+                    "odberatel_ic": "{{5.odberatel_ic}}",
+                    "odberatel_dic": "{{5.odberatel_dic}}",
+                    "polozka_nazev": "{{2.polozka_nazev}}",
+                    "castka_text": "{{5.castka_text}}",
+                    "veta_neplatce_dph": "{{2.veta_neplatce_dph}}"
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0,
+                    "name": "6. Google Docs – vyplnění šablony faktury"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Google Docs (po importu připojit znovu)"
+                        }
+                    }
+                },
+                "notes": "Šablona je obyčejný Google dokument s poli {{cislo_faktury}}, {{castka_text}} atd. Seznam všech polí je v README. V šabloně NESMÍ být žádný rozpis DPH – ani sazba, ani základ daně, ani řádek DPH. Právě teď! o.p.s. je podle ARES potvrzený neplátce DPH a nemá přiděleno DIČ, takže na faktuře není ani pole DIČ dodavatele. Doklad se jmenuje jen FAKTURA, nikdy ne daňový doklad."
+            }
+        },
+        {
+            "id": 7,
+            "module": "google-docs:downloadADocument",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "document": "{{6.id}}",
+                "format": "pdf"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1800,
+                    "y": 0,
+                    "name": "7. Google Docs – export faktury do PDF"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Google Docs (po importu připojit znovu)"
+                        }
+                    }
+                },
+                "notes": "Výstupem je binární soubor v poli data – ten se dál posílá do e-mailu i do Supabase Storage."
+            }
+        },
+        {
+            "id": 8,
+            "module": "google-email:ActionSendEmail",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "from": "{{2.odesilatel_email}}",
+                "to": [
+                    "{{3.data.email}}"
+                ],
+                "cc": [
+                    "{{2.kopie_email}}"
+                ],
+                "bcc": [],
+                "replyTo": "{{2.vystavovatel_email}}",
+                "subject": "Faktura {{5.cislo_faktury}} – registrační poplatek, Mezinárodní den seniorů",
+                "contentType": "html",
+                "content": "<p>Dobrý den,</p><p>děkujeme za přihlášku do projektu k Mezinárodnímu dni seniorů. V příloze posíláme fakturu na registrační poplatek.</p><p><strong>Kolik:</strong> {{5.castka_text}}<br><strong>Číslo účtu:</strong> {{2.banka_ucet}} ({{2.banka_nazev}})<br><strong>Variabilní symbol:</strong> {{5.variabilni_symbol}}<br><strong>Zpráva pro příjemce:</strong> {{2.zprava_pro_prijemce}}<br><strong>Zaplaťte do:</strong> {{5.datum_splatnosti}}</p><p>Variabilní symbol prosím vyplňte, ať platbu poznáme a spárujeme s vaší přihláškou.</p><p>Platíte-li ze zahraničí, použijte IBAN {{2.banka_iban}} a SWIFT {{2.banka_swift}}.</p><p>{{2.veta_neplatce_dph}}</p><p>Kdyby cokoliv, napište nám na {{2.vystavovatel_email}} nebo zavolejte na {{2.vystavovatel_telefon}}.</p><p>Těšíme se na vaše setkání!<br>{{2.vystavovatel_nazev}}<br>{{2.vystavovatel_web}}</p>",
+                "attachments": [
+                    {
+                        "fileName": "{{5.nazev_souboru}}",
+                        "data": "{{7.data}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2100,
+                    "y": 0,
+                    "name": "8. Gmail – odeslání faktury přihlašujícímu"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Gmail / Google Workspace (po importu připojit znovu)"
+                        }
+                    }
+                },
+                "notes": "E-mail jde na adresu z databáze, ne na adresu z webhooku. Text je psaný běžnou řečí, ne úředně."
+            }
+        },
+        {
+            "id": 9,
+            "module": "http:ActionSendDataAPIKeyAuth",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "url": "{{2.supabase_url}}/storage/v1/object/{{2.storage_bucket}}/{{5.cesta_ve_storage}}",
+                "method": "post",
+                "headers": [
+                    {
+                        "name": "x-upsert",
+                        "value": "true"
+                    },
+                    {
+                        "name": "Cache-Control",
+                        "value": "max-age=3600"
+                    }
+                ],
+                "qs": [],
+                "bodyType": "raw",
+                "contentType": "custom",
+                "customContentType": "application/pdf",
+                "data": "{{7.data}}",
+                "parseResponse": true,
+                "timeout": 120,
+                "shareCookies": false,
+                "ca": null,
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "gzip": false,
+                "useMtls": false,
+                "followAllRedirects": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2400,
+                    "y": 0,
+                    "name": "9. Supabase Storage – uložení PDF do bucketu faktury"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Supabase service_role (po importu vytvořit znovu)"
+                        }
+                    }
+                },
+                "notes": "Bucket faktury musí být NEveřejný – jsou v něm osobní a fakturační údaje. Veřejný bucket qr slouží jen pro QR obrázky a fakturám nepatří."
+            }
+        },
+        {
+            "id": 10,
+            "module": "http:ActionSendDataAPIKeyAuth",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "url": "{{2.supabase_url}}/storage/v1/object/sign/{{2.storage_bucket}}/{{5.cesta_ve_storage}}",
+                "method": "post",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "qs": [],
+                "bodyType": "raw",
+                "contentType": "application/json",
+                "data": "{\n  \"expiresIn\": 315360000\n}",
+                "parseResponse": true,
+                "timeout": 60,
+                "shareCookies": false,
+                "ca": null,
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "gzip": true,
+                "useMtls": false,
+                "followAllRedirects": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2700,
+                    "y": 0,
+                    "name": "10. Supabase Storage – vytvoření odkazu na PDF"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Supabase service_role (po importu vytvořit znovu)"
+                        }
+                    }
+                },
+                "notes": "Bucket je neveřejný, proto se vytvoří podepsaný odkaz s dlouhou platností (10 let). Ten se ukládá do sloupce faktura_url."
+            }
+        },
+        {
+            "id": 11,
+            "module": "http:ActionSendDataAPIKeyAuth",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "url": "{{2.supabase_url}}/rest/v1/prihlasky?id=eq.{{1.prihlaska_id}}",
+                "method": "patch",
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "name": "Prefer",
+                        "value": "return=minimal"
+                    }
+                ],
+                "qs": [],
+                "bodyType": "raw",
+                "contentType": "application/json",
+                "data": "{\n  \"faktura_cislo\": \"{{5.cislo_faktury}}\",\n  \"faktura_url\": \"{{2.supabase_url}}/storage/v1{{10.data.signedURL}}\"\n}",
+                "parseResponse": true,
+                "timeout": 60,
+                "shareCookies": false,
+                "ca": null,
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "gzip": true,
+                "useMtls": false,
+                "followAllRedirects": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3000,
+                    "y": 0,
+                    "name": "11. Supabase – zápis čísla a odkazu k přihlášce"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Supabase service_role (po importu vytvořit znovu)"
+                        }
+                    }
+                },
+                "notes": "Teprve tímhle zápisem je faktura hotová. Dokud je faktura_cislo prázdné, filtr v modulu 4 pustí scénář znovu a faktura se dovystaví."
+            }
+        },
+        {
+            "id": 12,
+            "module": "google-docs:deleteADocument",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "document": "{{6.id}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3300,
+                    "y": 0,
+                    "name": "12. Google Docs – úklid dočasného dokumentu"
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "label": "Google Docs (po importu připojit znovu)"
+                        }
+                    }
+                },
+                "notes": "Uklidí rozpracovaný dokument z Google Disku. Faktura už je uložená jako PDF ve Storage i odeslaná e-mailem. Modul je nepovinný – když ho smažeš, jen se ti na Disku budou hromadit kopie."
+            }
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": true,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": true,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu2.make.com",
+        "notes": [
+            {
+                "id": 1,
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p>Po importu tady NENÍ funkční webhook. Vytvoř nový a jeho adresu zapiš do proměnné MAKE_WEBHOOK_URL v Supabase. Bez toho se faktury tiše nevystavují.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#F8B24C"
+                }
+            },
+            {
+                "id": 2,
+                "moduleIds": [
+                    4
+                ],
+                "content": "<p>Číslo faktury dává databáze, ne Make. Volání posouvá sekvenci – nespouštěj modul naprázdno při testování, spálíš číslo v řadě.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#F8B24C"
+                }
+            }
+        ]
+    }
+}

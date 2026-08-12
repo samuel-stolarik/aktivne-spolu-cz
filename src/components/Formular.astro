@@ -1,0 +1,606 @@
+---
+/**
+ * Registrační formulář.
+ *
+ * Jediný interaktivní kus stránky. Schválně bez Reactu — je to jeden
+ * formulář, ne aplikace, a kvůli němu nemá smysl tahat na celý web
+ * další knihovnu.
+ *
+ * Pravidla, která tu platí:
+ *  - Popisky polí jsou VŽDY viditelné, nikdy jen jako placeholder uvnitř pole.
+ *    Placeholder zmizí ve chvíli, kdy začnete psát, a starší uživatel pak
+ *    netuší, co do pole patří.
+ *  - Chybové hlášky jsou konkrétní a slovní, doprovázené ikonou. Chybová
+ *    červená je jiná než tlačítková, aby se nepletly.
+ *  - Klikací plochy nejméně 44×44 px.
+ *  - Klientské validaci nevěříme — Edge Funkce validuje všechno znovu.
+ */
+import Ikona from "./Ikona.astro";
+import Tlacitko from "./Tlacitko.astro";
+
+const kraje = [
+  "Praha",
+  "Středočeský",
+  "Jihočeský",
+  "Plzeňský",
+  "Karlovarský",
+  "Ústecký",
+  "Liberecký",
+  "Královéhradecký",
+  "Pardubický",
+  "Vysočina",
+  "Jihomoravský",
+  "Olomoucký",
+  "Zlínský",
+  "Moravskoslezský",
+];
+
+const typyPoradatele = [
+  { hodnota: "skola", popis: "Škola" },
+  { hodnota: "organizace", popis: "Organizace" },
+  { hodnota: "jednotlivec", popis: "Jednotlivec" },
+];
+
+// Společné třídy pro pole, ať se focus chová všude stejně.
+// Na focus se plynule mění jen barva rámečku, nic víc.
+const poleTridy =
+  "min-h-11 w-full rounded-lg border-2 border-merunka-tlumena bg-white px-4 py-2.5 transition-colors duration-150 focus:border-tyrkys focus:outline-none";
+---
+
+<div class="najezd rounded-xl bg-white p-6 sm:p-8" data-poradi="4">
+  <h3 class="text-xl">Registrační formulář</h3>
+
+  <form id="prihlaska" class="mt-6 space-y-7" novalidate>
+    {/* Past na roboty. Skutečný člověk tohle pole nikdy neuvidí ani
+        nevyplní — čtečky obrazovky ho přeskočí díky aria-hidden
+        a tabindex="-1". Když dorazí vyplněné, přihlášku zahodíme. */}
+    <div class="absolute h-0 w-0 overflow-hidden" aria-hidden="true">
+      <label for="web">Nevyplňujte toto pole</label>
+      <input id="web" name="web" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+
+    {/* --- Typ pořadatele ------------------------------------------- */}
+    <fieldset class="m-0 border-0 p-0">
+      <legend class="mb-2 font-semibold">Kdo se hlásí</legend>
+      <div class="flex flex-wrap gap-3">
+        {
+          typyPoradatele.map((typ) => (
+            <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border-2 border-merunka-tlumena px-4 py-2 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys">
+              <input
+                type="radio"
+                name="typ_poradatele"
+                value={typ.hodnota}
+                class="h-5 w-5 accent-[#12707F]"
+              />
+              <span>{typ.popis}</span>
+            </label>
+          ))
+        }
+      </div>
+      <p class="chyba" data-chyba-pro="typ_poradatele"></p>
+    </fieldset>
+
+    {/* --- Základní údaje ------------------------------------------- */}
+    <div class="grid gap-5 sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <label for="nazev_poradatele" class="popisek">
+          Název pořadatele <span class="povinne">povinné</span>
+        </label>
+        <input
+          id="nazev_poradatele"
+          name="nazev_poradatele"
+          type="text"
+          autocomplete="organization"
+          class={poleTridy}
+        />
+        <p class="chyba" data-chyba-pro="nazev_poradatele"></p>
+      </div>
+
+      <div class="sm:col-span-2">
+        <label for="kontaktni_osoba" class="popisek">
+          Jméno a příjmení kontaktní osoby <span class="povinne">povinné</span>
+        </label>
+        <input
+          id="kontaktni_osoba"
+          name="kontaktni_osoba"
+          type="text"
+          autocomplete="name"
+          class={poleTridy}
+        />
+        <p class="chyba" data-chyba-pro="kontaktni_osoba"></p>
+      </div>
+
+      <div>
+        <label for="email" class="popisek">
+          E-mail <span class="povinne">povinné</span>
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          inputmode="email"
+          class={poleTridy}
+        />
+        <p class="chyba" data-chyba-pro="email"></p>
+      </div>
+
+      <div>
+        <label for="telefon" class="popisek">
+          Telefonní kontakt <span class="povinne">povinné</span>
+        </label>
+        <input
+          id="telefon"
+          name="telefon"
+          type="tel"
+          autocomplete="tel"
+          inputmode="tel"
+          class={poleTridy}
+        />
+        <p class="chyba" data-chyba-pro="telefon"></p>
+      </div>
+
+      <div>
+        <label for="mesto" class="popisek">
+          Město <span class="povinne">povinné</span>
+        </label>
+        <input
+          id="mesto"
+          name="mesto"
+          type="text"
+          autocomplete="address-level2"
+          class={poleTridy}
+        />
+        <p class="chyba" data-chyba-pro="mesto"></p>
+      </div>
+
+      <div>
+        <label for="kraj" class="popisek">
+          Kraj <span class="povinne">povinné</span>
+        </label>
+        <select id="kraj" name="kraj" class={poleTridy}>
+          <option value="">Vyberte kraj</option>
+          {kraje.map((kraj) => <option value={kraj}>{kraj}</option>)}
+        </select>
+        <p class="chyba" data-chyba-pro="kraj"></p>
+      </div>
+
+      <div class="sm:col-span-2">
+        <label for="napad_na_aktivitu" class="popisek">
+          Předběžný nápad na aktivitu
+          <span class="text-popisek font-normal">(nepovinné)</span>
+        </label>
+        <textarea
+          id="napad_na_aktivitu"
+          name="napad_na_aktivitu"
+          rows="3"
+          class={poleTridy}></textarea>
+      </div>
+    </div>
+
+    {/* --- Forma platby --------------------------------------------- */}
+    <fieldset class="m-0 border-0 p-0">
+      <legend class="mb-2 font-semibold">Forma platby</legend>
+      <div class="space-y-3">
+        <label class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border-2 border-merunka-tlumena p-4 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys">
+          <input
+            type="radio"
+            name="forma_platby"
+            value="qr"
+            class="mt-1 h-5 w-5 accent-[#12707F]"
+          />
+          <span>
+            <span class="block font-semibold">QR kód</span>
+            <span class="text-popisek">
+              Pošleme vám QR kód k okamžité platbě z mobilního bankovnictví.
+            </span>
+          </span>
+        </label>
+
+        <label class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border-2 border-merunka-tlumena p-4 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys">
+          <input
+            type="radio"
+            name="forma_platby"
+            value="prevod"
+            class="mt-1 h-5 w-5 accent-[#12707F]"
+          />
+          <span>
+            <span class="block font-semibold">
+              Převod na účet s vystavením faktury
+            </span>
+            <span class="text-popisek">
+              Vystavíme fakturu pro účetnictví školy nebo organizace.
+            </span>
+          </span>
+        </label>
+      </div>
+      <p class="chyba" data-chyba-pro="forma_platby"></p>
+    </fieldset>
+
+    {/* --- Fakturační údaje (jen při převodu) ------------------------ */}
+    <fieldset
+      id="blok-fakturace"
+      class="m-0 hidden rounded-lg border-0 bg-plocha-tyrkys p-5"
+    >
+      <legend class="px-1 font-semibold">Fakturační údaje</legend>
+      <p class="text-popisek">
+        Vyplňte podle obchodního rejstříku, ať faktura projde účetnictvím.
+      </p>
+
+      <div class="mt-4 grid gap-5 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label for="fakt_nazev" class="popisek">
+            Název dle obchodního rejstříku <span class="povinne">povinné</span>
+          </label>
+          <input
+            id="fakt_nazev"
+            name="fakt_nazev"
+            type="text"
+            class={poleTridy}
+          />
+          <p class="chyba" data-chyba-pro="fakt_nazev"></p>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label for="fakt_adresa" class="popisek">
+            Adresa <span class="povinne">povinné</span>
+          </label>
+          <input
+            id="fakt_adresa"
+            name="fakt_adresa"
+            type="text"
+            autocomplete="street-address"
+            class={poleTridy}
+          />
+          <p class="chyba" data-chyba-pro="fakt_adresa"></p>
+        </div>
+
+        <div>
+          <label for="fakt_ic" class="popisek">
+            IČ <span class="povinne">povinné</span>
+          </label>
+          <input
+            id="fakt_ic"
+            name="fakt_ic"
+            type="text"
+            inputmode="numeric"
+            maxlength="8"
+            class={poleTridy}
+          />
+          <p class="chyba" data-chyba-pro="fakt_ic"></p>
+        </div>
+
+        <div>
+          <label for="fakt_dic" class="popisek">
+            DIČ <span class="text-popisek font-normal">(nepovinné)</span>
+          </label>
+          <input id="fakt_dic" name="fakt_dic" type="text" class={poleTridy} />
+        </div>
+      </div>
+    </fieldset>
+
+    {/* --- Souhlas --------------------------------------------------- */}
+    <div>
+      <label class="flex min-h-11 cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          name="souhlas_gdpr"
+          value="ano"
+          class="mt-1 h-5 w-5 accent-[#12707F]"
+        />
+        <span>
+          Souhlasím se zpracováním osobních údajů. Podrobnosti najdete
+          v dokumentu
+          <a
+            href="/zpracovani-osobnich-udaju/"
+            class="text-tyrkys underline"
+            target="_blank"
+            rel="noopener"
+          >
+            Zpracování osobních údajů
+          </a>.
+        </span>
+      </label>
+      <p class="chyba" data-chyba-pro="souhlas_gdpr"></p>
+    </div>
+
+    {/* --- Odeslání --------------------------------------------------- */}
+    <div>
+      <Tlacitko typ="submit" trida="w-full sm:w-auto">
+        <span data-popisek-tlacitka>Odeslat přihlášku a dokončit registraci</span>
+      </Tlacitko>
+
+      {/* Souhrn chyb po pokusu o odeslání. Nikdy jen barevný rámeček bez
+          vysvětlení — vždy ikona a slovní popis, co je potřeba opravit. */}
+      <div
+        id="souhrn-chyb"
+        class="mt-4 hidden items-start gap-3 rounded-lg border-2 border-chyba bg-white p-4"
+        role="alert"
+      >
+        <Ikona jmeno="alert-circle" velikost={24} trida="text-chyba" />
+        <p class="m-0 text-chyba" data-text-souhrnu></p>
+      </div>
+    </div>
+  </form>
+
+  {/* --- Poděkování po odeslání ------------------------------------- */}
+  <div id="dekovani" class="hidden" role="status">
+    <div class="flex items-start gap-3">
+      <Ikona jmeno="circle-check" velikost={32} trida="text-potvrzeni" />
+      <div>
+        <h3 class="text-xl">Přihláška odeslána. Děkujeme!</h3>
+        <p class="mt-2">
+          Potvrzení jsme vám poslali na e-mail. Najdete v něm platební údaje
+          i QR kód.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 rounded-xl bg-plocha-tyrkys p-6">
+      <p class="m-0 text-popisek">Váš variabilní symbol</p>
+      <p class="mt-1 mb-4 text-3xl font-semibold text-tyrkys" data-vypis-vs></p>
+
+      <p class="m-0 text-popisek">Částka k úhradě</p>
+      <p class="mt-1 mb-0 text-xl font-semibold">500 Kč</p>
+
+      <img
+        data-vypis-qr
+        alt="QR kód pro platbu registračního poplatku"
+        width="200"
+        height="200"
+        class="mt-5 hidden rounded-lg bg-white p-2"
+      />
+    </div>
+  </div>
+</div>
+
+<style>
+  .popisek {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: var(--text-popisek);
+    font-weight: 600;
+  }
+
+  .povinne {
+    margin-left: 0.25rem;
+    font-size: var(--text-popisek);
+    font-weight: 400;
+    color: var(--color-tyrkys);
+  }
+
+  /* Chybová hláška je skrytá, dokud ji skript nenaplní textem. */
+  .chyba {
+    display: none;
+    margin-top: 0.375rem;
+    margin-bottom: 0;
+    font-size: var(--text-popisek);
+    color: var(--color-chyba);
+  }
+
+  .chyba.je-videt {
+    display: block;
+  }
+
+  /* Pole s chybou dostane výrazný rámeček. Nikdy ale samo o sobě —
+     vždy k němu patří i slovní hláška pod polem. */
+  :global(.pole-s-chybou) {
+    border-color: var(--color-chyba) !important;
+  }
+</style>
+
+<script>
+  const formular = document.querySelector<HTMLFormElement>("#prihlaska");
+  const blokFakturace = document.querySelector<HTMLElement>("#blok-fakturace");
+  const souhrnChyb = document.querySelector<HTMLElement>("#souhrn-chyb");
+  const dekovani = document.querySelector<HTMLElement>("#dekovani");
+
+  if (formular && blokFakturace && souhrnChyb && dekovani) {
+    const adresaFunkce = `${import.meta.env.PUBLIC_SUPABASE_URL}/functions/v1/prijmout-prihlasku`;
+    const verejnyKlic = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+
+    // --- Zobrazení a skrytí chyb -----------------------------------
+    function ukazChybu(pole: string, hlaska: string) {
+      const misto = formular!.querySelector<HTMLElement>(
+        `[data-chyba-pro="${pole}"]`,
+      );
+      if (misto) {
+        misto.textContent = hlaska;
+        misto.classList.add("je-videt");
+      }
+      formular!
+        .querySelectorAll(`[name="${pole}"]`)
+        .forEach((prvek) => prvek.classList.add("pole-s-chybou"));
+    }
+
+    function smazChyby() {
+      formular!
+        .querySelectorAll(".chyba")
+        .forEach((prvek) => prvek.classList.remove("je-videt"));
+      formular!
+        .querySelectorAll(".pole-s-chybou")
+        .forEach((prvek) => prvek.classList.remove("pole-s-chybou"));
+      souhrnChyb!.classList.add("hidden");
+      souhrnChyb!.classList.remove("flex");
+    }
+
+    function ukazSouhrn(hlaska: string) {
+      const text = souhrnChyb!.querySelector<HTMLElement>("[data-text-souhrnu]");
+      if (text) text.textContent = hlaska;
+      souhrnChyb!.classList.remove("hidden");
+      souhrnChyb!.classList.add("flex");
+    }
+
+    // --- Podmíněný fakturační blok ---------------------------------
+    // Ukazuje se jen při volbě převodu s fakturou.
+    function prepniFakturaci() {
+      const zvoleno = formular!.querySelector<HTMLInputElement>(
+        'input[name="forma_platby"]:checked',
+      );
+      const jePrevod = zvoleno?.value === "prevod";
+      blokFakturace!.classList.toggle("hidden", !jePrevod);
+    }
+
+    formular
+      .querySelectorAll('input[name="forma_platby"]')
+      .forEach((prvek) => prvek.addEventListener("change", prepniFakturaci));
+
+    // --- Kontrola vyplnění -----------------------------------------
+    // Tohle je jen pomoc uživateli, ať nemusí čekat na odpověď serveru.
+    // Skutečná validace probíhá znovu v Edge Funkci — klientské se nevěří.
+    function zkontroluj(): boolean {
+      smazChyby();
+      const data = new FormData(formular!);
+      let vChybe = false;
+
+      const text = (klic: string) => String(data.get(klic) ?? "").trim();
+
+      const povinna: Array<[string, string]> = [
+        ["typ_poradatele", "Vyberte, kdo se hlásí."],
+        ["nazev_poradatele", "Vyplňte název pořadatele."],
+        ["kontaktni_osoba", "Vyplňte jméno a příjmení kontaktní osoby."],
+        ["email", "Vyplňte e-mail."],
+        ["telefon", "Vyplňte telefonní kontakt."],
+        ["mesto", "Vyplňte město."],
+        ["kraj", "Vyberte kraj."],
+        ["forma_platby", "Vyberte formu platby."],
+      ];
+
+      for (const [pole, hlaska] of povinna) {
+        if (!text(pole)) {
+          ukazChybu(pole, hlaska);
+          vChybe = true;
+        }
+      }
+
+      const email = text("email");
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        ukazChybu("email", "E-mail nemá správný tvar. Zkontrolujte zavináč a tečku.");
+        vChybe = true;
+      }
+
+      const telefon = text("telefon");
+      if (telefon && telefon.replace(/\D/g, "").length < 9) {
+        ukazChybu("telefon", "Telefon musí mít alespoň 9 číslic.");
+        vChybe = true;
+      }
+
+      if (text("forma_platby") === "prevod") {
+        if (!text("fakt_nazev")) {
+          ukazChybu("fakt_nazev", "Vyplňte název dle obchodního rejstříku.");
+          vChybe = true;
+        }
+        if (!text("fakt_adresa")) {
+          ukazChybu("fakt_adresa", "Vyplňte fakturační adresu.");
+          vChybe = true;
+        }
+        const ic = text("fakt_ic");
+        if (!ic) {
+          ukazChybu("fakt_ic", "Vyplňte IČ.");
+          vChybe = true;
+        } else if (!/^\d{8}$/.test(ic)) {
+          ukazChybu("fakt_ic", "IČ musí mít přesně 8 číslic.");
+          vChybe = true;
+        }
+      }
+
+      if (!data.get("souhlas_gdpr")) {
+        ukazChybu(
+          "souhlas_gdpr",
+          "Bez souhlasu se zpracováním osobních údajů nemůžeme přihlášku přijmout.",
+        );
+        vChybe = true;
+      }
+
+      if (vChybe) {
+        ukazSouhrn(
+          "Přihlášku se nepodařilo odeslat. Zkontrolujte prosím označená pole níže.",
+        );
+        formular!
+          .querySelector<HTMLElement>(".pole-s-chybou")
+          ?.focus({ preventScroll: false });
+      }
+
+      return !vChybe;
+    }
+
+    // --- Odeslání ----------------------------------------------------
+    formular.addEventListener("submit", async (udalost) => {
+      udalost.preventDefault();
+      if (!zkontroluj()) return;
+
+      const tlacitko = formular.querySelector<HTMLButtonElement>(
+        'button[type="submit"]',
+      );
+      const popisekTlacitka = formular.querySelector<HTMLElement>(
+        "[data-popisek-tlacitka]",
+      );
+      const puvodniPopisek = popisekTlacitka?.textContent ?? "";
+
+      // Průběh musí být poznat. Zároveň se tlačítko zamkne, ať se přihláška
+      // neodešle dvakrát.
+      if (tlacitko) tlacitko.disabled = true;
+      if (popisekTlacitka) popisekTlacitka.textContent = "Odesíláme…";
+
+      try {
+        const odpoved = await fetch(adresaFunkce, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: verejnyKlic,
+            Authorization: `Bearer ${verejnyKlic}`,
+          },
+          // Souhlas posíláme jako pravdivostní hodnotu, ne jako text
+          // ze zaškrtávacího pole. Server sice zvládne oboje, ale takhle
+          // je z odeslaných dat na první pohled jasné, co znamenají.
+          body: JSON.stringify({
+            ...Object.fromEntries(new FormData(formular)),
+            souhlas_gdpr: Boolean(
+              formular.querySelector<HTMLInputElement>(
+                'input[name="souhlas_gdpr"]',
+              )?.checked,
+            ),
+          }),
+        });
+
+        const vysledek = await odpoved.json().catch(() => null);
+
+        if (!odpoved.ok || !vysledek?.ok) {
+          // Chybu ukážeme tak, jak přišla ze serveru, ať uživatel ví,
+          // co konkrétně opravit. Když server nic neposlal, aspoň
+          // srozumitelné obecné vysvětlení a možnost to zkusit znovu.
+          ukazSouhrn(
+            vysledek?.chyba ??
+              "Přihlášku se nepodařilo odeslat. Zkuste to prosím znovu. Pokud potíž trvá, ozvěte se nám a přihlásíme vás ručně.",
+          );
+          return;
+        }
+
+        // Hotovo — formulář schováme a ukážeme poděkování s VS a QR kódem.
+        const vypisVs = dekovani.querySelector<HTMLElement>("[data-vypis-vs]");
+        if (vypisVs) vypisVs.textContent = String(vysledek.variabilni_symbol);
+
+        const obrazekQr = dekovani.querySelector<HTMLImageElement>("[data-vypis-qr]");
+        if (obrazekQr && vysledek.qr_url) {
+          obrazekQr.src = vysledek.qr_url;
+          obrazekQr.classList.remove("hidden");
+        }
+
+        formular.classList.add("hidden");
+        dekovani.classList.remove("hidden");
+        dekovani.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch {
+        // Spadlé připojení. Nikdy nenecháme točit kolečko donekonečna —
+        // uživatel musí poznat, že se to nepovedlo, a mít možnost opakovat.
+        ukazSouhrn(
+          "Nepodařilo se spojit se serverem. Zkontrolujte připojení k internetu a zkuste to znovu.",
+        );
+      } finally {
+        if (tlacitko) tlacitko.disabled = false;
+        if (popisekTlacitka) popisekTlacitka.textContent = puvodniPopisek;
+      }
+    });
+
+    prepniFakturaci();
+  }
+</script>

@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Designový systém — aktivně spolu
+   Hodnoty jsou závazné, schválené zadavatelem. Nevymýšlej vlastní odstíny.
+   ========================================================================== */
+
+@theme {
+  /* --- Barvy ---------------------------------------------------------- */
+
+  /* Červená se smí objevit VÝHRADNĚ na tlačítkách a CTA.
+     Nikde jinde — ani v ikonách, ani v nadpisech. Jakmile ji použiješ jinde,
+     přestane fungovat jako signál "tady se kliká". */
+  --color-tlacitko: #e1252b;
+  --color-tlacitko-hover: #c41d22;
+
+  /* Tyrkysová tmavá — nadpisy a ikony. Na ní smí být jen bílý text. */
+  --color-tyrkys: #12707f;
+
+  /* Meruňková — podtržení nadpisů, číslovaná kolečka, štítky.
+     Na meruňkové smí být tmavý text (kontrast 5,5:1). */
+  --color-merunka: #f0b95e;
+
+  /* Meruňková tlumená — spojnice mezi kolečky, jemné dělicí linky.
+     Musí být vždy světlejší než plná meruňková. */
+  --color-merunka-tlumena: #f7dcae;
+
+  /* Plochy */
+  --color-plocha-tyrkys: #edf7f9;
+  --color-pozadi: #fdfcfa;
+
+  --color-text: #45443f;
+
+  /* Chybová červená musí být viditelně odlišná od tlačítkové
+     a vždy doprovázená ikonou a slovním popisem. */
+  --color-chyba: #9a1b1e;
+  --color-potvrzeni: #2e7d5b;
+
+  /* --- Typografie ----------------------------------------------------- */
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+
+  /* Nikdy nic pod 15px kromě popisků formulářových polí. */
+  --text-popisek: 0.9375rem; /* 15px — spodní hranice, jen popisky polí */
+  --text-telo: 1.125rem; /* 18px — základní velikost těla textu */
+  --text-nadpis-sekce: 1.75rem; /* 28px */
+
+  /* --- Rozměry -------------------------------------------------------- */
+  --spacing-obsah: 1080px; /* maximální šířka obsahu uvnitř barevné plochy */
+}
+
+/* --- Písmo (self-hosted, žádné volání na cizí CDN) ----------------------
+   Source Sans 3 je variabilní font, takže jeden soubor pokrývá řez 400 i 600.
+   Načítáme dvě sady znaků:
+     latin      — základní abeceda, číslice, á é í ó ú ý
+     latin-ext  — česká diakritika: ě š č ř ž ů ť ď ň
+   Bez latin-ext by se česká diakritika vykreslila náhradním písmem. */
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonty/source-sans-3-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonty/source-sans-3-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- Základ ------------------------------------------------------------- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-pozadi);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-telo);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--color-tyrkys);
+    font-weight: 600;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  /* Viditelný focus pro ovládání z klávesnice. Publikum zahrnuje seniory,
+     kteří myš nemusí ovládat spolehlivě. */
+  :focus-visible {
+    outline: 3px solid var(--color-tyrkys);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* ==========================================================================
+   Animace
+   Decentní pohyb, kterého si uživatel nemusí všimnout vědomě, ale zaznamená ho.
+   Nic, co bliká, přeletí obrazovku nebo si vynucuje pozornost.
+   ========================================================================== */
+
+/* Obsah sekce najíždí při scrollu: opacity 0 → 1 a posun 8px nahoru.
+   Jen jednou, ne opakovaně při scrollu zpět (řeší skript v Layout.astro). */
+@utility najezd {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 400ms ease-out,
+    transform 400ms ease-out;
+}
+
+@utility je-videt {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Meruňkové podtržení se při vstupu nadpisu do viewportu vykreslí
+   zleva doprava za 300 ms. */
+@utility podtrzeni {
+  display: block;
+  width: 48px;
+  height: 5px;
+  margin-top: 12px;
+  border-radius: 3px;
+  background-color: var(--color-merunka);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 300ms ease-out;
+}
+
+/* Tlačítka: 120 ms na hover, jemné ztmavení a posun o 1px nahoru. Stisk 60 ms. */
+@utility tlacitko-pohyb {
+  transition:
+    background-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+@layer components {
+  .najezd.je-videt {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .podtrzeni.je-videt {
+    transform: scaleX(1);
+  }
+
+  .tlacitko-pohyb:hover {
+    transform: translateY(-1px);
+  }
+
+  .tlacitko-pohyb:active {
+    transform: translateY(0);
+    transition-duration: 60ms;
+  }
+}
+
+/* Dva velké měkké tvary za obsahem hero sekce. Pomalý nepravidelný posun,
+   cyklus 24 s, maximální výchylka 12px. Nikdy nesmí snížit čitelnost textu. */
+@keyframes hero-plovani-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(9px, -7px);
+  }
+  55% {
+    transform: translate(-6px, 10px);
+  }
+  80% {
+    transform: translate(11px, 4px);
+  }
+}
+
+@keyframes hero-plovani-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-10px, 6px);
+  }
+  60% {
+    transform: translate(7px, 11px);
+  }
+  85% {
+    transform: translate(-5px, -9px);
+  }
+}
+
+/* ==========================================================================
+   Vypnutí pohybu
+   Povinné. Publikum zahrnuje seniory a lidi citlivé na pohyb.
+   Při zapnutém prefers-reduced-motion se animace vypnou ÚPLNĚ,
+   včetně hero prvku — ne že se jen zrychlí.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Obsah musí zůstat viditelný i bez animace najíždění. */
+  .najezd {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .podtrzeni {
+    transform: scaleX(1) !important;
+  }
+}

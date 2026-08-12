@@ -1,0 +1,114 @@
+---
+/**
+ * Zpracování osobních údajů.
+ *
+ * Zástupný obsah. Skutečné znění dodá zadavatel — viz [DOPLNIT] níž.
+ * Na tuhle stránku odkazuje povinné zaškrtávací pole ve formuláři,
+ * takže musí existovat i před doplněním finálního textu.
+ *
+ * Pod kapitolami je schválně vypsané, jaké údaje formulář opravdu sbírá.
+ * Tahle část odpovídá skutečnosti a nemá čekat na právníka — člověk, který
+ * uděluje souhlas, má vidět, co konkrétně odesílá.
+ */
+import Layout from "../layouts/Layout.astro";
+import Sekce from "../components/Sekce.astro";
+import NadpisSekce from "../components/NadpisSekce.astro";
+import Tlacitko from "../components/Tlacitko.astro";
+import Ikona from "../components/Ikona.astro";
+
+const kapitoly = [
+  {
+    nadpis: "1. Kdo údaje zpracovává",
+    text: "[DOPLNIT: úplné znění — správce údajů, sídlo, IČ a kontakt pro uplatnění práv subjektu údajů.]",
+  },
+  {
+    nadpis: "2. Proč údaje zpracováváme",
+    text: "[DOPLNIT: úplné znění — účel zpracování, tedy evidence přihlášek, vystavení dokladu o platbě a komunikace s pořadateli setkání.]",
+  },
+  {
+    nadpis: "3. Na jakém základě",
+    text: "[DOPLNIT: úplné znění — právní titul zpracování, souhlas a plnění smlouvy.]",
+  },
+  {
+    nadpis: "4. Jak dlouho údaje uchováváme",
+    text: "[DOPLNIT: úplné znění — doba uchování, u účetních dokladů podle zákona o účetnictví.]",
+  },
+  {
+    nadpis: "5. Komu se údaje předávají",
+    text: "[DOPLNIT: úplné znění — zpracovatelé, tedy poskytovatel databáze, e-mailové a fakturační služby.]",
+  },
+  {
+    nadpis: "6. Jaká máte práva",
+    text: "[DOPLNIT: úplné znění — přístup, oprava, výmaz, omezení zpracování, námitka, odvolání souhlasu a stížnost u Úřadu pro ochranu osobních údajů.]",
+  },
+];
+
+// Odpovídá polím v registračním formuláři.
+const sbiraneUdaje = [
+  "Typ pořadatele (škola, organizace, jednotlivec)",
+  "Název pořadatele",
+  "Jméno a příjmení kontaktní osoby",
+  "E-mail",
+  "Telefonní kontakt",
+  "Město a kraj",
+  "Předběžný nápad na aktivitu (nepovinné)",
+  "Zvolená forma platby",
+  "Fakturační údaje — název dle obchodního rejstříku, adresa, IČ, DIČ (jen při volbě převodu s fakturou)",
+];
+---
+
+<Layout
+  titulek="Zpracování osobních údajů — Mezigeneračně aktivně spolu"
+  popis="Informace o zpracování osobních údajů při registraci do projektu Mezigeneračně aktivně spolu."
+>
+  <Sekce id="zpracovani-osobnich-udaju">
+    <NadpisSekce uroven="h1" poradi={0}>Zpracování osobních údajů</NadpisSekce>
+
+    <div
+      class="najezd mt-10 flex items-start gap-3 rounded-xl border-l-4 border-merunka bg-white/60 p-6"
+      data-poradi="1"
+    >
+      <Ikona jmeno="alert-circle" velikost={24} />
+      <p class="m-0">
+        Toto je pracovní verze. Závazné znění dodá pořadatel před spuštěním
+        registrací.
+      </p>
+    </div>
+
+    <div class="mt-10 max-w-[760px] space-y-8">
+      {
+        kapitoly.map((kapitola, i) => (
+          <section class="najezd" data-poradi={i + 2}>
+            <h2 class="text-[length:var(--text-nadpis-sekce)]">
+              {kapitola.nadpis}
+            </h2>
+            <p class="mt-3">{kapitola.text}</p>
+          </section>
+        ))
+      }
+
+      <section class="najezd" data-poradi="8">
+        <h2 class="text-[length:var(--text-nadpis-sekce)]">
+          Jaké údaje formulář sbírá
+        </h2>
+        <p class="mt-3">
+          Registrační formulář odesílá výhradně tyto údaje:
+        </p>
+        <ul class="mt-4 space-y-2">
+          {
+            sbiraneUdaje.map((udaj) => (
+              <li class="flex items-start gap-3">
+                <Ikona jmeno="circle-check" velikost={20} />
+                <span>{udaj}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+    </div>
+
+    <div class="mt-12">
+      <Tlacitko odkaz="/" varianta="vedlejsi">Zpět na úvodní stránku</Tlacitko>
+    </div>
+  </Sekce>
+</Layout>

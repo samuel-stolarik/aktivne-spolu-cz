@@ -1,0 +1,50 @@
+---
+/**
+ * Linková ikona ze sady Lucide.
+ *
+ * Emoji z podkladů nahrazujeme jednotnou sadou linkových ikon v tyrkysové.
+ * SVG se načítá ze závislosti `lucide-static` při buildu, takže na stránce
+ * nekončí žádný JavaScript navíc a ikona je součástí HTML.
+ *
+ * Barvu řídí `currentColor` — výchozí je tyrkysová, ale dá se přebít
+ * třídou na rodiči. Červená se v ikonách NIKDY nepoužívá, ta patří
+ * výhradně tlačítkům.
+ */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
+interface Props {
+  /** Název ikony ze sady Lucide, například "users" nebo "heart-handshake" */
+  jmeno: string;
+  /** Velikost hrany v pixelech */
+  velikost?: number;
+  trida?: string;
+}
+
+const { jmeno, velikost = 28, trida = "" } = Astro.props;
+
+const cesta = require.resolve(`lucide-static/icons/${jmeno}.svg`);
+const zdroj = readFileSync(cesta, "utf8");
+
+// Z původního SVG bereme jen vnitřek. Rozměry a barvu si nastavíme sami,
+// ať se ikony chovají jednotně napříč webem.
+const vnitrek = zdroj.replace(/^[\s\S]*?<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width={velikost}
+  height={velikost}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.75"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+  class:list={["shrink-0 text-tyrkys", trida]}
+  set:html={vnitrek}
+/>

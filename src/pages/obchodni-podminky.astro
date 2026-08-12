@@ -1,0 +1,77 @@
+---
+/**
+ * Obchodní podmínky.
+ *
+ * Zástupný obsah. Skutečné znění dodá zadavatel — viz [DOPLNIT] níž.
+ * Struktura je připravená tak, aby stačilo vyměnit texty odstavců.
+ */
+import Layout from "../layouts/Layout.astro";
+import Sekce from "../components/Sekce.astro";
+import NadpisSekce from "../components/NadpisSekce.astro";
+import Tlacitko from "../components/Tlacitko.astro";
+import Ikona from "../components/Ikona.astro";
+
+const kapitoly = [
+  {
+    nadpis: "1. Základní údaje o pořadateli",
+    text: "[DOPLNIT: úplné znění — název, sídlo, IČ, zápis v rejstříku obecně prospěšných společností, kontaktní údaje.]",
+  },
+  {
+    nadpis: "2. Předmět registrace",
+    text: "[DOPLNIT: úplné znění — co se registrací sjednává, tedy přihlášení pořadatele mezigeneračního setkání do projektu.]",
+  },
+  {
+    nadpis: "3. Registrační poplatek a platební podmínky",
+    text: "[DOPLNIT: úplné znění — výše poplatku 500 Kč, splatnost, způsoby úhrady, vystavení faktury. Právě teď! o.p.s. je neplátce DPH.]",
+  },
+  {
+    nadpis: "4. Odstoupení a vrácení poplatku",
+    text: "[DOPLNIT: úplné znění — za jakých podmínek lze registraci zrušit a zda se poplatek vrací.]",
+  },
+  {
+    nadpis: "5. Práva a povinnosti pořadatele setkání",
+    text: "[DOPLNIT: úplné znění — odpovědnost za průběh a bezpečnost vlastní akce.]",
+  },
+  {
+    nadpis: "6. Závěrečná ustanovení",
+    text: "[DOPLNIT: úplné znění — účinnost podmínek, rozhodné právo.]",
+  },
+];
+---
+
+<Layout
+  titulek="Obchodní podmínky — Mezigeneračně aktivně spolu"
+  popis="Obchodní podmínky registrace do projektu Mezigeneračně aktivně spolu."
+>
+  <Sekce id="obchodni-podminky">
+    <NadpisSekce uroven="h1" poradi={0}>Obchodní podmínky</NadpisSekce>
+
+    <div
+      class="najezd mt-10 flex items-start gap-3 rounded-xl border-l-4 border-merunka bg-white/60 p-6"
+      data-poradi="1"
+    >
+      <Ikona jmeno="alert-circle" velikost={24} />
+      <p class="m-0">
+        Toto je pracovní verze. Závazné znění obchodních podmínek dodá pořadatel
+        před spuštěním registrací.
+      </p>
+    </div>
+
+    <div class="mt-10 max-w-[760px] space-y-8">
+      {
+        kapitoly.map((kapitola, i) => (
+          <section class="najezd" data-poradi={i + 2}>
+            <h2 class="text-[length:var(--text-nadpis-sekce)]">
+              {kapitola.nadpis}
+            </h2>
+            <p class="mt-3">{kapitola.text}</p>
+          </section>
+        ))
+      }
+    </div>
+
+    <div class="mt-12">
+      <Tlacitko odkaz="/" varianta="vedlejsi">Zpět na úvodní stránku</Tlacitko>
+    </div>
+  </Sekce>
+</Layout>

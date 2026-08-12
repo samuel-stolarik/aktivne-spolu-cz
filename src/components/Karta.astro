@@ -1,0 +1,36 @@
+---
+/**
+ * Karta s ikonou, nadpisem a textem.
+ *
+ * Nese vizuál tam, kde by jinak byla fotka. Fotografie k dispozici nebudou,
+ * takže layout na ně nesmí čekat — barevná plocha, ikona a typografie
+ * musí stačit samy.
+ */
+import Ikona from "./Ikona.astro";
+
+interface Props {
+  ikona: string;
+  nadpis: string;
+  poradi?: number;
+  /** true = bílé pozadí karty (na tyrkysové ploše), jinak jemný rámeček */
+  naPlose?: boolean;
+}
+
+const { ikona, nadpis, poradi = 0, naPlose = false } = Astro.props;
+---
+
+<article
+  class:list={[
+    "najezd rounded-xl p-6",
+    naPlose
+      ? "bg-white"
+      : "border border-merunka-tlumena bg-white/60",
+  ]}
+  data-poradi={poradi}
+>
+  <Ikona jmeno={ikona} velikost={32} />
+  <h3 class="mt-4 text-xl">{nadpis}</h3>
+  <p class="mt-2">
+    <slot />
+  </p>
+</article>

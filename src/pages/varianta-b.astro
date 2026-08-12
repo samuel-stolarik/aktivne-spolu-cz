@@ -1,0 +1,23 @@
+---
+/**
+ * Úvodní stránka — varianta předělů "karta".
+ *
+ * Sekce na základním pozadí sedí jako bílé listy se zaoblenými rohy
+ * a měkkým stínem. Hranicí je samotný okraj listu, takže předěl je znát
+ * i letmým pohledem. Tyrkysové plochy zůstávají přes celou šířku.
+ *
+ * Stránka slouží k porovnání s variantou "linka" na /. Až se rozhodne,
+ * která zůstane, tahle se smaže i s přepínačem.
+ */
+import Layout from "../layouts/Layout.astro";
+import ObsahStranky from "../components/ObsahStranky.astro";
+import PrepinacVariant from "../components/PrepinacVariant.astro";
+---
+
+<Layout
+  titulek="Mezigeneračně aktivně spolu — varianta B"
+  popis="Zorganizujte mezigenerační setkání se seniory v týdnu kolem 1. října a staňte se součástí celostátního Zásobníku nápadů."
+>
+  <PrepinacVariant aktivni="karta" />
+  <ObsahStranky predel="karta" />
+</Layout>

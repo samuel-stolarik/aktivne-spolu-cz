@@ -1,0 +1,48 @@
+---
+/**
+ * Přepínač variant předělů sekcí — POUZE PRO NÁHLED PŘI VÝVOJI.
+ *
+ * Slouží k tomu, aby šly obě varianty rychle porovnat na localhostu.
+ * Do produkčního buildu se nedostane: `import.meta.env.DEV` je při
+ * `npm run build` false, takže se nevykreslí vůbec nic.
+ *
+ * Až padne rozhodnutí, která varianta zůstane, smaže se tahle komponenta
+ * i stránka /varianta-b/.
+ */
+interface Props {
+  aktivni: "linka" | "karta";
+}
+
+const { aktivni } = Astro.props;
+const jeNahled = import.meta.env.DEV;
+
+const varianty = [
+  { klic: "linka", odkaz: "/", popis: "A — linka a prostor" },
+  { klic: "karta", odkaz: "/varianta-b/", popis: "B — bílé listy" },
+];
+---
+
+{
+  jeNahled && (
+    <div class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-merunka-tlumena bg-white/95 px-2 py-2 shadow-lg backdrop-blur">
+      <div class="flex items-center gap-1">
+        <span class="px-3 text-popisek font-semibold text-tyrkys">
+          Předěl sekcí:
+        </span>
+        {varianty.map((varianta) => (
+          <a
+            href={varianta.odkaz}
+            class:list={[
+              "rounded-full px-4 py-2 text-popisek no-underline transition-colors duration-150",
+              aktivni === varianta.klic
+                ? "bg-tyrkys font-semibold text-white"
+                : "text-text hover:bg-plocha-tyrkys",
+            ]}
+          >
+            {varianta.popis}
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,32 @@
+---
+/**
+ * Nadpis sekce s meruňkovým podtržením.
+ *
+ * Podtržení: šířka 48 px, výška 5 px, poloměr 3 px, odsazení 12 px pod textem.
+ * Při vstupu nadpisu do viewportu se vykreslí zleva doprava za 300 ms.
+ * Konkrétní hodnoty drží utilita `.podtrzeni` v global.css.
+ */
+interface Props {
+  /** Úroveň nadpisu — h1 jen jednou na stránku, v hero sekci */
+  uroven?: "h1" | "h2";
+  /** Pořadí pro postupné naskakování prvků v sekci (zpoždění 60 ms) */
+  poradi?: number;
+  trida?: string;
+}
+
+const { uroven = "h2", poradi = 0, trida = "" } = Astro.props;
+const Nadpis = uroven;
+---
+
+<div class:list={["najezd", trida]} data-poradi={poradi}>
+  <Nadpis
+    class:list={[
+      uroven === "h1"
+        ? "text-4xl sm:text-5xl"
+        : "text-[length:var(--text-nadpis-sekce)]",
+    ]}
+  >
+    <slot />
+  </Nadpis>
+  <span class="podtrzeni" data-poradi={poradi}></span>
+</div>

@@ -1,0 +1,367 @@
+---
+/**
+ * Obsah úvodní stránky — osm sekcí v pořadí schváleném zadavatelem.
+ *
+ * Texty jsou převzaté doslova z podklady/texty.md. Nepřepisují se,
+ * nezkracují a nedoplňuje se vlastní copy — jsou schválené zadavatelem.
+ *
+ * Obsah je vytažený sem, aby šly obě varianty předělů sekcí porovnat
+ * na úplně stejném textu. Liší se jedinou věcí — hodnotou `predel`.
+ */
+import Hero from "./Hero.astro";
+import Sekce from "./Sekce.astro";
+import NadpisSekce from "./NadpisSekce.astro";
+import Karta from "./Karta.astro";
+import Kroky from "./Kroky.astro";
+import Ikona from "./Ikona.astro";
+import Tlacitko from "./Tlacitko.astro";
+import Formular from "./Formular.astro";
+
+interface Props {
+  predel?: "linka" | "karta";
+}
+
+const { predel = "linka" } = Astro.props;
+
+const duvody = [
+  {
+    ikona: "sparkles",
+    nadpis: "Smysluplný zážitek a lidské spojení",
+    text: "Oslavíte Mezinárodní den seniorů tvořivou, lidskou a citlivou formou. Vyzkoušíte si, jak snadné a obohacující je bořit bariéry a hledat to, co různé generace spojuje.",
+  },
+  {
+    ikona: "heart-handshake",
+    nadpis: "Hodnoty, které dávají smysl",
+    text: "Ať už zapojíte školní třídu, firemní tým nebo partu přátel, připomenete si význam mezigenerační solidarity a pomůžete rozvíjet přirozený respekt, empatii a úctu ke starším generacím.",
+  },
+  {
+    ikona: "users",
+    nadpis: "Zkušenost, která utuží tým",
+    text: "Společná příprava a realizace akce je skvělý teambuilding. Spojíte lidi pro dobrou věc — ať už jde o žáky ve třídě, kolegy v práci, členy spolku nebo přátele.",
+  },
+  {
+    ikona: "lightbulb",
+    nadpis: "Inspirace pro celou ČR",
+    text: "Vaše společné setkání nezůstane zapomenuto. Stane se inspirativní součástí celostátního Zásobníku mezigeneračních aktivit, kde usnadníte ostatním vymýšlet podobné mezigenerační akce.",
+  },
+  {
+    ikona: "award",
+    nadpis: "Certifikát a odměna",
+    text: "Každý zapojený jednotlivec, tým či skupina získá účastnický certifikát a bude zařazen/a do losování o poukazy na společnou večeři, sportovní nebo výtvarné pomůcky!",
+  },
+];
+
+const kroky = [
+  {
+    nadpis: "Najděte seniorské partnerské místo v okolí",
+    text: "Propojte se s místním klubem seniorů, domovem pro seniory nebo aktivními seniory ve vaší obci.",
+  },
+  {
+    nadpis: "Domluvte vhodnou a bezpečnou aktivitu",
+    text: 'Zvolte program, který bude příjemný a zvládnutelný pro obě strany. <em class="not-italic text-tyrkys">(Tipy na aktivity najdete níže.)</em>',
+  },
+  {
+    nadpis: "Zaregistrujte se na webu",
+    text: "Vyplňte krátký přihlašovací formulář a uhradíte symbolický registrační poplatek.",
+  },
+  {
+    nadpis: "Prožijte setkání a sdílejte radost",
+    text: "V týdnu kolem 1. 10. proběhnou vaše akce. Následně, budete-li mít chuť se podělit, vyplníte do aplikace Zásobník nápadů krátký popis a fotky z vaší akce.",
+  },
+];
+
+const tipy = [
+  {
+    ikona: "palette",
+    nadpis: "Kultura a tvořivost",
+    text: "Společný zpěv, výtvarná dílna, tvoření dekorací, společné čtení.",
+  },
+  {
+    ikona: "footprints",
+    nadpis: "Pohyb a pobyt venku",
+    text: "Nenáročná procházka, zahradní hry, mezigenerační venkovní hry, například mölkky nebo pétanque.",
+  },
+  {
+    ikona: "message-circle",
+    nadpis: "Sdílení a setkávání",
+    text: "Hraní stolních her, vyprávění příběhů, vzájemné učení (např. žáci ukáží práci s tabletem, senioři tradiční řemeslo).",
+  },
+];
+
+const podpora = [
+  {
+    ikona: "message-circle",
+    nadpis: "Konzultace programu",
+    text: "Nejste si jistí vhodností aktivity? Rádi s vámi nápad zkonzultujeme.",
+  },
+  {
+    ikona: "map-pin",
+    nadpis: "Pomoc s nasměrováním",
+    text: "Pokud váháte, koho v okolí oslovit, pokusíme se vás propojit se seniorskými organizacemi.",
+  },
+  {
+    ikona: "award",
+    nadpis: "Certifikát a zařazení do losování",
+    text: "Ocenění pro žáky a možnost získat věcné odměny pro vaši třídu či skupinu.",
+  },
+];
+
+// Ve variantě "karta" sedí obsah na bílém listu, takže karty uvnitř
+// nesmí být taky bílé — jinak by splynuly. Dostanou tyrkysovou plochu.
+const kartaNaPlose = predel === "karta";
+---
+
+<Hero />
+
+{/* --- 2. Proč se zapojit --------------------------------------------- */}
+<Sekce id="proc-se-zapojit" predel={predel} linkaNahore>
+  <NadpisSekce poradi={0}>
+    Proč se do projektu zapojit, proč do toho jít?
+  </NadpisSekce>
+
+  <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    {
+      duvody.map((duvod, i) => (
+        <Karta
+          ikona={duvod.ikona}
+          nadpis={duvod.nadpis}
+          poradi={i + 1}
+          naPlose={kartaNaPlose}
+        >
+          {duvod.text}
+        </Karta>
+      ))
+    }
+  </div>
+
+  <div
+    class="najezd mt-8 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-6"
+    data-poradi="6"
+  >
+    <h3 class="text-xl">Cíl akce</h3>
+    <p class="mt-2">
+      Podpora mezigenerační solidarity, vytváření přirozených vazeb mezi
+      nejmladší a nejstarší generací a oslava Mezinárodního dne seniorů v duchu
+      vzájemného respektu, lidskosti a radosti ze společně stráveného času.
+    </p>
+  </div>
+</Sekce>
+
+{/* --- 3. Jak to funguje (tyrkysová plocha) --------------------------- */}
+<Sekce id="jak-to-funguje" predel={predel} plocha>
+  <NadpisSekce poradi={0}>4 jednoduché kroky k realizaci</NadpisSekce>
+
+  <div class="mt-12 max-w-[760px]">
+    <Kroky kroky={kroky} />
+  </div>
+</Sekce>
+
+{/* --- 4. Tipy na aktivity -------------------------------------------- */}
+<Sekce id="tipy-na-aktivity" predel={predel}>
+  <NadpisSekce poradi={0}>Čím se můžete inspirovat a co připravit?</NadpisSekce>
+
+  <div class="mt-12 grid gap-5 sm:grid-cols-3">
+    {
+      tipy.map((tip, i) => (
+        <Karta
+          ikona={tip.ikona}
+          nadpis={tip.nadpis}
+          poradi={i + 1}
+          naPlose={kartaNaPlose}
+        >
+          {tip.text}
+        </Karta>
+      ))
+    }
+  </div>
+
+  <div
+    class="najezd mt-8 flex gap-4 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-6"
+    data-poradi="4"
+  >
+    <Ikona jmeno="shield-check" velikost={32} />
+    <div>
+      <h3 class="text-xl">Na co myslet při přípravě</h3>
+      <p class="mt-2">
+        Prioritou je pohoda a bezpečnost všech účastníků. Předem si ověřte
+        očekávání seniorů, bezbariérovost prostoru, časovou náročnost i případná
+        zdravotní či pohybová omezení. Cílem je klidné a příjemné mezigenerační
+        setkání.
+      </p>
+    </div>
+  </div>
+</Sekce>
+
+{/* --- 5. Jakou podporu získáte --------------------------------------- */}
+<Sekce id="podpora" predel={predel} linkaNahore>
+  <NadpisSekce poradi={0}>Jakou podporu od nás získáte?</NadpisSekce>
+
+  <div class="mt-12 grid gap-5 sm:grid-cols-3">
+    {
+      podpora.map((polozka, i) => (
+        <Karta
+          ikona={polozka.ikona}
+          nadpis={polozka.nadpis}
+          poradi={i + 1}
+          naPlose={kartaNaPlose}
+        >
+          {polozka.text}
+        </Karta>
+      ))
+    }
+  </div>
+</Sekce>
+
+{/* --- 6. Zásobník mezigeneračních aktivit ---------------------------- */}
+<Sekce id="zasobnik" predel={predel} linkaNahore>
+  <NadpisSekce poradi={0}>Co je to Zásobník nápadů?</NadpisSekce>
+
+  <div class="mt-12 grid gap-10 lg:grid-cols-[1fr_auto] lg:items-start">
+    <div class="najezd max-w-[720px] space-y-5" data-poradi="1">
+      <p>
+        Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí žáci
+        ZŠ Magic Hill z Říčan u Prahy.
+      </p>
+      <p>
+        Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
+        (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
+        potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne veřejně
+        přístupná databáze plná ověřené inspirace pro organizátory podobných
+        akcí z celé ČR.
+      </p>
+    </div>
+
+    <div
+      class="najezd flex items-center gap-4 rounded-xl bg-tyrkys px-6 py-5 text-white lg:w-[280px] lg:flex-col lg:items-start"
+      data-poradi="2"
+    >
+      <Ikona jmeno="lightbulb" velikost={36} trida="text-white" />
+      <p class="m-0 font-semibold">
+        Veřejná databáze inspirace vzniká od 1. listopadu.
+      </p>
+    </div>
+  </div>
+</Sekce>
+
+{/* --- 7. Registrace a poplatek (tyrkysová plocha) -------------------- */}
+<Sekce id="registrace" predel={predel} plocha>
+  <NadpisSekce poradi={0}>Registrace a poplatek</NadpisSekce>
+
+  <div class="mt-12 grid gap-10 lg:grid-cols-[340px_1fr] lg:items-start">
+    <div class="space-y-5">
+      <div class="najezd rounded-xl bg-white p-6" data-poradi="1">
+        <p class="m-0 text-popisek">Přihlášení do projektu</p>
+        <p class="mt-1 mb-0 text-3xl font-semibold text-tyrkys">500 Kč</p>
+        <p class="mt-1 mb-0 text-popisek">
+          Registrační poplatek činí symbolických 500 Kč.
+        </p>
+      </div>
+
+      <div class="najezd rounded-xl bg-white p-6" data-poradi="2">
+        <h3 class="text-xl">Na co je poplatek určen?</h3>
+        <p class="mt-2 mb-0">
+          Tato částka slouží k pokrytí nákladů spojených s celkovou organizací
+          a koordinací projektu, vývojem a technickým zajištěním aplikace
+          „Zásobník nápadů" a dalšími nezbytnými provozními náklady na realizaci
+          akce.
+        </p>
+      </div>
+
+      <div class="najezd rounded-xl bg-white p-6" data-poradi="3">
+        <h3 class="text-xl">Platba a fakturace</h3>
+        <p class="mt-2 mb-0">
+          Platbu lze pohodlně provést pomocí QR kódu nebo standardním bankovním
+          převodem. Systém vám po dokončení registrace v případě potřeby
+          automaticky vystaví fakturu pro účetnictví školy/organizace.
+        </p>
+      </div>
+    </div>
+
+    <Formular />
+  </div>
+</Sekce>
+
+{/* --- 8. Ke stažení a kontakt ---------------------------------------- */}
+<Sekce id="ke-stazeni" predel={predel}>
+  <NadpisSekce poradi={0}>Ke stažení a kontakt</NadpisSekce>
+
+  <div class="najezd mt-12" data-poradi="1">
+    {/* [DOPLNIT: kompletní leták k akci v PDF] */}
+    <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi">
+      <Ikona jmeno="file-text" velikost={20} />
+      Stáhnout kompletní leták k akci v PDF (pro pořadatele)
+    </Tlacitko>
+  </div>
+
+  <h3 class="najezd mt-14 text-xl" data-poradi="2">Pořadatelé akce</h3>
+
+  <div class="mt-6 grid gap-5 sm:grid-cols-2">
+    <article
+      class="najezd rounded-xl border border-merunka-tlumena bg-plocha-tyrkys p-6"
+      data-poradi="3"
+    >
+      <h4 class="text-lg font-semibold text-tyrkys">Právě teď! o.p.s.</h4>
+      <p class="mt-3">
+        Právě teď! o.p.s. udává směr modernímu, zdravému a aktivnímu stárnutí.
+        Prostřednictvím moderních aktivizačních programů pomáhá seniorům žít
+        aktivní život.
+      </p>
+      <dl class="mt-5 space-y-2 text-popisek">
+        <div class="flex gap-2">
+          <dt class="font-semibold">Kontaktní osoba:</dt>
+          <dd class="m-0">[DOPLNIT: jméno]</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="font-semibold">E-mail:</dt>
+          <dd class="m-0">[DOPLNIT: e-mail]</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="font-semibold">Telefon:</dt>
+          <dd class="m-0">[DOPLNIT: telefon]</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="font-semibold">Web:</dt>
+          <dd class="m-0">
+            <a href="https://www.pravetedops.cz" class="text-tyrkys underline">
+              www.pravetedops.cz
+            </a>
+          </dd>
+        </div>
+      </dl>
+    </article>
+
+    <article
+      class="najezd rounded-xl border border-merunka-tlumena bg-plocha-tyrkys p-6"
+      data-poradi="4"
+    >
+      <h4 class="text-lg font-semibold text-tyrkys">ZŠ Magic Hill</h4>
+      <p class="mt-3">
+        ZŠ s rozšířenou výukou jazyků Magic Hill, s.r.o., kde díky
+        individuálnímu přístupu v malých kolektivech a důrazu na jazyky děti
+        získávají znalosti a dovednosti pro úspěch v 21. století.
+      </p>
+      <dl class="mt-5 space-y-2 text-popisek">
+        <div class="flex gap-2">
+          <dt class="font-semibold">Kontaktní osoba:</dt>
+          <dd class="m-0">[DOPLNIT: jméno]</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="font-semibold">E-mail:</dt>
+          <dd class="m-0">[DOPLNIT: e-mail]</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="font-semibold">Telefon:</dt>
+          <dd class="m-0">[DOPLNIT: telefon]</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="font-semibold">Web:</dt>
+          <dd class="m-0">
+            <a href="https://www.magic-hill.cz" class="text-tyrkys underline">
+              www.magic-hill.cz
+            </a>
+          </dd>
+        </div>
+      </dl>
+    </article>
+  </div>
+</Sekce>
