@@ -56,7 +56,7 @@ export function ukazStav(
 
   const znacka = document.createElement("span");
   znacka.setAttribute("aria-hidden", "true");
-  znacka.className = "znacka-stavu";
+  znacka.className = "admin-znacka";
   znacka.textContent = ZNACKA[druh];
 
   const veta = document.createElement("span");
@@ -67,7 +67,7 @@ export function ukazStav(
   if (opakovani) {
     const tlacitko = document.createElement("button");
     tlacitko.type = "button";
-    tlacitko.className = "tlacitko-znovu";
+    tlacitko.className = "admin-znovu";
     tlacitko.textContent = opakovani.popis;
     tlacitko.addEventListener("click", opakovani.spust);
     misto.append(tlacitko);

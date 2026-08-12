@@ -1,0 +1,510 @@
+---
+/**
+ * Administrace webu aktivne-spolu.cz.
+ *
+ * KDO SE SEM DOSTANE
+ * Jen ten, kdo zná e-mail a heslo účtu, který správce založil v Supabase,
+ * A ZÁROVEŇ je zapsaný v tabulce `spravci`. Nepřihlášený člověk uvidí
+ * jenom přihlašovací formulář — žádná data se nenačítají.
+ *
+ * Skrytí obsahu v prohlížeči je jen slušnost k uživateli. Skutečné
+ * zabezpečení je na serveru: tabulka přihlášek je zamčená a data vydává
+ * výhradně Edge Funkce `admin-obsah` po ověření přihlášení.
+ *
+ * TAHLE STRÁNKA NESMÍ BÝT ODNIKUD ODKAZOVANÁ.
+ * Není v menu, v patičce ani v mapě webu. Vyhledávačům to říká `noindex`
+ * v hlavičce níž. Není to zabezpečení — je to slušnost, aby administrace
+ * nevyskakovala lidem ve výsledcích hledání.
+ *
+ * PROČ NEPOUŽÍVÁ SPOLEČNÝ Layout.astro
+ * Ten do stránky přidává menu, patičku a načítání přepsaných textů. Do
+ * administrace nic z toho nepatří — v ní se texty upravují, ne zobrazují.
+ */
+import "../../styles/global.css";
+---
+
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Administrace — aktivně spolu</title>
+
+    {/* Vyhledávače sem nemají chodit ani stránku ukládat. */}
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin-ext.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+
+  <body class="admin">
+    <header class="border-b border-merunka-tlumena bg-white px-5 py-4">
+      <div class="mx-auto flex max-w-[1400px] flex-wrap items-center gap-4">
+        <h1 class="m-0 text-2xl">Administrace — aktivně spolu</h1>
+
+        <div id="radek-uctu" class="ml-auto flex items-center gap-4" hidden>
+          <span class="text-popisek">
+            Přihlášen: <strong id="jmeno-uctu"></strong>
+          </span>
+          <button
+            type="button"
+            id="tlacitko-odhlasit"
+            class="admin-tlacitko-vedlejsi"
+          >
+            Odhlásit se
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-[1400px] px-5 py-8">
+      {/* --- Web se sestavil bez přístupu k databázi ---------------------- */}
+      <section
+        id="chyba-nastaveni"
+        class="admin-karta max-w-[640px]"
+        role="alert"
+        hidden
+      >
+        <h2 class="mt-0 text-xl">Administrace není nastavená</h2>
+        <p>
+          Ve webu chybí přístupové údaje k databázi, takže se nedá přihlásit
+          ani načíst data. Web se nejspíš sestavoval bez souboru
+          <code>.env</code>.
+        </p>
+        <p class="mb-0">
+          Ozvěte se prosím správci webu — doplní údaje, web znovu sestaví
+          a nahraje. Návod je v souboru <code>README.md</code> v části
+          o nastavení.
+        </p>
+      </section>
+
+      {/* --- Přihlášení -------------------------------------------------- */}
+      <section id="prihlaseni" class="admin-karta max-w-[460px]" hidden>
+        <h2 class="mt-0 text-xl">Přihlaste se</h2>
+        <p class="text-popisek">
+          Přístup má jen účet, který pro vás založil správce webu.
+          Nový účet si tu založit nelze.
+        </p>
+
+        <form id="formular-prihlaseni" novalidate>
+          <div class="mt-5">
+            <label class="admin-popisek" for="pole-email">E-mail</label>
+            <input
+              type="email"
+              id="pole-email"
+              class="admin-pole"
+              autocomplete="username"
+              required
+            />
+          </div>
+
+          <div class="mt-4">
+            <label class="admin-popisek" for="pole-heslo">Heslo</label>
+            <input
+              type="password"
+              id="pole-heslo"
+              class="admin-pole"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+
+          <button type="submit" id="tlacitko-prihlasit" class="admin-tlacitko mt-5">
+            Přihlásit se
+          </button>
+        </form>
+
+        <p id="hlaska-prihlaseni" class="admin-hlaska mt-4"></p>
+      </section>
+
+      {/* --- Administrace ------------------------------------------------ */}
+      <div id="administrace" hidden>
+        <div
+          class="flex flex-wrap gap-2 border-b border-merunka-tlumena"
+          role="tablist"
+          aria-label="Části administrace"
+        >
+          <button type="button" class="admin-zalozka" data-zalozka="prihlasky" role="tab">
+            Přihlášky
+          </button>
+          <button type="button" class="admin-zalozka" data-zalozka="texty" role="tab">
+            Texty a obrázky na webu
+          </button>
+          <button type="button" class="admin-zalozka" data-zalozka="obrazky" role="tab">
+            Nahrané obrázky
+          </button>
+        </div>
+
+        {/* --- Přihlášky ------------------------------------------------- */}
+        <section data-panel="prihlasky" class="pt-6" hidden>
+          <h2 class="mt-0 text-xl">Kdo se přihlásil</h2>
+          <p class="text-popisek">
+            Nejnovější přihlášky jsou nahoře. Stav můžete kdykoli změnit
+            v posledním sloupci — uloží se sám.
+          </p>
+
+          <div class="mt-5 flex flex-wrap items-end gap-4">
+            <div>
+              <label class="admin-popisek" for="filtr-stav">Zobrazit stav</label>
+              <select id="filtr-stav" class="admin-pole w-[200px]">
+                <option value="vse">Všechny přihlášky</option>
+                <option value="nova">Jen nové</option>
+                <option value="zaplaceno">Jen zaplacené</option>
+                <option value="zruseno">Jen zrušené</option>
+              </select>
+            </div>
+
+            <div class="min-w-[240px] flex-1">
+              <label class="admin-popisek" for="filtr-hledani">
+                Hledat (jméno, e-mail, město, variabilní symbol)
+              </label>
+              <input type="search" id="filtr-hledani" class="admin-pole" />
+            </div>
+
+            <button type="button" id="tlacitko-nacist-prihlasky" class="admin-tlacitko-vedlejsi">
+              Načíst znovu
+            </button>
+
+            <button type="button" id="tlacitko-csv" class="admin-tlacitko-vedlejsi">
+              Stáhnout do Excelu (CSV)
+            </button>
+          </div>
+
+          <p id="hlaska-prihlasky" class="admin-hlaska mt-4"></p>
+          <p id="pocet-prihlasek" class="mt-2 text-popisek"></p>
+
+          <div class="mt-4 overflow-x-auto rounded-xl border border-merunka-tlumena bg-white">
+            <table class="w-full border-collapse text-popisek">
+              <thead>
+                <tr class="bg-plocha-tyrkys text-left">
+                  <th class="px-3 py-3 font-semibold">Přihlášeno</th>
+                  <th class="px-3 py-3 font-semibold">Pořadatel</th>
+                  <th class="px-3 py-3 font-semibold">Kontaktní osoba</th>
+                  <th class="px-3 py-3 font-semibold">E-mail</th>
+                  <th class="px-3 py-3 font-semibold">Telefon</th>
+                  <th class="px-3 py-3 font-semibold">Město</th>
+                  <th class="px-3 py-3 font-semibold">Kraj</th>
+                  <th class="px-3 py-3 font-semibold">Platba</th>
+                  <th class="px-3 py-3 font-semibold">Variabilní symbol</th>
+                  <th class="px-3 py-3 font-semibold">Stav</th>
+                </tr>
+              </thead>
+              <tbody id="telo-prihlasek"></tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* --- Texty ----------------------------------------------------- */}
+        <section data-panel="texty" class="pt-6" hidden>
+          <h2 class="mt-0 text-xl">Texty a obrázky na webu</h2>
+          <p class="max-w-[720px] text-popisek">
+            U každého pole je napsané, kde na webu ten text najdete. Po uložení
+            se změna projeví na webu do několika vteřin — stačí stránku obnovit.
+            Tlačítkem „Vrátit původní" se text vrátí do stavu, ve kterém web
+            vznikl.
+          </p>
+
+          <div class="mt-4 flex flex-wrap gap-4">
+            <button type="button" id="tlacitko-nacist-texty" class="admin-tlacitko-vedlejsi">
+              Načíst znovu
+            </button>
+          </div>
+
+          <p id="hlaska-texty" class="admin-hlaska mt-4"></p>
+
+          <div id="seznam-textu" class="mt-6 max-w-[860px]"></div>
+        </section>
+
+        {/* --- Obrázky --------------------------------------------------- */}
+        <section data-panel="obrazky" class="pt-6" hidden>
+          <h2 class="mt-0 text-xl">Nahrané obrázky</h2>
+          <p class="max-w-[720px] text-popisek">
+            Obrázky nahrané do úložiště. Konkrétní obrázek na webu se vyměňuje
+            v záložce „Texty a obrázky na webu"; tady je jen přehled a možnost
+            zkopírovat adresu obrázku.
+          </p>
+
+          <div class="mt-5 max-w-[460px]">
+            <label class="admin-popisek" for="pole-nahrat-obrazek">
+              Nahrát obrázek (PNG, JPG, WEBP nebo SVG, nejvýš 5 MB)
+            </label>
+            <input
+              type="file"
+              id="pole-nahrat-obrazek"
+              class="admin-pole-souboru"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            />
+            <p id="hlaska-nahravani" class="admin-hlaska mt-3"></p>
+          </div>
+
+          <div class="mt-5">
+            <button type="button" id="tlacitko-nacist-obrazky" class="admin-tlacitko-vedlejsi">
+              Načíst znovu
+            </button>
+          </div>
+
+          <p id="hlaska-obrazky" class="admin-hlaska mt-4"></p>
+
+          <div
+            id="seznam-obrazku"
+            class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      import { spustAdministraci } from "../../components/admin/aplikace";
+
+      void spustAdministraci();
+    </script>
+
+    {/*
+      Styly administrace.
+
+      `is:global` je tu proto, že většina prvků (řádky tabulky, pole u textů)
+      vzniká až v prohlížeči. Kdyby byly styly svázané jen s tím, co je
+      napsané tady, nově vytvořené prvky by zůstaly bez vzhledu.
+
+      Všechny názvy začínají na `admin-`, aby se nemohly potkat s ničím
+      na veřejných stránkách. Barvy, velikosti a odsazení se berou z proměnných
+      v global.css — v administraci se žádné vlastní odstíny nevymýšlejí.
+    */}
+    <style is:global>
+      .admin {
+        background-color: var(--color-pozadi);
+      }
+
+      /* --- Pole formuláře -------------------------------------------------
+         Popisek je vždycky vidět, nikdy jen jako šedý text uvnitř pole.
+         Zmizel by ve chvíli, kdy se začne psát, a člověk by nevěděl,
+         co do pole patří. */
+      .admin-popisek {
+        display: block;
+        margin-bottom: 6px;
+        font-size: var(--text-popisek);
+        font-weight: 600;
+        color: var(--color-tyrkys);
+      }
+
+      .admin-pole {
+        display: block;
+        width: 100%;
+        min-height: 2.75rem; /* 44 px — spodní hranice klikací plochy */
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--color-merunka-tlumena);
+        border-radius: 0.5rem;
+        background-color: #fff;
+        color: var(--color-text);
+        font: inherit;
+        font-size: var(--text-popisek);
+        line-height: 1.6;
+      }
+
+      .admin-pole:hover {
+        border-color: var(--color-merunka);
+      }
+
+      textarea.admin-pole {
+        resize: vertical;
+      }
+
+      .admin-pole-souboru {
+        display: block;
+        width: 100%;
+        min-height: 2.75rem;
+        padding: 0.5rem 0;
+        font: inherit;
+        font-size: var(--text-popisek);
+      }
+
+      /* --- Tlačítka -------------------------------------------------------
+         Červená je vyhrazená hlavnímu tlačítku, přesně jako na webu.
+         Vedlejší tlačítka mají tyrkysový rámeček. */
+      .admin-tlacitko,
+      .admin-tlacitko-vedlejsi,
+      .admin-znovu {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+        padding: 0.5rem 1.25rem;
+        border-radius: 0.5rem;
+        font: inherit;
+        font-size: var(--text-popisek);
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background-color 120ms ease-out,
+          transform 120ms ease-out;
+      }
+
+      .admin-tlacitko {
+        border: 2px solid transparent;
+        background-color: var(--color-tlacitko);
+        color: #fff;
+      }
+
+      .admin-tlacitko:hover:not(:disabled) {
+        background-color: var(--color-tlacitko-hover);
+        transform: translateY(-1px);
+      }
+
+      .admin-tlacitko-vedlejsi,
+      .admin-znovu {
+        border: 2px solid var(--color-tyrkys);
+        background-color: transparent;
+        color: var(--color-tyrkys);
+      }
+
+      .admin-tlacitko-vedlejsi:hover:not(:disabled),
+      .admin-znovu:hover:not(:disabled) {
+        background-color: var(--color-plocha-tyrkys);
+        transform: translateY(-1px);
+      }
+
+      .admin-znovu {
+        padding: 0.25rem 0.875rem;
+      }
+
+      .admin-tlacitko:disabled,
+      .admin-tlacitko-vedlejsi:disabled,
+      .admin-znovu:disabled {
+        opacity: 0.55;
+        cursor: progress;
+        transform: none;
+      }
+
+      /* --- Záložky -------------------------------------------------------- */
+      .admin-zalozka {
+        min-height: 2.75rem;
+        padding: 0.5rem 1.25rem;
+        border: 0;
+        border-bottom: 3px solid transparent;
+        background: transparent;
+        color: var(--color-text);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .admin-zalozka:hover {
+        background-color: var(--color-plocha-tyrkys);
+      }
+
+      .admin-zalozka[aria-selected="true"] {
+        border-bottom-color: var(--color-merunka);
+        color: var(--color-tyrkys);
+      }
+
+      /* --- Hlášky o průběhu -----------------------------------------------
+         Stav se pozná ze slov, ne z barvy. Barva je jen zesílení — samotná
+         by lidem s poruchou barvocitu nic neřekla. */
+      .admin-hlaska {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+        font-size: var(--text-popisek);
+        line-height: 1.5;
+      }
+
+      .admin-hlaska:empty {
+        display: none;
+      }
+
+      .admin-hlaska[data-stav="probiha"] {
+        color: var(--color-text);
+      }
+
+      .admin-hlaska[data-stav="hotovo"] {
+        color: var(--color-potvrzeni);
+      }
+
+      .admin-hlaska[data-stav="chyba"] {
+        color: var(--color-chyba);
+        font-weight: 600;
+      }
+
+      .admin-znacka {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.375rem;
+        height: 1.375rem;
+        flex-shrink: 0;
+        border-radius: 999px;
+        font-size: 0.875rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .admin-hlaska[data-stav="probiha"] .admin-znacka {
+        background-color: var(--color-merunka-tlumena);
+        color: var(--color-text);
+      }
+
+      .admin-hlaska[data-stav="hotovo"] .admin-znacka {
+        background-color: var(--color-potvrzeni);
+        color: #fff;
+      }
+
+      .admin-hlaska[data-stav="chyba"] .admin-znacka {
+        background-color: var(--color-chyba);
+        color: #fff;
+      }
+
+      /* --- Karty ---------------------------------------------------------- */
+      .admin-karta {
+        padding: 1.25rem;
+        border: 1px solid var(--color-merunka-tlumena);
+        border-radius: 0.75rem;
+        background-color: #fff;
+      }
+
+      .admin-stitek {
+        display: inline-block;
+        padding: 0.0625rem 0.5rem;
+        border-radius: 999px;
+        background-color: var(--color-merunka);
+        color: var(--color-text);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        vertical-align: middle;
+      }
+
+      .admin-puvodni {
+        margin: 0.5rem 0 0;
+        color: var(--color-text);
+        font-size: var(--text-popisek);
+        opacity: 0.75;
+      }
+
+      .admin-nahled {
+        display: block;
+        max-width: 100%;
+        max-height: 140px;
+        width: auto;
+        margin-bottom: 0.75rem;
+        border-radius: 0.5rem;
+        background-color: var(--color-plocha-tyrkys);
+      }
+    </style>
+  </body>
+</html>

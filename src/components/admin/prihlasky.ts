@@ -123,7 +123,7 @@ function bunkaSeStavem(prihlaska: Prihlaska): HTMLTableCellElement {
 
   const vyber = document.createElement("select");
   vyber.id = `stav-${prihlaska.id}`;
-  vyber.className = "pole-formulare min-h-11 w-full";
+  vyber.className = "admin-pole min-h-11 w-full";
 
   for (const [hodnota, nazev] of Object.entries(NAZVY_STAVU)) {
     const volba = document.createElement("option");
@@ -134,7 +134,7 @@ function bunkaSeStavem(prihlaska: Prihlaska): HTMLTableCellElement {
   }
 
   const hlaska = document.createElement("p");
-  hlaska.className = "hlaska-stavu mt-1";
+  hlaska.className = "admin-hlaska mt-1";
 
   vyber.addEventListener("change", () => {
     const novyStav = vyber.value;

@@ -229,3 +229,32 @@ obsahem:
 Při `npm run dev` se dole zobrazí přepínač mezi nimi. Do produkčního buildu
 se nedostane. Až padne rozhodnutí, smaže se `src/pages/varianta-b.astro`
 a `src/components/PrepinacVariant.astro`.
+
+---
+
+## Administrace webu
+
+Na adrese `/admin/` je jednoduchá správa webu. Přihlášený správce v ní vidí,
+kdo se přihlásil, mění stav přihlášek, stahuje je do Excelu a upravuje texty
+a obrázky na webu.
+
+Odkaz na ni **nikde na webu není a být nesmí**. Zadává se ručně do adresního
+řádku.
+
+Klíčová věc, kvůli které je administrace postavená tak, jak je: web je
+statický a **nemá kdo ho po změně textu znovu sestavit a nahrát**. Texty
+proto v HTML zůstávají jako výchozí a stránka si po načtení vyzvedne
+z databáze jen ty, které správce změnil, a doplní je. Když databáze nejede,
+zobrazí se původní texty a nikdo nepozná, že se něco nenačetlo.
+
+Po každé změně textu v `.astro` souborech je potřeba srovnat i katalog
+v `src/lib/obsah.ts`. Hlídá to:
+
+```bash
+npm run build
+npm run kontrola-obsahu
+```
+
+Účty do administrace se zakládají ručně v Supabase — samoobslužná registrace
+je vypnutá. **Celý postup, jak založit první účet, a popis zabezpečení je
+v [docs/administrace.md](docs/administrace.md).**

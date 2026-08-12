@@ -111,13 +111,13 @@ function vykresliObrazky(obrazky: { nazev: string; adresa: string }[]): void {
 
   for (const obrazek of obrazky) {
     const karta = document.createElement("figure");
-    karta.className = "karta-obsahu m-0";
+    karta.className = "admin-karta m-0";
 
     const nahled = document.createElement("img");
     nahled.src = obrazek.adresa;
     nahled.alt = "";
     nahled.loading = "lazy";
-    nahled.className = "nahled-obrazku";
+    nahled.className = "admin-nahled";
 
     const popis = document.createElement("figcaption");
     popis.className = "mt-2 text-popisek break-all";
@@ -125,11 +125,11 @@ function vykresliObrazky(obrazky: { nazev: string; adresa: string }[]): void {
 
     const zkopirovat = document.createElement("button");
     zkopirovat.type = "button";
-    zkopirovat.className = "tlacitko-vedlejsi mt-3";
+    zkopirovat.className = "admin-tlacitko-vedlejsi mt-3";
     zkopirovat.textContent = "Zkopírovat adresu";
 
     const hlaskaKarty = document.createElement("p");
-    hlaskaKarty.className = "hlaska-stavu mt-2";
+    hlaskaKarty.className = "admin-hlaska mt-2";
 
     zkopirovat.addEventListener("click", () => {
       void (async () => {
