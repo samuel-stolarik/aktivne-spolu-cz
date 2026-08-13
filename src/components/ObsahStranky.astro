@@ -1,4 +1,5 @@
 ---
+import { existsSync } from "node:fs";
 /**
  * Obsah úvodní stránky — osm sekcí v pořadí schváleném zadavatelem.
  *
@@ -116,16 +117,35 @@ const podpora = [
  * `[doplnit …]`, tady je vedeme v tvaru `[DOPLNIT: …]`, který používá
  * zbytek projektu, aby se daly najít jedním hledáním.
  *
- * `logo: null` znamená, že logo organizace ještě nedorazilo. Do té doby se
- * vysází název typograficky (viz níž). Až logo přijde, stačí sem doplnit
- * cestu k souboru — rozvržení boxu se nemění.
+ * LOGA POŘADATELŮ: stačí je nakopírovat do `public/obrazky/` pod názvem
+ * `logo-prave-ted` a `logo-magic-hill` (svg, png nebo jpg). Šablona si sama
+ * všimne, že soubor přibyl, a začne ho používat — nikde se nic nepřepisuje.
+ * Dokud soubor není, vysází se název typograficky a NEVZNIKNE rozbitý
+ * obrázek. Rozvržení boxu se v obou případech nemění.
  * POZOR: /obrazky/logo.png je logo PROJEKTU (Mezigeneračně aktivně spolu),
  * ne log pořadatelů. Jako logo organizace se použít nesmí.
  */
+/**
+ * Vrátí cestu k logu, ale jen když soubor opravdu leží v public/obrazky/.
+ *
+ * Kdybychom cestu napsali natvrdo dřív, než logo dorazí, měl by web na dvou
+ * místech rozbitý obrázek. Takhle se do té doby tiše použije typografická
+ * varianta a po nakopírování souboru se logo objeví samo.
+ */
+function logoKdyzExistuje(nazev: string): string | null {
+  const slozka = new URL("../../public/obrazky/", import.meta.url);
+  for (const pripona of ["svg", "png", "jpg", "jpeg", "webp"]) {
+    if (existsSync(new URL(`${nazev}.${pripona}`, slozka))) {
+      return `/obrazky/${nazev}.${pripona}`;
+    }
+  }
+  return null;
+}
+
 const poradatele = [
   {
     nazev: "Právě teď! o.p.s.",
-    logo: null, // [DOPLNIT: logo Právě teď! o.p.s. (SVG nebo PNG, poměr ~3:1)]
+    logo: logoKdyzExistuje("logo-prave-ted"),
     popis:
       "Právě teď! o.p.s. udává směr modernímu, zdravému a aktivnímu stárnutí. Prostřednictvím moderních aktivizačních programů pomáhá seniorům žít aktivní život.",
     osoba: "[DOPLNIT: jméno kontaktní osoby — Právě teď! o.p.s.]",
@@ -136,7 +156,7 @@ const poradatele = [
   },
   {
     nazev: "ZŠ Magic Hill",
-    logo: null, // [DOPLNIT: logo ZŠ Magic Hill (SVG nebo PNG, poměr ~3:1)]
+    logo: logoKdyzExistuje("logo-magic-hill"),
     popis:
       "ZŠ s rozšířenou výukou jazyků Magic Hill, s.r.o., kde díky individuálnímu přístupu v malých kolektivech a důrazu na jazyky děti získávají znalosti a dovednosti pro úspěch v 21. století.",
     osoba: "[DOPLNIT: jméno kontaktní osoby — ZŠ Magic Hill]",

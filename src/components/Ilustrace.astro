@@ -111,6 +111,41 @@ const { jmeno, sirka = 240, kresliSe = false, trida = "" } = Astro.props;
   }
 
   {
+    jmeno === "zaci-programuji" && (
+      <>
+        {/* Dva žáci za notebookem — Zásobník staví kroužek na ZŠ Magic Hill. */}
+        {/* Hlavy nad displejem */}
+        <circle cx="86" cy="64" r="26" />
+        <path d="M62 56 a24 20 0 0 1 48 0" />
+        <path d="M74 66 a6 6 0 0 1 10 0" />
+        <path d="M90 66 a6 6 0 0 1 10 0" />
+        <path d="M76 78 a11 9 0 0 0 18 0" />
+
+        <circle cx="156" cy="70" r="24" />
+        <circle cx="156" cy="42" r="9" />
+        <path d="M134 62 a22 18 0 0 1 44 0" />
+        <path d="M145 72 a6 6 0 0 1 10 0" />
+        <path d="M159 72 a6 6 0 0 1 10 0" />
+        <path d="M147 83 a10 8 0 0 0 17 0" />
+
+        {/* Ramena, schovaná za notebookem */}
+        <path d="M50 132 a38 40 0 0 1 72 0" />
+        <path d="M122 136 a36 38 0 0 1 68 0" />
+
+        {/* Notebook: displej */}
+        <path d="M58 132 h124 v46 h-124 z" />
+        {/* Řádky kódu na displeji */}
+        <path d="M72 146 h34" />
+        <path d="M114 146 h24" />
+        <path d="M78 158 h44" />
+        <path d="M72 170 h28" />
+        {/* Podstava */}
+        <path d="M44 178 h152 l10 12 h-172 z" />
+      </>
+    )
+  }
+
+  {
     jmeno === "mezigeneracne" && (
       <>
         {/* Dítě a senior vedle sebe — mezigenerační setkání. */}
