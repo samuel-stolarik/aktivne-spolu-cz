@@ -33,3 +33,8 @@ dist.zip
 
 # Scratch
 *.log
+
+# Docasny nahled ke sdileni
+.nahled/
+
+nahled.zip

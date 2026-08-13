@@ -23,6 +23,6 @@
   },
   "devDependencies": {
     "@types/qrcode": "^1.5.6",
-    "archiver": "^8.0.0"
+    "archiver": "^7.0.1"
   }
 }
