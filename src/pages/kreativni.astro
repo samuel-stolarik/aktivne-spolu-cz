@@ -26,6 +26,7 @@ import Tlacitko from "../components/Tlacitko.astro";
 import FormularKrokovy from "../components/FormularKrokovy.astro";
 import PrepinacVariant from "../components/PrepinacVariant.astro";
 import Stitek from "../components/Stitek.astro";
+import Ilustrace from "../components/Ilustrace.astro";
 import "../styles/kreativni.css";
 
 // Tipy na aktivity rozdělené do tří kategorií přesně podle podkladů.
@@ -46,7 +47,7 @@ const kategorieTipu = [
   {
     nazev: "Pohyb a pobyt venku",
     ikona: "footprints",
-    barva: "var(--color-tyrkys)",
+    barva: "var(--color-tlacitko)",
     polozky: [
       "Nenáročná procházka",
       "Zahradní hry",
@@ -173,28 +174,35 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
     class="relative overflow-hidden px-5 pt-8 pb-20"
     style="background: linear-gradient(180deg, var(--color-plocha-tyrkys) 0%, var(--color-pozadi) 100%)"
   >
+    {/* Logo tu schválně není — je v horní liště a dvakrát na jedné
+        obrazovce nemá co dělat. */}
+    <div
+      class="relative z-10 mx-auto grid max-w-obsah gap-10 lg:grid-cols-[1fr_auto] lg:items-center"
+    >
+      <div>
+        <h1
+          class="text-[clamp(2.5rem,6vw,4.75rem)] leading-[1.05] tracking-tight"
+          data-rozlozit
+        >
+          {nadpisHero}
+          <span class="block text-text">{nadpisHero2}</span>
+        </h1>
+
+        <p class="mt-8 max-w-[680px] text-xl sm:text-2xl">
+          Ať už vedete školu, tvoříte mladý pracovní kolektiv, působíte
+          v neziskovce nebo chcete s přáteli udělat něco smysluplného — oslavte
+          s námi Mezinárodní den seniorů (v týdnu kolem 1.&nbsp;10.).
+        </p>
+      </div>
+
+      {/* Obrysová dvojice seniorů. Ne fotka, ne kreslený obrázek —
+          grafika stejné váhy čáry jako ikony na zbytku webu. */}
+      <div class="pohupuje-se justify-self-center text-tyrkys lg:justify-self-end">
+        <Ilustrace jmeno="dvojice" sirka={340} kresliSe />
+      </div>
+    </div>
+
     <div class="relative z-10 mx-auto max-w-obsah">
-      <img
-        src="/obrazky/logo.png"
-        alt="Mezigeneračně aktivně spolu"
-        width="200"
-        height="59"
-        class="h-auto w-[180px] sm:w-[200px]"
-      />
-
-      <h1
-        class="mt-16 text-[clamp(2.5rem,7vw,5.5rem)] leading-[1.05] tracking-tight"
-        data-rozlozit
-      >
-        {nadpisHero}
-        <span class="block text-text">{nadpisHero2}</span>
-      </h1>
-
-      <p class="mt-8 max-w-[760px] text-xl sm:text-2xl">
-        Ať už vedete školu, tvoříte mladý pracovní kolektiv, působíte
-        v neziskovce nebo chcete s přáteli udělat něco smysluplného — oslavte
-        s námi Mezinárodní den seniorů (v týdnu kolem 1.&nbsp;10.).
-      </p>
 
       <div class="mt-12 flex flex-wrap gap-4">
         <Tlacitko odkaz="#registrace" trida="magnet text-lg">
@@ -246,7 +254,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
           skupiny.map((skupina) => (
             <button
               type="button"
-              class="skupina naklon relative min-h-11 cursor-pointer rounded-2xl border-2 border-merunka-tlumena bg-white p-6 text-left"
+              class="skupina naklon relative min-h-11 cursor-pointer rounded-2xl border-2 border-merunka-tlumena bg-white p-5 text-left"
               data-skupina={skupina.klic}
               aria-pressed="false"
             >
@@ -259,9 +267,11 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
                 <Ikona jmeno="check" velikost={18} trida="text-white" />
               </span>
 
-              <Ikona jmeno={skupina.ikona} velikost={40} />
-              <h3 class="mt-4 text-xl">{skupina.popis}</h3>
-              <p class="mt-2 mb-0 text-popisek">{skupina.lakadlo}</p>
+              {/* Menší ikona a jen nadpisek. Karty byly kvůli lákací větě
+                  navíc vysoké a působily těžkopádně — na výběr „kdo jste"
+                  stačí název skupiny. */}
+              <Ikona jmeno={skupina.ikona} velikost={26} />
+              <h3 class="mt-3 text-lg">{skupina.popis}</h3>
             </button>
           ))
         }
@@ -392,10 +402,18 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
   {/* ================= JAK TO FUNGUJE — kreslená cesta ================= */}
   <section id="jak-to-funguje" class="relative bg-plocha-tyrkys px-5 py-20">
     <div class="mx-auto max-w-obsah">
-      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
-        4 jednoduché kroky k realizaci
-      </h2>
-      <span class="podtrzeni"></span>
+      <div class="flex items-end justify-between gap-8">
+        <div>
+          <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
+            4 jednoduché kroky k realizaci
+          </h2>
+          <span class="podtrzeni"></span>
+        </div>
+
+        <div class="hidden shrink-0 text-tyrkys md:block">
+          <Ilustrace jmeno="mezigeneracne" sirka={190} kresliSe />
+        </div>
+      </div>
 
       <div id="cesta-obal" class="relative mt-16">
         {/* Čára se kreslí podle toho, jak daleko jste odscrollovaní. */}
@@ -447,109 +465,57 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
     </div>
   </section>
 
-  {/* ========= TIPY — VARIANTA 1: tři pásy, každý svou kategorii ========= */}
-  {/* Kategorie jsou z podkladů. Každý pás jede jiným směrem a má vlastní
-      barvu puntíku, takže je na první pohled poznat, že jde o tři různé
-      okruhy, ne o jednu hromadu nápadů. Po najetí myší se pás zastaví,
-      aby se dal přečíst. */}
+  {/* ================= TIPY — jedna jedoucí řádka ================= */}
+  {/* Vyhrála varianta s pohybem, ale místo tří pásů je jedna řádka.
+      Kategorie se rozlišují barvou puntíku, ne vlastním pásem — je to
+      klidnější a přitom je pořád vidět, že jde o tři různé okruhy.
+      Po najetí myší se řádka zastaví, aby se dala přečíst. */}
   <section id="tipy-na-aktivity" class="overflow-hidden bg-pozadi py-16">
     <div class="mx-auto max-w-obsah px-5">
-      <Stitek>Varianta 1 — jedoucí pásy</Stitek>
-
-      <h2 class="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
-        Čím se můžete inspirovat?
-      </h2>
-      <span class="podtrzeni"></span>
-    </div>
-
-    <div class="mt-10 space-y-6">
-      {
-        kategorieTipu.map((kategorie, i) => (
-          <div>
-            <div class="mx-auto mb-3 flex max-w-obsah items-center gap-3 px-5">
-              <span
-                class="h-3.5 w-3.5 shrink-0 rounded-full"
-                style={`background-color: ${kategorie.barva}`}
-              />
-              <h3 class="m-0 text-lg">{kategorie.nazev}</h3>
-            </div>
-
-            <div class="pas-obal overflow-hidden">
-              <div
-                class:list={["pas gap-4", i % 2 === 1 && "pas-zpet"]}
-                style={`--doba-pasu: ${30 + i * 8}s`}
-              >
-                {[...kategorie.polozky, ...kategorie.polozky, ...kategorie.polozky, ...kategorie.polozky].map(
-                  (polozka) => (
-                    <span class="flex items-center gap-3 rounded-full border-2 border-merunka-tlumena bg-white px-7 py-4 text-xl whitespace-nowrap">
-                      <span
-                        class="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={`background-color: ${kategorie.barva}`}
-                      />
-                      {polozka}
-                    </span>
-                  ),
-                )}
-              </div>
-            </div>
-          </div>
-        ))
-      }
-    </div>
-  </section>
-
-  {/* ========= TIPY — VARIANTA 2: tři sloupce, bez pohybu ========= */}
-  {/* Klidnější varianta. Všechno je vidět naráz a nic neujíždí,
-      což ocení hlavně někdo, kdo čte pomalu. */}
-  <section id="tipy-na-aktivity-2" class="bg-plocha-tyrkys px-5 py-16">
-    <div class="mx-auto max-w-obsah">
-      <Stitek>Varianta 2 — klidné sloupce</Stitek>
-
-      <h2 class="mt-4 text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
+      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
         Čím se můžete inspirovat?
       </h2>
       <span class="podtrzeni"></span>
 
-      <div class="mt-10 grid gap-5 md:grid-cols-3">
+      {/* Legenda, ať je barva puntíku čitelná jako kategorie,
+          a ne jen jako ozdoba. */}
+      <ul class="mt-6 flex flex-wrap gap-x-8 gap-y-2 p-0">
         {
           kategorieTipu.map((kategorie) => (
-            <article class="naklon rounded-2xl bg-white p-7">
+            <li class="flex items-center gap-2.5">
               <span
-                class="flex h-14 w-14 items-center justify-center rounded-2xl"
-                style={`background-color: ${kategorie.barva}1f`}
-              >
-                <Ikona
-                  jmeno={kategorie.ikona}
-                  velikost={30}
-                  trida="text-tyrkys"
-                />
-              </span>
-
-              <h3 class="mt-5 flex items-center gap-3 text-xl">
-                <span
-                  class="h-3 w-3 shrink-0 rounded-full"
-                  style={`background-color: ${kategorie.barva}`}
-                />
-                {kategorie.nazev}
-              </h3>
-
-              <ul class="mt-4 space-y-2.5">
-                {kategorie.polozky.map((polozka) => (
-                  <li class="flex items-start gap-3">
-                    <span
-                      class="mt-2.5 h-2 w-2 shrink-0 rounded-full"
-                      style={`background-color: ${kategorie.barva}`}
-                    />
-                    <span>{polozka}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
+                class="h-3 w-3 shrink-0 rounded-full"
+                style={`background-color: ${kategorie.barva}`}
+              />
+              <span class="text-popisek font-semibold">{kategorie.nazev}</span>
+            </li>
           ))
         }
-      </div>
+      </ul>
+    </div>
 
-      <div class="mt-8 flex gap-4 rounded-2xl border-l-4 border-merunka bg-white p-7">
+    <div class="pas-obal mt-10 overflow-hidden">
+      <div class="pas gap-4" style="--doba-pasu: 46s">
+        {
+          [0, 1].map(() =>
+            kategorieTipu.flatMap((kategorie) =>
+              kategorie.polozky.map((polozka) => (
+                <span class="flex items-center gap-3 rounded-full border-2 border-merunka-tlumena bg-white px-7 py-4 text-xl whitespace-nowrap">
+                  <span
+                    class="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={`background-color: ${kategorie.barva}`}
+                  />
+                  {polozka}
+                </span>
+              )),
+            ),
+          )
+        }
+      </div>
+    </div>
+
+    <div class="mx-auto mt-12 max-w-obsah px-5">
+      <div class="flex gap-4 rounded-2xl border-l-4 border-merunka bg-plocha-tyrkys p-7">
         <Ikona jmeno="shield-check" velikost={36} />
         <div>
           <h3 class="text-xl">Na co myslet při přípravě</h3>
@@ -564,42 +530,117 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
     </div>
   </section>
 
-  {/* ================= ZÁSOBNÍK — tmavá plocha ================= */}
+  {/* ================= ZÁSOBNÍK ================= */}
+  {/* Dřív to byl jen odstavec na tmavé ploše. Zásobník je přitom výstup
+      celého projektu, tak ho ukazujeme, ne popisujeme: vpravo leží tři
+      rozevřené karty, jak budou v databázi vypadat záznamy.
+
+      Obsah karet není vymyšlený — názvy aktivit jsou z podkladů (Tipy na
+      aktivity) a údaje na kartách odpovídají tomu, na co se podle podkladů
+      bude po akci ptát formulář: pro koho byla vhodná, jaká byla náročnost,
+      jaké pomůcky byly potřeba. */}
   <section
     id="zasobnik"
     class="relative overflow-hidden px-5 py-24 text-white"
     style="background: linear-gradient(135deg, var(--color-tyrkys) 0%, #0b4d58 100%)"
   >
     <div class="relative z-10 mx-auto max-w-obsah">
-      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)] text-white" data-rozlozit>
-        Co je to Zásobník nápadů?
-      </h2>
-      <span
-        class="podtrzeni"
-        style="background-color: var(--color-merunka)"
-      ></span>
+      <div class="grid gap-14 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div>
+          <span
+            class="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-popisek font-semibold"
+          >
+            <Ikona jmeno="sparkles" velikost={18} trida="text-white" />
+            Výstup celého projektu
+          </span>
 
-      <div class="mt-10 grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:items-start">
-        <div class="space-y-5 text-lg">
-          <p>
-            Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí žáci
-            ZŠ Magic Hill z Říčan u Prahy.
-          </p>
-          <p>
-            Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
-            (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
-            potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne veřejně
-            přístupná databáze plná ověřené inspirace pro organizátory podobných
-            akcí z celé ČR.
+          <h2
+            class="mt-5 text-[clamp(1.75rem,3.5vw,2.75rem)] text-white"
+            data-rozlozit
+          >
+            Co je to Zásobník nápadů?
+          </h2>
+          <span class="podtrzeni" style="background-color: var(--color-merunka)"
+          ></span>
+
+          <div class="mt-8 max-w-[620px] space-y-5 text-lg">
+            <p>
+              Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí
+              žáci ZŠ Magic Hill z Říčan u Prahy.
+            </p>
+            <p>
+              Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
+              (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
+              potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne
+              veřejně přístupná databáze plná ověřené inspirace pro organizátory
+              podobných akcí z celé ČR.
+            </p>
+          </div>
+
+          <p
+            class="mt-8 inline-flex items-baseline gap-3 rounded-2xl bg-white/10 px-6 py-4"
+          >
+            <span class="text-3xl font-semibold">1. listopadu</span>
+            <span>spouštíme databázi pro celou ČR</span>
           </p>
         </div>
 
-        <div class="rounded-2xl bg-white/10 p-8 backdrop-blur">
-          <Ikona jmeno="lightbulb" velikost={44} trida="text-white" />
-          <p class="mt-4 mb-0 text-2xl font-semibold">1. listopadu</p>
-          <p class="mt-1 mb-0">
-            spouštíme veřejnou databázi inspirace pro celou ČR.
-          </p>
+        {/* Rozevřené karty — ukázka záznamu v Zásobníku. */}
+        <div class="balicek relative mx-auto h-[330px] w-[290px] shrink-0">
+          {
+            [
+              {
+                nazev: "Výtvarná dílna",
+                kategorie: "Kultura a tvořivost",
+                barva: "var(--color-merunka)",
+                narocnost: "Nenáročné",
+                pomucky: "Papír, pastelky, nůžky",
+              },
+              {
+                nazev: "Zahradní hry",
+                kategorie: "Pohyb a pobyt venku",
+                barva: "var(--color-tlacitko)",
+                narocnost: "Střední",
+                pomucky: "Mölkky, pétanque",
+              },
+              {
+                nazev: "Vyprávění příběhů",
+                kategorie: "Sdílení a setkávání",
+                barva: "var(--color-potvrzeni)",
+                narocnost: "Nenáročné",
+                pomucky: "Židle, klidný prostor",
+              },
+            ].map((karta, i) => (
+              <article
+                class="karta-zasobniku absolute inset-x-0 top-0 rounded-2xl bg-white p-6 text-text shadow-2xl"
+                style={`--poradi: ${i}`}
+              >
+                <span
+                  class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-popisek font-semibold text-text"
+                  style={`background-color: ${karta.barva}`}
+                >
+                  {karta.kategorie}
+                </span>
+
+                <h3 class="mt-4 text-xl">{karta.nazev}</h3>
+
+                <dl class="mt-4 space-y-2 text-popisek">
+                  <div class="flex gap-2">
+                    <dt class="font-semibold">Vhodné pro:</dt>
+                    <dd class="m-0">Senioři i děti</dd>
+                  </div>
+                  <div class="flex gap-2">
+                    <dt class="font-semibold">Náročnost:</dt>
+                    <dd class="m-0">{karta.narocnost}</dd>
+                  </div>
+                  <div class="flex gap-2">
+                    <dt class="font-semibold">Pomůcky:</dt>
+                    <dd class="m-0">{karta.pomucky}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))
+          }
         </div>
       </div>
     </div>
@@ -608,10 +649,22 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
   {/* ================= PODPORA ================= */}
   <section id="podpora" class="bg-pozadi px-5 py-16">
     <div class="mx-auto max-w-obsah">
-      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
-        Jakou podporu od nás získáte?
-      </h2>
-      <span class="podtrzeni"></span>
+      {/* Dvě persony po stranách nadpisu. Nejsou to ozdoba pro ozdobu —
+          ukazují, koho se projekt týká, a drží stejnou váhu čáry jako ikony
+          na zbytku webu. Na mobilu se schovají, tam by braly místo textu. */}
+      <div class="flex items-end justify-between gap-8">
+        <div>
+          <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-rozlozit>
+            Jakou podporu od nás získáte?
+          </h2>
+          <span class="podtrzeni"></span>
+        </div>
+
+        <div class="hidden shrink-0 items-end gap-2 text-tyrkys md:flex">
+          <Ilustrace jmeno="babicka" sirka={130} kresliSe />
+          <Ilustrace jmeno="dedecek" sirka={130} kresliSe />
+        </div>
+      </div>
 
       <div class="mt-12 grid gap-5 sm:grid-cols-3">
         <article class="naklon rounded-2xl border border-merunka-tlumena bg-white p-7">
@@ -851,7 +904,11 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
 
   // --- Podtržení nadpisů ---------------------------------------------------
   (function podtrzeni() {
-    const cary = document.querySelectorAll<HTMLElement>(".podtrzeni");
+    // Spolu s podtržením odhalujeme i obrysové ilustrace — obojí se má
+    // vykreslit, až když na to člověk dojede.
+    const cary = document.querySelectorAll<HTMLElement>(
+      ".podtrzeni, .kresli-se",
+    );
 
     if (chceMenePohybu) {
       cary.forEach((c) => c.classList.add("je-videt"));

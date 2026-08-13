@@ -115,14 +115,14 @@
     transform: translateX(0);
   }
   to {
-    /* Obsah je v šabloně čtyřikrát, takže posun o čtvrtinu je bezešvý. */
-    transform: translateX(-25%);
+    /* Obsah je v šabloně dvakrát, takže posun o polovinu je bezešvý. */
+    transform: translateX(-50%);
   }
 }
 
 @keyframes pas-jede-zpet {
   from {
-    transform: translateX(-25%);
+    transform: translateX(-50%);
   }
   to {
     transform: translateX(0);
@@ -184,6 +184,68 @@
 .sekce-najizdi.je-videt {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* --- Vykreslování obrysových ilustrací ---------------------------------- */
+/* Postava se nakreslí, jako by ji někdo maloval. Tahy naskakují po sobě,
+   ne všechny naráz — jinak by to vypadalo jako blikání.
+   Hodnota 1000 je schválně větší než nejdelší tah, aby stačila na všechny. */
+.kresli-se :is(circle, path) {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+
+.kresli-se.je-videt :is(circle, path) {
+  animation: kresli-obrys 1.6s ease-out forwards;
+}
+
+.kresli-se.je-videt :is(circle, path):nth-child(1) { animation-delay: 0ms; }
+.kresli-se.je-videt :is(circle, path):nth-child(2) { animation-delay: 90ms; }
+.kresli-se.je-videt :is(circle, path):nth-child(3) { animation-delay: 180ms; }
+.kresli-se.je-videt :is(circle, path):nth-child(4) { animation-delay: 270ms; }
+.kresli-se.je-videt :is(circle, path):nth-child(5) { animation-delay: 360ms; }
+.kresli-se.je-videt :is(circle, path):nth-child(6) { animation-delay: 450ms; }
+.kresli-se.je-videt :is(circle, path):nth-child(7) { animation-delay: 540ms; }
+.kresli-se.je-videt :is(circle, path):nth-child(n + 8) { animation-delay: 630ms; }
+
+@keyframes kresli-obrys {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --- Jemné pohupování ilustrace ----------------------------------------- */
+/* Postava se skoro nepostřehnutelně houpe, takže stránka nepůsobí mrtvě.
+   Výchylka je schválně malá — nic nemá odvádět pozornost od textu. */
+.pohupuje-se {
+  animation: pohupovani 7s ease-in-out infinite;
+}
+
+@keyframes pohupovani {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(-1deg);
+  }
+}
+
+/* --- Rozevřené karty Zásobníku ------------------------------------------ */
+/* Tři karty leží přes sebe a jsou pootočené, takže je vidět, že jich je víc.
+   Po najetí myší se balíček rozevře — ukáže se, že Zásobník je databáze
+   záznamů, ne jeden text. */
+.karta-zasobniku {
+  transform: rotate(calc((var(--poradi) - 1) * 5deg))
+    translateY(calc(var(--poradi) * 14px));
+  transform-origin: bottom center;
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: calc(3 - var(--poradi));
+}
+
+.balicek:hover .karta-zasobniku {
+  transform: rotate(calc((var(--poradi) - 1) * 9deg))
+    translate(calc((var(--poradi) - 1) * 26px), calc(var(--poradi) * 10px));
 }
 
 /* --- Šipka pobízející ke scrollu ---------------------------------------- */
@@ -328,6 +390,23 @@
 
   .sipka-dolu {
     animation: none;
+  }
+
+  /* Ilustrace se ukáže rovnou nakreslená, nic se nemaluje ani nehoupe. */
+  .kresli-se :is(circle, path) {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+  }
+
+  .pohupuje-se {
+    animation: none;
+  }
+
+  /* Balíček karet zůstane rozevřený, jen se nikam nepřeklápí. */
+  .karta-zasobniku,
+  .balicek:hover .karta-zasobniku {
+    transition: none !important;
   }
 
   /* Rozbalování necháváme funkční, jen bez animace výšky. */
