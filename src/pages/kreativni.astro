@@ -90,29 +90,21 @@ const skupiny = [
     klic: "skoly",
     popis: "Školy a školky",
     ikona: "school",
-    // [NÁVRH TEXTU: krátká věta pro školy] — v podkladech není, ke schválení
-    lakadlo: "Třída, která si to bude pamatovat celý rok.",
   },
   {
     klic: "firmy",
     popis: "Mladé kolektivy a firmy",
     ikona: "building-2",
-    // [NÁVRH TEXTU: krátká věta pro firmy] — v podkladech není, ke schválení
-    lakadlo: "Teambuilding, který má smysl i mimo firmu.",
   },
   {
     klic: "neziskovky",
     popis: "Neziskovky a komunity",
     ikona: "heart-handshake",
-    // [NÁVRH TEXTU: krátká věta pro neziskovky] — v podkladech není
-    lakadlo: "Propojte lidi, kteří se jinak nepotkají.",
   },
   {
     klic: "genz",
     popis: "Gen Z a nadšenci",
     ikona: "sparkles",
-    // [NÁVRH TEXTU: krátká věta pro Gen Z] — v podkladech není
-    lakadlo: "Udělejte s partou něco, co za to stojí.",
   },
 ];
 
@@ -171,7 +163,7 @@ const kroky = [
 ];
 
 
-const nadpisHero = "Propojujeme generace.";
+const nadpisHero = "Propojme generace.";
 const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
 ---
 
@@ -254,7 +246,45 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
 
     <div class="relative z-10 mx-auto max-w-obsah">
 
-      <div class="mt-12 flex flex-wrap gap-4">
+      {/* ---- Kdo jste — drobný výběr cílové skupiny ----
+          Nejsou to karty, ale malé ikonky s názvem hned nad tlačítky.
+          Zároveň je to přepínač: níž na stránce ztlumí důvody, které se
+          vybrané skupiny netýkají. Proto to jsou <button>, ne text. */}
+      <p class="mt-12 mb-3 text-popisek">
+        {/* [NÁVRH TEXTU: vysvětlení výběru] — v podkladech není, ke schválení */}
+        <strong class="font-semibold text-text">Kdo jste?</strong> Vyberte
+        si a níž na stránce ukážeme, co z toho máte právě vy.
+      </p>
+
+      <div id="skupiny" class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {
+          skupiny.map((skupina) => (
+            <button
+              type="button"
+              class="skupina flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-2 border-merunka-tlumena bg-white/70 px-3 py-2 text-left"
+              data-skupina={skupina.klic}
+              aria-pressed="false"
+            >
+              <Ikona jmeno={skupina.ikona} velikost={22} trida="shrink-0" />
+              <span class="flex-1 leading-tight" data-nazev-skupiny>
+                {skupina.popis}
+              </span>
+
+              {/* Fajfka se objeví až po výběru. Bez ní nebylo poznat,
+                  že se kliknutím vůbec něco stalo. Místo si drží pořád,
+                  aby se při výběru nic nepřeskládalo. */}
+              <span
+                class="znacka-vybrano flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-tyrkys text-white opacity-0"
+                aria-hidden="true"
+              >
+                <Ikona jmeno="check" velikost={14} trida="text-white" />
+              </span>
+            </button>
+          ))
+        }
+      </div>
+
+      <div class="mt-8 flex flex-wrap gap-4">
         <Tlacitko odkaz="#registrace" trida="magnet text-lg">
           Chci se zapojit
           <Ikona jmeno="arrow-right" velikost={22} trida="text-white" />
@@ -267,65 +297,12 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
         </Tlacitko>
       </div>
 
-    </div>
-
-    {/* Velké měkké tvary v pozadí */}
-    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-      <div
-        class="absolute -top-40 -right-32 h-[600px] w-[600px] rounded-full opacity-40 blur-3xl"
-        style="background: var(--color-merunka-tlumena)"
-      >
-      </div>
-    </div>
-  </section>
-
-  {/* ================= VÝBĚR CÍLOVÉ SKUPINY ================= */}
-  {/* Sekce se drží těsně pod úvodní obrazovkou a je schválně nenápadná —
-      je to jen přepínač, ne samostatná kapitola. */}
-  <section id="kdo-jste" class="bg-pozadi px-5 pt-4 pb-14">
-    <div class="mx-auto max-w-obsah">
-      <h2 class="text-xl sm:text-2xl">Kdo jste?</h2>
-      <span class="podtrzeni je-videt"></span>
-      <p class="mt-3 max-w-[640px] text-popisek">
-        {/* [NÁVRH TEXTU: vysvětlení výběru] — v podkladech není, ke schválení */}
-        Vyberte si a ukážeme vám, co z toho máte právě vy. Vybrat můžete
-        i víc možností.
-      </p>
-
-      <div id="skupiny" class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {
-          skupiny.map((skupina) => (
-            <button
-              type="button"
-              class="skupina naklon relative min-h-11 cursor-pointer rounded-2xl border-2 border-merunka-tlumena bg-white p-5 text-left"
-              data-skupina={skupina.klic}
-              aria-pressed="false"
-            >
-              {/* Fajfka se objeví až po výběru. Bez ní nebylo poznat,
-                  že se kliknutím vůbec něco stalo. */}
-              <span
-                class="znacka-vybrano absolute top-4 right-4 flex h-7 w-7 items-center justify-center rounded-full bg-tyrkys text-white opacity-0"
-                aria-hidden="true"
-              >
-                <Ikona jmeno="check" velikost={18} trida="text-white" />
-              </span>
-
-              {/* Menší ikona a jen nadpisek. Karty byly kvůli lákací větě
-                  navíc vysoké a působily těžkopádně — na výběr „kdo jste"
-                  stačí název skupiny. */}
-              <Ikona jmeno={skupina.ikona} velikost={26} />
-              <h3 class="mt-3 text-lg">{skupina.popis}</h3>
-            </button>
-          ))
-        }
-      </div>
-
-      {/* Slovní potvrzení výběru. Samotné ztlumení karet níž na stránce
+      {/* Slovní potvrzení výběru. Samotné ztlumení důvodů níž na stránce
           bylo k ničemu — dělo se to mimo obrazovku, takže to vypadalo,
           že kliknutí nic nedělá. */}
       <div
         id="vysledek-vyberu"
-        class="mt-6 hidden items-center gap-4 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-5"
+        class="mt-8 hidden items-center gap-4 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-5"
         role="status"
       >
         <Ikona jmeno="circle-check" velikost={28} />
@@ -337,6 +314,16 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
           Ukázat
           <Ikona jmeno="arrow-right" velikost={20} />
         </a>
+      </div>
+
+    </div>
+
+    {/* Velké měkké tvary v pozadí */}
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div
+        class="absolute -top-40 -right-32 h-[600px] w-[600px] rounded-full opacity-40 blur-3xl"
+        style="background: var(--color-merunka-tlumena)"
+      >
       </div>
     </div>
   </section>
@@ -400,29 +387,8 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
           </h2>
           <span class="podtrzeni"></span>
 
-          {/* Rozcestník důvodů. Levý sloupec byl při scrollování skoro
-              prázdný — takhle je v něm vidět, co všechno ještě přijde,
-              a dá se na to rovnou skočit. */}
-          <ol class="mt-6 m-0 list-none space-y-1 p-0">
-            {
-              duvody.map((duvod, i) => (
-                <li>
-                  <a
-                    href={`#duvod-e-${i}`}
-                    data-rozcestnik={i + 1}
-                    class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-popisek no-underline transition-colors duration-150 hover:bg-white"
-                  >
-                    <span class="w-4 shrink-0 text-right font-semibold">
-                      {i + 1}
-                    </span>
-                    <span>{duvod.nadpis}</span>
-                  </a>
-                </li>
-              ))
-            }
-          </ol>
-
-          <p class="mt-4 px-3 text-popisek" id="pocitadlo-duvodu">
+          {/* Počítadlo ukazuje, kolikátý důvod je právě na obrazovce. */}
+          <p class="mt-6 text-popisek" id="pocitadlo-duvodu">
             1 z {duvody.length}
           </p>
         </div>
@@ -434,7 +400,6 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
                 class="duvod-e pro-skupinu rounded-2xl bg-white p-8 sm:p-10"
                 data-pro={duvod.pro.join(" ")}
                 data-poradi-duvodu={i + 1}
-                id={`duvod-e-${i}`}
               >
                 <Ikona jmeno={duvod.ikona} velikost={44} />
                 <h3 class="mt-5 text-2xl sm:text-3xl">{duvod.nadpis}</h3>
@@ -1087,15 +1052,6 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
             if (pocitadlo) {
               pocitadlo.textContent = `${poradi} z ${duvody.length}`;
             }
-            // Zvýrazníme i položku v rozcestníku, ať je vidět, kde člověk je.
-            document
-              .querySelectorAll<HTMLElement>("[data-rozcestnik]")
-              .forEach((odkaz) => {
-                const jeAktivni = odkaz.dataset.rozcestnik === poradi;
-                odkaz.classList.toggle("bg-white", jeAktivni);
-                odkaz.classList.toggle("font-semibold", jeAktivni);
-                odkaz.classList.toggle("text-tyrkys", jeAktivni);
-              });
           }
         });
       },
@@ -1205,7 +1161,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
       }
 
       const nazvy = Array.from(obal!.querySelectorAll<HTMLElement>(
-        '[data-skupina][aria-pressed="true"] h3',
+        '[data-skupina][aria-pressed="true"] [data-nazev-skupiny]',
       )).map((n) => n.textContent?.trim() ?? "");
 
       if (textVysledku) {
