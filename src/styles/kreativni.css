@@ -414,3 +414,20 @@
     transition: none;
   }
 }
+
+/* --- Přepínač úvodní ilustrace (jen na dobu hlasování) ------------------- */
+.volba-hero {
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.volba-hero[aria-pressed="true"] {
+  background-color: var(--color-tyrkys);
+  font-weight: 600;
+  color: #fff;
+}
+
+.volba-hero[aria-pressed="false"]:hover {
+  background-color: var(--color-plocha-tyrkys);
+}

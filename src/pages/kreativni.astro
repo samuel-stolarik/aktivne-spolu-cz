@@ -212,10 +212,43 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
         </p>
       </div>
 
-      {/* Obrysová dvojice seniorů. Ne fotka, ne kreslený obrázek —
-          grafika stejné váhy čáry jako ikony na zbytku webu. */}
-      <div class="pohupuje-se justify-self-center text-tyrkys lg:justify-self-end">
-        <Ilustrace jmeno="dvojice" sirka={340} kresliSe />
+      {/* DVĚ VARIANTY ÚVODNÍ ILUSTRACE K HLASOVÁNÍ.
+          Zobrazuje se vždycky jen jedna, přepínač je pod ní. Až padne
+          rozhodnutí, nechá se vybraná a přepínač i druhá varianta se smažou. */}
+      <div class="justify-self-center lg:justify-self-end">
+        <div class="pohupuje-se text-tyrkys">
+          <div data-hero-ilustrace="kytice">
+            <Ilustrace jmeno="senior-s-kytici" sirka={340} kresliSe />
+          </div>
+          <div data-hero-ilustrace="generace" hidden>
+            <Ilustrace jmeno="mezigeneracne" sirka={340} kresliSe />
+          </div>
+        </div>
+
+        <div
+          id="prepinac-hero"
+          class="mt-4 flex items-center justify-center gap-1 rounded-full border border-merunka-tlumena bg-white/80 p-1"
+        >
+          <span class="px-3 text-popisek font-semibold text-tyrkys">
+            Úvodní obrázek:
+          </span>
+          <button
+            type="button"
+            data-volba-hero="kytice"
+            aria-pressed="true"
+            class="volba-hero min-h-11 cursor-pointer rounded-full px-4 text-popisek"
+          >
+            A — s kyticí
+          </button>
+          <button
+            type="button"
+            data-volba-hero="generace"
+            aria-pressed="false"
+            class="volba-hero min-h-11 cursor-pointer rounded-full px-4 text-popisek"
+          >
+            B — dvě generace
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1103,6 +1136,29 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
     );
 
     kNajezdu.forEach((s) => pozorovatel.observe(s));
+  })();
+
+  // --- Přepínač úvodní ilustrace (jen pro hlasování) ----------------------
+  (function prepinacHero() {
+    const obal = document.querySelector<HTMLElement>("#prepinac-hero");
+    if (!obal) return;
+
+    const tlacitka = obal.querySelectorAll<HTMLButtonElement>("[data-volba-hero]");
+    const obrazky = document.querySelectorAll<HTMLElement>("[data-hero-ilustrace]");
+
+    tlacitka.forEach((tlacitko) => {
+      tlacitko.addEventListener("click", () => {
+        const volba = tlacitko.dataset.volbaHero;
+
+        obrazky.forEach((obrazek) => {
+          obrazek.hidden = obrazek.dataset.heroIlustrace !== volba;
+        });
+
+        tlacitka.forEach((t) =>
+          t.setAttribute("aria-pressed", String(t === tlacitko)),
+        );
+      });
+    });
   })();
 
   // --- Výběr cílové skupiny ------------------------------------------------

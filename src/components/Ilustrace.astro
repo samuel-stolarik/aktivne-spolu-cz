@@ -111,6 +111,54 @@ const { jmeno, sirka = 240, kresliSe = false, trida = "" } = Astro.props;
   }
 
   {
+    jmeno === "senior-s-kytici" && (
+      <>
+        {/* Senior s kyticí. Květiny jsou stavěné jako středový kruh
+            a pět okvětních lístků dokola — dřívější pokus s křížkem
+            místo lístků vypadal jako terč, ne jako kytka. */}
+        <circle cx="120" cy="62" r="34" />
+        <circle cx="120" cy="20" r="13" />
+        <path d="M86 50 a34 28 0 0 1 68 0" />
+        <path d="M104 64 a8 8 0 0 1 14 0" />
+        <path d="M124 64 a8 8 0 0 1 14 0" />
+        <path d="M108 82 a14 12 0 0 0 24 0" />
+        <path d="M40 198 v-24 a80 62 0 0 1 160 0 v24" />
+
+        {/* Levá květina */}
+        <circle cx="96" cy="148" r="5" />
+        <circle cx="96" cy="139" r="6" />
+        <circle cx="104.6" cy="145.2" r="6" />
+        <circle cx="101.3" cy="155.3" r="6" />
+        <circle cx="90.7" cy="155.3" r="6" />
+        <circle cx="87.4" cy="145.2" r="6" />
+
+        {/* Prostřední květina */}
+        <circle cx="120" cy="138" r="5" />
+        <circle cx="120" cy="129" r="6" />
+        <circle cx="128.6" cy="135.2" r="6" />
+        <circle cx="125.3" cy="145.3" r="6" />
+        <circle cx="114.7" cy="145.3" r="6" />
+        <circle cx="111.4" cy="135.2" r="6" />
+
+        {/* Pravá květina */}
+        <circle cx="146" cy="150" r="5" />
+        <circle cx="146" cy="141" r="6" />
+        <circle cx="154.6" cy="147.2" r="6" />
+        <circle cx="151.3" cy="157.3" r="6" />
+        <circle cx="140.7" cy="157.3" r="6" />
+        <circle cx="137.4" cy="147.2" r="6" />
+
+        {/* Stonky a listy */}
+        <path d="M96 160 q10 18 22 30" />
+        <path d="M120 150 q0 20 -2 40" />
+        <path d="M146 162 q-8 18 -22 28" />
+        <path d="M104 172 q-14 -2 -20 8 q14 4 20 -8" />
+        <path d="M140 176 q14 -2 20 8 q-14 4 -20 -8" />
+      </>
+    )
+  }
+
+  {
     jmeno === "zaci-programuji" && (
       <>
         {/* Dva žáci za notebookem — Zásobník staví kroužek na ZŠ Magic Hill. */}
