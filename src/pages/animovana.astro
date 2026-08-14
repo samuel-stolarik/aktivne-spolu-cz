@@ -376,68 +376,81 @@ const podpora = [
                   odejde nahoru, nové přijde zdola.
       ANIMACE 3 — Kolečko kroku, který je právě na řadě, se lehce zvětší.
       ====================================================================== */}
-  <section id="jak-to-funguje" class="relative bg-plocha-tyrkys px-5 py-20">
-    <div class="mx-auto max-w-obsah">
-      <div class="grid gap-10 lg:grid-cols-[260px_1fr] lg:items-start">
-        {/* Přišpendlený sloupec (ANIMACE 2) */}
-        <div class="lg:sticky lg:top-28">
-          <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
-            4 jednoduché kroky k realizaci
-          </h2>
-          <span class="podtrzeni"></span>
+  {/* ================= JAK TO FUNGUJE =================
+      ANIMACE 1: sekce se při scrollu přišpendlí a kroky se v ní přepínají —
+                 stránka jede dál, ale obsah zůstává na místě.
+      ANIMACE 2: velké číslo se překlápí a ukazatel postupu dojíždí.
+      ANIMACE 3: kolečko kroku, který je na řadě, se zvětší.
 
-          {/* Číslo je ozdoba, ne informace — pořadí kroku je vedle něj
-              v kolečku i v textu. Proto ho čtečka obrazovky přeskočí. */}
-          <span class="cislo-kroku mt-8 hidden lg:block" id="cislo-kroku" aria-hidden="true">
-            1
-          </span>
+      Nejde o zabavený scroll: kolečkem se pořád posouvá stránka běžnou
+      rychlostí, jen je v tu chvíli vidět pořád ta samá sekce. Kdo scrolluje
+      dál, projede jí a pokračuje — nic ho nezdrží ani nevrátí zpátky. */}
+  <section id="jak-to-funguje" class="relative bg-plocha-tyrkys">
+    {/* Dráha je vysoká čtyři obrazovky — po jedné na každý krok. Výšku
+        dostane jen když je pohyb povolený; jinak se sekce chová jako
+        obyčejný seznam pod sebou. */}
+    <div class="kroky-draha" data-kroku={kroky.length}>
+      <div class="kroky-pripnute px-5">
+        <div class="mx-auto w-full max-w-obsah">
+          <div class="grid gap-10 lg:grid-cols-[280px_1fr] lg:items-center">
+            <div>
+              <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+                4 jednoduché kroky k realizaci
+              </h2>
+              <span class="podtrzeni"></span>
 
-          <div class="mt-6 hidden text-tyrkys lg:block">
-            <Ilustrace jmeno="mezigeneracne" sirka={190} kresliSe />
-          </div>
-        </div>
+              {/* Číslo je ozdoba, ne informace — pořadí kroku je vedle něj
+                  v kolečku i v textu. Proto ho čtečka obrazovky přeskočí. */}
+              <span
+                class="cislo-kroku mt-8 hidden lg:block"
+                id="cislo-kroku"
+                aria-hidden="true"
+              >
+                1
+              </span>
 
-        <div id="cesta-obal" class="relative">
-          {/* Čára se kreslí podle scrollu (ANIMACE 1). */}
-          <svg
-            class="pointer-events-none absolute top-0 left-5 h-full w-16 sm:left-8"
-            aria-hidden="true"
-            preserveAspectRatio="none"
-            viewBox="0 0 64 1000"
-          >
-            <path
-              id="cesta"
-              class="cesta"
-              d="M32 0 C 8 200, 56 300, 32 500 S 8 800, 32 1000"
-              fill="none"
-              stroke="var(--color-merunka)"
-              stroke-width="4"
-              stroke-linecap="round"></path>
-          </svg>
+              {/* Ukazatel postupu — čtyři čárky, dojetá je meruňková. */}
+              <div
+                class="mt-8 flex gap-2"
+                id="postup-kroku"
+                role="status"
+                aria-live="polite"
+              >
+                {
+                  kroky.map((_, i) => (
+                    <span
+                      class="carka-kroku h-1.5 flex-1 rounded-full bg-merunka-tlumena"
+                      data-carka={i + 1}
+                    />
+                  ))
+                }
+              </div>
+              <p class="sr-only" id="postup-slovy">Krok 1 ze {kroky.length}</p>
+            </div>
 
-          <ol class="relative m-0 list-none space-y-20 p-0">
-            {
-              kroky.map((krok, i) => (
-                <li
-                  class="krok relative flex items-start gap-6 pl-2 sm:gap-10 sm:pl-6"
-                  data-poradi-kroku={i + 1}
-                  data-odhal="zdola"
-                >
-                  <span
-                    class="kolecko-kroku z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-merunka text-2xl font-semibold text-text shadow-lg"
-                    aria-hidden="true"
+            <ol class="kroky-seznam relative m-0 list-none p-0">
+              {
+                kroky.map((krok, i) => (
+                  <li
+                    class="krok flex items-start gap-6 sm:gap-10"
+                    data-poradi-kroku={i + 1}
                   >
-                    {i + 1}
-                  </span>
+                    <span
+                      class="kolecko-kroku z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-merunka text-2xl font-semibold text-text shadow-lg"
+                      aria-hidden="true"
+                    >
+                      {i + 1}
+                    </span>
 
-                  <div class="min-w-0 flex-1">
-                    <h3 class="text-2xl sm:text-3xl">{krok.nadpis}</h3>
-                    <p class="mt-3 mb-0 max-w-[600px] text-lg">{krok.text}</p>
-                  </div>
-                </li>
-              ))
-            }
-          </ol>
+                    <div class="min-w-0 flex-1">
+                      <h3 class="text-2xl sm:text-3xl">{krok.nadpis}</h3>
+                      <p class="mt-3 mb-0 max-w-[600px] text-lg">{krok.text}</p>
+                    </div>
+                  </li>
+                ))
+              }
+            </ol>
+          </div>
         </div>
       </div>
     </div>
@@ -778,55 +791,62 @@ const podpora = [
       </h2>
       <span class="podtrzeni"></span>
 
-      <div class="mt-12 grid gap-10 lg:grid-cols-[340px_1fr] lg:items-start">
-        <div class="space-y-5">
-          <div
-            class="relative overflow-hidden rounded-2xl bg-white p-7"
-            data-odhal="preklopeni"
-          >
-            {/* ANIMACE 3 — ozdobný kruh za částkou. */}
-            <span
-              class="kruh-za-castkou pointer-events-none absolute -top-14 -right-10 h-44 w-44 rounded-full"
-              style="background: var(--color-plocha-tyrkys)"
-              aria-hidden="true"></span>
+      {/* Informace nahoře na šířku, formulář pod nimi.
+          Dřív to byly dva sloupce — vlevo tři vysoké karty, vpravo formulář.
+          Jenže formulář je krokový a v prvním kroku má jednu otázku, takže
+          vedle dlouhého sloupce zbývalo půl obrazovky prázdna. Takhle nese
+          každý řádek tolik obsahu, kolik unese. */}
+      <div class="mt-10 grid gap-5 md:grid-cols-3">
+        <div
+          class="relative overflow-hidden rounded-2xl bg-white p-6"
+          data-odhal="preklopeni"
+        >
+          {/* ANIMACE 3 — ozdobný kruh za částkou. */}
+          <span
+            class="kruh-za-castkou pointer-events-none absolute -top-14 -right-10 h-44 w-44 rounded-full"
+            style="background: var(--color-plocha-tyrkys)"
+            aria-hidden="true"></span>
 
-            <div class="relative">
-              <p class="m-0 text-popisek">Registrační poplatek</p>
-              <p class="mt-1 mb-0 text-5xl font-semibold text-tyrkys">
-                <span class="castka" data-pocitadlo="500">500</span> Kč
-              </p>
-            </div>
-          </div>
-
-          <div
-            class="rounded-2xl bg-white p-7"
-            data-odhal="preklopeni"
-            style="--prodleva: 120ms"
-          >
-            <h3 class="text-xl">Na co je poplatek určen?</h3>
-            <p class="mt-2 mb-0">
-              Tato částka slouží k pokrytí nákladů spojených s celkovou
-              organizací a koordinací projektu, vývojem a technickým zajištěním
-              aplikace „Zásobník nápadů" a dalšími nezbytnými provozními náklady
-              na realizaci akce.
-            </p>
-          </div>
-
-          <div
-            class="rounded-2xl bg-white p-7"
-            data-odhal="preklopeni"
-            style="--prodleva: 240ms"
-          >
-            <h3 class="text-xl">Platba a fakturace</h3>
-            <p class="mt-2 mb-0">
-              Platbu lze pohodlně provést pomocí QR kódu nebo standardním
-              bankovním převodem. Systém vám po dokončení registrace v případě
-              potřeby automaticky vystaví fakturu pro účetnictví
-              školy/organizace.
+          <div class="relative">
+            <p class="m-0 text-popisek">Registrační poplatek</p>
+            <p class="mt-1 mb-0 text-5xl font-semibold text-tyrkys">
+              <span class="castka" data-pocitadlo="500">500</span> Kč
             </p>
           </div>
         </div>
 
+        <div
+          class="rounded-2xl bg-white p-6"
+          data-odhal="preklopeni"
+          style="--prodleva: 120ms"
+        >
+          <h3 class="text-xl">Na co je poplatek určen?</h3>
+          <p class="mt-2 mb-0">
+            Tato částka slouží k pokrytí nákladů spojených s celkovou
+            organizací a koordinací projektu, vývojem a technickým zajištěním
+            aplikace „Zásobník nápadů" a dalšími nezbytnými provozními náklady
+            na realizaci akce.
+          </p>
+        </div>
+
+        <div
+          class="rounded-2xl bg-white p-6"
+          data-odhal="preklopeni"
+          style="--prodleva: 240ms"
+        >
+          <h3 class="text-xl">Platba a fakturace</h3>
+          <p class="mt-2 mb-0">
+            Platbu lze pohodlně provést pomocí QR kódu nebo standardním
+            bankovním převodem. Systém vám po dokončení registrace v případě
+            potřeby automaticky vystaví fakturu pro účetnictví
+            školy/organizace.
+          </p>
+        </div>
+      </div>
+
+      {/* Formulář drží čitelnou šířku — přes celou stránku by se řádky
+          táhly moc doširoka a hůř se v nich hledal začátek dalšího. */}
+      <div class="mt-8 max-w-[820px]">
         <FormularKrokovy />
       </div>
     </div>
@@ -1151,42 +1171,76 @@ const podpora = [
     prekresli();
 
     // ------------------------------------------------------------------
-    // JAK TO FUNGUJE, ANIMACE 2 a 3 — přišpendlené číslo a živé kolečko
+    // JAK TO FUNGUJE, ANIMACE 1–3 — přišpendlená sekce a přepínání kroků
     // ------------------------------------------------------------------
-    // Sledujeme úzký pruh uprostřed obrazovky. Krok, který v něm je, je
-    // „na řadě": jeho kolečko se zvětší a velké číslo v přišpendleném
-    // sloupci se na něj překlopí.
-    (function prispendlenyKrok() {
+    // Sekce je vysoká několik obrazovek a uvnitř je přišpendlený obsah.
+    // Podle toho, jak daleko jsme dráhou projeli, se přepne krok: text se
+    // vymění, velké číslo překlopí a ukazatel postupu dojede.
+    //
+    // Scroll se nikde nezabavuje ani nepřepočítává — stránka jede pořád
+    // svou rychlostí. Jen je po dobu průjezdu vidět stejná sekce.
+    (function pripnuteKroky() {
+      const draha = document.querySelector<HTMLElement>(".kroky-draha");
       const kroky = Array.from(document.querySelectorAll<HTMLElement>(".krok"));
       const cislo = document.querySelector<HTMLElement>("#cislo-kroku");
-      if (kroky.length === 0) return;
-
-      let posledni = "";
-
-      const pozorovatelKroku = new IntersectionObserver(
-        (zaznamy) => {
-          zaznamy.forEach((zaznam) => {
-            const prvek = zaznam.target as HTMLElement;
-            prvek.classList.toggle("je-na-rade", zaznam.isIntersecting);
-
-            if (!zaznam.isIntersecting || !cislo) return;
-
-            const poradi = prvek.dataset.poradiKroku ?? "";
-            if (poradi === posledni) return;
-            posledni = poradi;
-
-            // Překlopení: staré číslo odejde nahoru, nové přijde zdola.
-            cislo.classList.add("prekloplo");
-            window.setTimeout(() => {
-              cislo.textContent = poradi;
-              cislo.classList.remove("prekloplo");
-            }, 220);
-          });
-        },
-        { rootMargin: "-45% 0px -45% 0px" },
+      const carky = Array.from(
+        document.querySelectorAll<HTMLElement>(".carka-kroku"),
       );
+      const slovy = document.querySelector<HTMLElement>("#postup-slovy");
+      if (!draha || kroky.length === 0) return;
 
-      kroky.forEach((krok) => pozorovatelKroku.observe(krok));
+      // Výška dráhy: jedna obrazovka na krok. Kdyby se počet kroků změnil,
+      // sekce se přizpůsobí sama.
+      draha.style.setProperty("--pocet-kroku", String(kroky.length));
+
+      let aktivni = -1;
+
+      function nastav(index: number) {
+        if (index === aktivni) return;
+        aktivni = index;
+
+        kroky.forEach((krok, i) => {
+          krok.classList.toggle("je-na-rade", i === index);
+          krok.classList.toggle("uz-bylo", i < index);
+        });
+
+        carky.forEach((carka, i) => {
+          carka.classList.toggle("dojeta", i <= index);
+        });
+
+        if (slovy) {
+          slovy.textContent = `Krok ${index + 1} z ${kroky.length}`;
+        }
+
+        if (cislo) {
+          // Překlopení: staré číslo odejde nahoru, nové přijde zdola.
+          cislo.classList.add("prekloplo");
+          window.setTimeout(() => {
+            cislo.textContent = String(index + 1);
+            cislo.classList.remove("prekloplo");
+          }, 200);
+        }
+      }
+
+      function prekresliKroky() {
+        const r = draha!.getBoundingClientRect();
+        // Kolik dráhy je za námi. Poslední obrazovka dráhy je doběh, aby
+        // byl čtvrtý krok chvíli vidět celý, než sekce odjede.
+        const ujeto = -r.top;
+        const uzitecna = r.height - window.innerHeight;
+        const podil = uzitecna > 0 ? ujeto / uzitecna : 0;
+
+        const index = Math.min(
+          kroky.length - 1,
+          Math.max(0, Math.floor(podil * kroky.length)),
+        );
+        nastav(index);
+      }
+
+      nastav(0);
+      prekresliKroky();
+      window.addEventListener("scroll", prekresliKroky, { passive: true });
+      window.addEventListener("resize", prekresliKroky, { passive: true });
     })();
 
     // ------------------------------------------------------------------

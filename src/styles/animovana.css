@@ -563,3 +563,94 @@
     display: none;
   }
 }
+
+/* ==========================================================================
+   Přišpendlené kroky realizace
+   ==========================================================================
+   Sekce se při scrollu zastaví na místě a kroky se v ní přepínají. Není to
+   zabavený scroll — stránka jede pořád stejnou rychlostí, jen je po dobu
+   průjezdu vidět tatáž sekce.
+
+   Celý efekt visí na třídě `pohyb-ano`. Když návštěvník pohyb zakáže nebo
+   nejede JavaScript, dráha nedostane výšku, přišpendlení se nezapne a kroky
+   se vypíšou jako obyčejný seznam pod sebou. Nic se neschová.
+   ========================================================================== */
+
+.kroky-seznam > .krok + .krok {
+  margin-top: 5rem;
+}
+
+.pohyb-ano .kroky-draha {
+  /* Jedna obrazovka na krok, plus jedna navíc, aby byl poslední krok
+     chvíli vidět celý, než sekce odjede. */
+  height: calc((var(--pocet-kroku, 4) + 1) * 100vh);
+}
+
+.pohyb-ano .kroky-pripnute {
+  position: sticky;
+  top: 0;
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  padding-block: 3rem;
+}
+
+/* Ve přišpendleném režimu leží kroky přes sebe a přepínají se. */
+.pohyb-ano .kroky-seznam {
+  display: grid;
+}
+
+.pohyb-ano .kroky-seznam > .krok {
+  grid-area: 1 / 1;
+  margin-top: 0;
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition:
+    opacity 420ms var(--krivka),
+    transform 420ms var(--krivka);
+  pointer-events: none;
+}
+
+.pohyb-ano .kroky-seznam > .krok.je-na-rade {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Krok, který už byl, odchází nahoru — ne dolů, odkud přišel ten další. */
+.pohyb-ano .kroky-seznam > .krok.uz-bylo {
+  transform: translate3d(0, -24px, 0);
+}
+
+.carka-kroku {
+  transition: background-color 320ms var(--krivka);
+}
+
+.carka-kroku.dojeta {
+  background-color: var(--color-merunka);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kroky-draha {
+    height: auto !important;
+  }
+
+  .kroky-pripnute {
+    position: static !important;
+    min-height: 0 !important;
+  }
+
+  .kroky-seznam {
+    display: block !important;
+  }
+
+  .kroky-seznam > .krok {
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+
+  .kroky-seznam > .krok + .krok {
+    margin-top: 5rem;
+  }
+}
