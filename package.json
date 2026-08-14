@@ -12,7 +12,8 @@
     "zip": "npm run build && node scripts/zip.mjs",
     "kontrola-obsahu": "node scripts/kontrola-obsahu.mjs",
     "astro": "astro",
-    "nahled": "ASTRO_BASE=/aktivne-spolu-cz/ astro build && node scripts/publikuj-nahled.mjs"
+    "nahled": "ASTRO_BASE=/aktivne-spolu-cz/ astro build && node scripts/publikuj-nahled.mjs",
+    "smaz-ukazku": "node scripts/smaz-ukazkova-data.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
