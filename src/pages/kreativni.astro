@@ -251,13 +251,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
           Nejsou to karty, ale malé ikonky s názvem hned nad tlačítky.
           Zároveň je to přepínač: níž na stránce ztlumí důvody, které se
           vybrané skupiny netýkají. Proto to jsou <button>, ne text. */}
-      <p class="mt-12 mb-3 text-popisek">
-        {/* [NÁVRH TEXTU: vysvětlení výběru] — v podkladech není, ke schválení */}
-        <strong class="font-semibold text-text">Kdo jste?</strong> Vyberte
-        si a níž na stránce ukážeme, co z toho máte právě vy.
-      </p>
-
-      <div id="skupiny" class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div id="skupiny" class="mt-10 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {
           skupiny.map((skupina) => (
             <button

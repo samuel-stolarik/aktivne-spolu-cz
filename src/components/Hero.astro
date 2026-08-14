@@ -49,7 +49,21 @@ const cilovky = [
         stopu a staňte se součástí celostátního Zásobníku nápadů.
       </p>
 
-      <div class="najezd mt-10 flex flex-wrap gap-4" data-poradi="2">
+      <ul
+        class="najezd mt-10 flex list-none flex-wrap gap-x-8 gap-y-3 p-0"
+        data-poradi="2"
+      >
+        {
+          cilovky.map((cilovka) => (
+            <li class="flex items-center gap-2">
+              <Ikona jmeno={cilovka.ikona} velikost={22} />
+              <span>{cilovka.text}</span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="najezd mt-8 flex flex-wrap gap-4" data-poradi="3">
         <Tlacitko odkaz="#registrace">
           Chci se zapojit
           <Ikona jmeno="arrow-right" velikost={20} trida="text-white" />
@@ -62,19 +76,6 @@ const cilovky = [
         </Tlacitko>
       </div>
 
-      <ul
-        class="najezd mt-12 flex list-none flex-wrap gap-x-8 gap-y-3 p-0"
-        data-poradi="3"
-      >
-        {
-          cilovky.map((cilovka) => (
-            <li class="flex items-center gap-2">
-              <Ikona jmeno={cilovka.ikona} velikost={22} />
-              <span>{cilovka.text}</span>
-            </li>
-          ))
-        }
-      </ul>
     </div>
   </div>
 </section>
