@@ -37,6 +37,7 @@ import PrepinacVariant from "../components/PrepinacVariant.astro";
 import Ilustrace from "../components/Ilustrace.astro";
 import Mapa from "../components/Mapa.astro";
 import "../styles/animovana.css";
+import { EMAIL, OSOBA, TELEFON_ODKAZ, TELEFON_ZOBRAZIT } from "../lib/kontakt";
 
 // --- Data sekcí (převzatá z kreativní verze beze změny) -------------------
 
@@ -863,28 +864,28 @@ const podpora = [
       >
         <div data-odhal="zleva">
           <h3 class="text-xl">Nevíte si rady?</h3>
-          <p class="mt-1 mb-0">Ozvěte se nám, rádi poradíme.</p>
+          <p class="mt-1 mb-0">Ozvěte se nám, ráda poradí {OSOBA}.</p>
         </div>
 
         <div class="flex flex-wrap gap-x-8 gap-y-3">
           <a
-            href="tel:[DOPLNIT: telefon]"
+            href={`tel:${TELEFON_ODKAZ}`}
             class="flex min-h-11 items-center gap-2 text-lg font-semibold text-tyrkys no-underline"
             data-odhal="zleva"
             style="--prodleva: 140ms"
           >
             <Ikona jmeno="phone" velikost={22} />
-            [DOPLNIT: telefon]
+            {TELEFON_ZOBRAZIT}
           </a>
 
           <a
-            href="mailto:[DOPLNIT: e-mail]"
+            href={`mailto:${EMAIL}`}
             class="flex min-h-11 items-center gap-2 text-lg font-semibold text-tyrkys no-underline"
             data-odhal="zleva"
             style="--prodleva: 280ms"
           >
             <Ikona jmeno="mail" velikost={22} />
-            [DOPLNIT: e-mail]
+            {EMAIL}
           </a>
         </div>
       </div>

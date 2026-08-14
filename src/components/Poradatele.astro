@@ -36,6 +36,13 @@ interface Props {
 const { naBilem = false, poradi = 3 } = Astro.props;
 
 /**
+ * Údaje, které zadavatel zatím nedodal, se na webu vůbec neukazují.
+ * Vypisovat návštěvníkovi „[DOPLNIT: telefon]" je horší než ten řádek
+ * vynechat — v kódu placeholder zůstává, takže ho hledání najde.
+ */
+const dodano = (hodnota: string) => !hodnota.startsWith("[DOPLNIT");
+
+/**
  * Vrátí cestu k logu, ale jen když soubor opravdu leží v public/obrazky/.
  *
  * Kdybychom cestu napsali natvrdo dřív, než logo dorazí, měl by web na dvou
@@ -122,30 +129,36 @@ const poradatele = [
             tlačítko. Klikací řádky mají min. 44 px na výšku, aby se daly
             trefit prstem i méně jistou rukou. */}
         <ul class="mt-4 list-none space-y-1 p-0">
-          <li class="flex min-h-11 items-center gap-3">
-            <Ikona jmeno="user" velikost={22} />
-            <span>{organizace.osoba}</span>
-          </li>
+          {dodano(organizace.osoba) && (
+            <li class="flex min-h-11 items-center gap-3">
+              <Ikona jmeno="user" velikost={22} />
+              <span>{organizace.osoba}</span>
+            </li>
+          )}
 
-          <li>
-            <a
-              href={`mailto:${organizace.email}`}
-              class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
-            >
-              <Ikona jmeno="mail" velikost={22} />
-              {organizace.email}
-            </a>
-          </li>
+          {dodano(organizace.email) && (
+            <li>
+              <a
+                href={`mailto:${organizace.email}`}
+                class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+              >
+                <Ikona jmeno="mail" velikost={22} />
+                {organizace.email}
+              </a>
+            </li>
+          )}
 
-          <li>
-            <a
-              href={`tel:${organizace.telefon}`}
-              class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
-            >
-              <Ikona jmeno="phone" velikost={22} />
-              {organizace.telefon}
-            </a>
-          </li>
+          {dodano(organizace.telefon) && (
+            <li>
+              <a
+                href={`tel:${organizace.telefon}`}
+                class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+              >
+                <Ikona jmeno="phone" velikost={22} />
+                {organizace.telefon}
+              </a>
+            </li>
+          )}
 
           <li>
             <a

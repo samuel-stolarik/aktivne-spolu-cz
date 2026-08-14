@@ -30,6 +30,7 @@ import Poradatele from "../components/Poradatele.astro";
 import Ilustrace from "../components/Ilustrace.astro";
 import Mapa from "../components/Mapa.astro";
 import "../styles/kreativni.css";
+import { EMAIL, OSOBA, TELEFON_ODKAZ, TELEFON_ZOBRAZIT } from "../lib/kontakt";
 
 // Tipy na aktivity rozdělené do tří kategorií přesně podle podkladů.
 // Každá kategorie má vlastní barvu puntíku, ať jdou od sebe rozeznat
@@ -745,24 +746,24 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
       >
         <div>
           <h3 class="text-xl">Nevíte si rady?</h3>
-          <p class="mt-1 mb-0">Ozvěte se nám, rádi poradíme.</p>
+          <p class="mt-1 mb-0">Ozvěte se nám, ráda poradí {OSOBA}.</p>
         </div>
 
         <div class="flex flex-wrap gap-x-8 gap-y-3">
           <a
-            href="tel:[DOPLNIT: telefon]"
+            href={`tel:${TELEFON_ODKAZ}`}
             class="flex min-h-11 items-center gap-2 text-lg font-semibold text-tyrkys no-underline"
           >
             <Ikona jmeno="phone" velikost={22} />
-            [DOPLNIT: telefon]
+            {TELEFON_ZOBRAZIT}
           </a>
 
           <a
-            href="mailto:[DOPLNIT: e-mail]"
+            href={`mailto:${EMAIL}`}
             class="flex min-h-11 items-center gap-2 text-lg font-semibold text-tyrkys no-underline"
           >
             <Ikona jmeno="mail" velikost={22} />
-            [DOPLNIT: e-mail]
+            {EMAIL}
           </a>
         </div>
       </div>
