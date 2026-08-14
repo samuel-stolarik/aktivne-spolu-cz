@@ -20,6 +20,8 @@ interface Prihlaska {
   telefon: string;
   mesto: string;
   kraj: string;
+  /** Den konání ve tvaru RRRR-MM-DD. Starší přihlášky ho nemají. */
+  datum_akce: string | null;
   napad_na_aktivitu: string | null;
   forma_platby: string;
   variabilni_symbol: number;
@@ -91,6 +93,23 @@ function ceskeDatum(iso: string): string {
   });
 }
 
+/**
+ * Den konání akce česky: `2026-10-01` → `1. 10. 2026`.
+ *
+ * Skládá se z částí zapsaného řetězce, ne přes `new Date()`. Prohlížeč čte
+ * `2026-10-01` jako půlnoc UTC, takže by se v západnějším časovém pásmu
+ * ukázalo 30. 9. — den, který nikdo nevyplnil.
+ *
+ * Prázdná pomlčka u chybějícího data je schválně: v tabulce plné údajů by
+ * prázdná buňka vypadala jako chyba načítání.
+ */
+function ceskyDenAkce(iso: string | null): string {
+  if (!iso) return "—";
+  const casti = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (!casti) return iso;
+  return `${Number(casti[3])}. ${Number(casti[2])}. ${casti[1]}`;
+}
+
 // ---------------------------------------------------------------------------
 // VÝBĚR ZOBRAZENÝCH ŘÁDKŮ
 // ---------------------------------------------------------------------------
@@ -101,6 +120,37 @@ function ceskeDatum(iso: string): string {
  * Oba ovladače jsou vidět nad tabulkou a filtr má vždy volbu „Všechny".
  * Skrytý filtr, o kterém člověk neví, vypadá jako ztracená data.
  */
+/**
+ * Seřadí přihlášky podle toho, co je zrovna zvolené v ovladači „Seřadit podle".
+ *
+ * Řadí se až tady v prohlížeči, ne v databázi — přihlášek jsou stovky, ne
+ * miliony, a překlopení pořadí tak proběhne okamžitě a bez dalšího dotazu.
+ *
+ * Přihlášky bez data konání (ty z doby, kdy se na datum ještě neptalo) jdou
+ * při řazení podle data VŽDY na konec. Kdyby se schovaly nahoru, vypadalo by
+ * to, že se konají první.
+ */
+function serad(radky: Prihlaska[]): Prihlaska[] {
+  const razeni = prvek<HTMLSelectElement>("razeni")?.value ?? "prihlaseno";
+  const serazene = [...radky];
+
+  if (razeni === "datum-akce") {
+    serazene.sort((a, b) => {
+      if (!a.datum_akce && !b.datum_akce) return 0;
+      if (!a.datum_akce) return 1;
+      if (!b.datum_akce) return -1;
+      // Tvar RRRR-MM-DD se řadí jako text stejně jako datum.
+      return a.datum_akce.localeCompare(b.datum_akce);
+    });
+    return serazene;
+  }
+
+  // Výchozí pořadí: nejnovější přihláška nahoře. Tak už je vrací Edge Funkce,
+  // ale řadíme znovu, ať se pořadí obnoví i po přepnutí zpátky.
+  serazene.sort((a, b) => b.vytvoreno.localeCompare(a.vytvoreno));
+  return serazene;
+}
+
 function vybranePrihlasky(): Prihlaska[] {
   const stav = prvek<HTMLSelectElement>("filtr-stav")?.value ?? "vse";
   const mapa = prvek<HTMLSelectElement>("filtr-mapa")?.value ?? "vse";
@@ -108,7 +158,7 @@ function vybranePrihlasky(): Prihlaska[] {
     .trim()
     .toLocaleLowerCase("cs");
 
-  return vsechnyPrihlasky.filter((p) => {
+  const vybrane = vsechnyPrihlasky.filter((p) => {
     if (stav !== "vse" && p.stav !== stav) return false;
     if (mapa !== "vse" && p.schvaleno !== mapa) return false;
     if (!hledane) return true;
@@ -127,6 +177,8 @@ function vybranePrihlasky(): Prihlaska[] {
 
     return vsechnaPole.includes(hledane);
   });
+
+  return serad(vybrane);
 }
 
 // ---------------------------------------------------------------------------
@@ -417,7 +469,7 @@ function vykresliTabulku(): void {
   if (radky.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 11;
+    td.colSpan = 12;
     td.className = "px-3 py-8 text-center";
     td.textContent =
       vsechnyPrihlasky.length === 0
@@ -462,6 +514,8 @@ function vykresliTabulku(): void {
       tdTelefon,
       bunka(prihlaska.mesto),
       bunka(prihlaska.kraj),
+      // Datum konání česky (1. 10. 2026), nikdy ve tvaru 2026-10-01.
+      bunka(ceskyDenAkce(prihlaska.datum_akce), "whitespace-nowrap"),
       bunka(NAZVY_PLATEB[prihlaska.forma_platby] ?? prihlaska.forma_platby),
       bunka(String(prihlaska.variabilni_symbol), "whitespace-nowrap"),
       bunkaSeStavem(prihlaska),
@@ -500,6 +554,7 @@ function sestavCsv(radky: Prihlaska[]): string {
     "Telefon",
     "Město",
     "Kraj",
+    "Datum akce",
     "Forma platby",
     "Variabilní symbol",
     "Stav",
@@ -529,6 +584,8 @@ function sestavCsv(radky: Prihlaska[]): string {
         p.telefon,
         p.mesto,
         p.kraj,
+        // Česky, ne ISO. Soubor otevírá člověk v Excelu, ne stroj.
+        ceskyDenAkce(p.datum_akce),
         NAZVY_PLATEB[p.forma_platby] ?? p.forma_platby,
         p.variabilni_symbol,
         NAZVY_STAVU[p.stav] ?? p.stav,
@@ -601,6 +658,7 @@ export async function nactiPrihlasky(): Promise<void> {
 export function pripravPrihlasky(): void {
   prvek<HTMLSelectElement>("filtr-stav")?.addEventListener("change", vykresliTabulku);
   prvek<HTMLSelectElement>("filtr-mapa")?.addEventListener("change", vykresliTabulku);
+  prvek<HTMLSelectElement>("razeni")?.addEventListener("change", vykresliTabulku);
   prvek<HTMLInputElement>("filtr-hledani")?.addEventListener("input", vykresliTabulku);
   prvek<HTMLButtonElement>("tlacitko-nacist-prihlasky")?.addEventListener("click", () => {
     void nactiPrihlasky();

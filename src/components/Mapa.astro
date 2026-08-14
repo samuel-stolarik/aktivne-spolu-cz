@@ -212,6 +212,15 @@ const { predel = "linka" } = Astro.props;
     outline-offset: 3px;
   }
 
+  /* --- Termín v textovém seznamu ---------------------------------------- */
+  /* Odlišený barvou, ne velikostí. Zmenšit ho by šlo proti publiku, které
+     zahrnuje seniory — datum musí zůstat stejně čitelné jako název města. */
+  .mapa-seznam-termin {
+    color: var(--color-tyrkys);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
   /* --- Bublina s podrobnostmi -------------------------------------------- */
   .leaflet-popup-content-wrapper {
     border-radius: 12px;
@@ -255,6 +264,14 @@ const { predel = "linka" } = Astro.props;
     background-color: var(--color-plocha-tyrkys);
     padding: 1px 10px;
     font-size: var(--text-popisek);
+  }
+
+  /* Datum vedle štítku s typem pořadatele. Tučně, ať se v bublině najde
+     na první pohled — je to údaj, kvůli kterému si lidé bublinu otevřou. */
+  .mapa-bublina-datum {
+    margin-left: 8px;
+    font-weight: 600;
+    white-space: nowrap;
   }
 
   .mapa-bublina-nazev {
@@ -584,6 +601,16 @@ const { predel = "linka" } = Astro.props;
           radek.append(znacka);
         }
 
+        // Kdy se akce koná. Pro návštěvníka je to stejně důležité jako kde,
+        // proto je datum hned nahoře u typu pořadatele, ne až pod nápadem.
+        const kdy = datumCesky(akce.datum_akce);
+        if (kdy) {
+          const termin = document.createElement("span");
+          termin.className = "mapa-bublina-datum";
+          termin.textContent = kdy;
+          radek.append(termin);
+        }
+
         // Jméno nemusí dorazit — u jednotlivců se záměrně neposílá.
         // V takovém případě prostě není řádek, ne „undefined".
         const nazev = text(akce.nazev_poradatele);
@@ -751,16 +778,28 @@ const { predel = "linka" } = Astro.props;
 
       seznam.replaceChildren();
 
-      // kraj → město → počet akcí
-      const kraje = new Map<string, Map<string, number>>();
+      // kraj → město → akce, které se v něm chystají
+      const kraje = new Map<string, Map<string, Akce[]>>();
 
       for (const polozka of akce) {
         const kraj = text(polozka.kraj) || "Kraj neuveden";
         const mesto = text(polozka.mesto) || "Místo neuvedeno";
 
-        const mesta = kraje.get(kraj) ?? new Map<string, number>();
-        mesta.set(mesto, (mesta.get(mesto) ?? 0) + 1);
+        const mesta = kraje.get(kraj) ?? new Map<string, Akce[]>();
+        mesta.set(mesto, [...(mesta.get(mesto) ?? []), polozka]);
         kraje.set(kraj, mesta);
+      }
+
+      /**
+       * Termíny u jednoho města. Stejný den se nevypisuje dvakrát a řadí se
+       * od nejbližšího — v seznamu se čte jako program, ne jako výpis dat.
+       * Řadí se ve strojovém tvaru, teprve pak se převádí do češtiny.
+       */
+      function terminyMesta(akceMesta: Akce[]): string {
+        const dny = [...new Set(akceMesta.map((a) => text(a.datum_akce)))]
+          .filter((d) => datumCesky(d) !== "")
+          .sort();
+        return dny.map(datumCesky).join(", ");
       }
 
       const poradiCesky = (a: string, b: string) => a.localeCompare(b, "cs");
@@ -779,13 +818,31 @@ const { predel = "linka" } = Astro.props;
         seznamMest.className = "mt-1 list-none p-0";
 
         for (const mesto of [...mesta.keys()].sort(poradiCesky)) {
-          const pocet = mesta.get(mesto)!;
+          const akceMesta = mesta.get(mesto)!;
+          const pocet = akceMesta.length;
+
           const radek = document.createElement("li");
+
           // Počet se píše jen tam, kde je akcí víc — u jedničky by to byl šum.
-          radek.textContent =
+          const nazev = document.createElement("span");
+          nazev.textContent =
             pocet > 1
               ? `${mesto} (${pocet} ${sklonuj(pocet, ["akce", "akce", "akcí"])})`
               : mesto;
+          radek.append(nazev);
+
+          // Datum je pro návštěvníka půlka informace, takže patří i sem,
+          // ne jen do bubliny na mapě. Kdo mapu neovládá, musí se ke „kdy"
+          // dostat stejně snadno jako ke „kde". Když datum neznáme (starší
+          // přihlášky), nepíše se místo něj nic.
+          const terminy = terminyMesta(akceMesta);
+          if (terminy) {
+            const kdy = document.createElement("span");
+            kdy.className = "mapa-seznam-termin";
+            kdy.textContent = terminy;
+            radek.append(" ", kdy);
+          }
+
           seznamMest.append(radek);
         }
 

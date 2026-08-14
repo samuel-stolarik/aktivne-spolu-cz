@@ -59,6 +59,7 @@ const SLOUPCE_PRIHLASKY = [
   'telefon',
   'mesto',
   'kraj',
+  'datum_akce',
   'napad_na_aktivitu',
   'forma_platby',
   'variabilni_symbol',

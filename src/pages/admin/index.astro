@@ -152,7 +152,9 @@ import "../../styles/global.css";
         <section data-panel="prihlasky" class="pt-6" hidden>
           <h2 class="mt-0 text-xl">Kdo se přihlásil</h2>
           <p class="max-w-[860px] text-popisek">
-            Nejnovější přihlášky jsou nahoře. Ve sloupci <strong>Stav</strong>
+            Nejnovější přihlášky jsou nahoře, dokud si v ovladači
+            <strong>Seřadit podle</strong> nezvolíte pořadí podle data konání
+            akce. Ve sloupci <strong>Stav</strong>
             se eviduje platba a uloží se sama. Ve sloupci
             <strong>Na mapce</strong> rozhodujete o něčem jiném — jestli akci
             uvidí návštěvníci webu na veřejné mapce. Zaplacená přihláška se
@@ -177,6 +179,16 @@ import "../../styles/global.css";
                 <option value="ceka">Jen čekající na rozhodnutí</option>
                 <option value="schvaleno">Jen zveřejněné na mapce</option>
                 <option value="zamitnuto">Jen nezveřejněné</option>
+              </select>
+            </div>
+
+            {/* Řazení je vidět stejně jako filtry. Skrytý ovladač, o kterém
+                člověk neví, vypadá jako přeházená data. */}
+            <div>
+              <label class="admin-popisek" for="razeni">Seřadit podle</label>
+              <select id="razeni" class="admin-pole w-[240px]">
+                <option value="prihlaseno">Nejnovější přihlášky</option>
+                <option value="datum-akce">Data konání, od nejbližšího</option>
               </select>
             </div>
 
@@ -210,6 +222,7 @@ import "../../styles/global.css";
                   <th class="px-3 py-3 font-semibold">Telefon</th>
                   <th class="px-3 py-3 font-semibold">Město</th>
                   <th class="px-3 py-3 font-semibold">Kraj</th>
+                  <th class="px-3 py-3 font-semibold">Datum akce</th>
                   <th class="px-3 py-3 font-semibold">Platba</th>
                   <th class="px-3 py-3 font-semibold">Variabilní symbol</th>
                   <th class="px-3 py-3 font-semibold">Stav platby</th>
