@@ -21,5 +21,9 @@ export const TELEFON_ODKAZ = "+420603852740";
 
 export const EMAIL = "cepova@prave-ted-ops.cz";
 
-/** Kdo se ozve, když člověk zavolá nebo napíše. */
+/**
+ * Kdo se ozve. Na webu se schválně nevypisuje — schválená věta zní
+ * „Ozvěte se nám, rádi poradíme." a jméno je z e-mailu stejně poznat.
+ * Zůstává tu pro případ, že by ho zadavatel chtěl doplnit.
+ */
 export const OSOBA = "Hana Čepová";

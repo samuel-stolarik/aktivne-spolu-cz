@@ -18,7 +18,7 @@ import Tlacitko from "./Tlacitko.astro";
 import Formular from "./Formular.astro";
 import Poradatele from "./Poradatele.astro";
 import Mapa from "./Mapa.astro";
-import { EMAIL, OSOBA, TELEFON_ODKAZ, TELEFON_ZOBRAZIT } from "../lib/kontakt";
+import { EMAIL, TELEFON_ODKAZ, TELEFON_ZOBRAZIT } from "../lib/kontakt";
 
 interface Props {
   predel?: "linka" | "karta";
@@ -310,7 +310,7 @@ const kartaNaPlose = predel === "karta";
   >
     <div>
       <h3 class="text-xl">Nevíte si rady?</h3>
-      <p class="mt-1 mb-0">Ozvěte se nám, ráda poradí {OSOBA}.</p>
+      <p class="mt-1 mb-0">Ozvěte se nám, rádi poradíme.</p>
     </div>
 
     <div class="flex flex-wrap gap-x-8 gap-y-3">

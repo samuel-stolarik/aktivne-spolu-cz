@@ -574,7 +574,7 @@ export const KATALOG: PolozkaObsahu[] = [
     popis:
       'Telefonní číslo. Změní se i to, kam se po klepnutí volá. Napište ho tak, jak se má zobrazit, například 777 123 456.',
     typ: 'telefon',
-    vychozi: '[DOPLNIT: telefon]',
+    vychozi: '603 852 740',
   },
   {
     klic: 'kontakt.email',
@@ -582,7 +582,7 @@ export const KATALOG: PolozkaObsahu[] = [
     popis:
       'E-mailová adresa. Změní se i to, kam se po klepnutí píše. Například info@aktivne-spolu.cz.',
     typ: 'email',
-    vychozi: '[DOPLNIT: e-mail]',
+    vychozi: 'cepova@prave-ted-ops.cz',
   },
 ];
 
