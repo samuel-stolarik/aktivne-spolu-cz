@@ -611,17 +611,21 @@ const ZNACKY_S_TEXTEM =
   'h1, h2, h3, h4, p, li, span, strong, em, a, button, figcaption, dt, dd, td, th, label, summary';
 
 /**
- * Najde na stránce prvky, jejichž text odpovídá zadanému původnímu znění.
+ * Najde na stránce prvky, jejichž text odpovídá zadanému znění.
  *
  * Vrací jen ty nejvnitřnější. Kdyby se vracel i obalující prvek, přepis by
  * smazal všechno ostatní uvnitř něj.
+ *
+ * @param puvodni Hledané znění.
+ * @param kde     Ve kterém dokumentu se hledá. Na webu je to samotná stránka;
+ *                administrace sem posílá dokument náhledu ve vloženém rámu.
  */
-function najdiPrvkySTextem(puvodni: string): Element[] {
+export function najdiPrvkySTextem(puvodni: string, kde: Document = document): Element[] {
   const hledane = sjednotText(puvodni);
   if (!hledane) return [];
 
   const nalezene: Element[] = [];
-  for (const prvek of document.querySelectorAll(ZNACKY_S_TEXTEM)) {
+  for (const prvek of kde.querySelectorAll(ZNACKY_S_TEXTEM)) {
     if (sjednotText(prvek.textContent ?? '') === hledane) nalezene.push(prvek);
   }
 
@@ -640,8 +644,11 @@ function najdiPrvkySTextem(puvodni: string): Element[] {
  * a ostatní se vyprázdní. Odsazení kolem textu zůstává zachované, ať se
  * nezmění mezera mezi ikonou a nápisem.
  */
-function vlozTextDoPrvku(prvek: Element, novy: string): void {
-  const prochazec = document.createTreeWalker(prvek, NodeFilter.SHOW_TEXT);
+export function vlozTextDoPrvku(prvek: Element, novy: string): void {
+  // Průchozí se vytváří z dokumentu, ve kterém prvek opravdu je. V administraci
+  // to je dokument náhledu ve vloženém rámu, ne stránka administrace.
+  const dokument = prvek.ownerDocument ?? document;
+  const prochazec = dokument.createTreeWalker(prvek, NodeFilter.SHOW_TEXT);
   const useky: Text[] = [];
 
   let uzel = prochazec.nextNode();

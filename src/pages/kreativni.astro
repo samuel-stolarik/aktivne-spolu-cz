@@ -564,7 +564,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
         </div>
 
         {/* Rozevřené karty — ukázka záznamu v Zásobníku. */}
-        <div class="balicek relative mx-auto h-[560px] w-[300px] shrink-0">
+        <div class="balicek relative mx-auto h-[380px] w-[470px] max-w-full shrink-0">
           {
             [
               {
@@ -590,7 +590,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
               },
             ].map((karta, i) => (
               <article
-                class="karta-zasobniku absolute inset-x-0 top-0 rounded-2xl bg-white p-6 text-text shadow-2xl"
+                class="karta-zasobniku absolute top-6 left-1/2 w-[264px] rounded-2xl bg-white p-6 text-text shadow-2xl"
                 style={`--poradi: ${i}`}
               >
                 <span

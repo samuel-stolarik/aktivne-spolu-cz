@@ -231,28 +231,39 @@
   }
 }
 
-/* --- Rozevřené karty Zásobníku ------------------------------------------ */
-/* Tři karty leží přes sebe a jsou pootočené, takže je vidět, že jich je víc.
-   Po najetí myší se balíček rozevře — ukáže se, že Zásobník je databáze
-   záznamů, ne jeden text. */
-.karta-zasobniku {
-  /* Karty jsou posunuté dolů o tolik, aby u každé zůstal vidět štítek
-     kategorie a název. Dřív ležely skoro přes sebe a byla čitelná jen
-     první — ze tří kategorií tak byla vidět jedna.
+/* --- Vějíř karet Zásobníku ---------------------------------------------- */
+/* Karty drží jako list v ruce: otáčejí se kolem bodu POD sebou, takže se
+   rozevřou do oblouku a každá vykoukne zpod té předchozí.
 
-     Pozdější karta musí být NAD dřívější, jinak by ji překryla zrovna
-     v místě štítku a posun by byl k ničemu. */
-  transform: translateY(calc(var(--poradi) * 108px))
-    rotate(calc((var(--poradi) - 1) * 1.5deg));
-  transform-origin: center top;
-  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+   Otáčení kolem vzdáleného bodu je to podstatné — kdyby se točily kolem
+   vlastního středu, jen by se nakláněly na místě a pořád by ležely přes sebe.
+
+   Posun o polovinu šířky je v transformaci schválně: karty jsou umístěné
+   na střed obalu a `-translate-x-1/2` z Tailwindu by nám tady transformaci
+   přepsalo. */
+.karta-zasobniku {
+  transform: translateX(-50%) rotate(calc((var(--poradi) - 1) * 9deg));
+  transform-origin: 50% 150%;
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 380ms ease-out;
   z-index: var(--poradi);
 }
 
-/* Po najetí myší se balíček rozestoupí, ať jde přečíst i zbytek karet. */
+/* Najetí myší na balíček vějíř rozevře — objeví se, co je pod vrchní kartou. */
 .balicek:hover .karta-zasobniku {
-  transform: translateY(calc(var(--poradi) * 148px))
-    rotate(calc((var(--poradi) - 1) * 2.5deg));
+  transform: translateX(-50%) rotate(calc((var(--poradi) - 1) * 15deg));
+}
+
+/* Karta pod kurzorem se zvedne dopředu, ať jde přečíst celá. */
+.karta-zasobniku:hover {
+  z-index: 10;
+}
+
+.balicek:hover .karta-zasobniku:hover {
+  transform: translateX(-50%) rotate(calc((var(--poradi) - 1) * 15deg))
+    translateY(-18px);
+  box-shadow: 0 28px 60px -20px rgba(0, 0, 0, 0.45);
 }
 
 /* --- Šipka pobízející ke scrollu ---------------------------------------- */
