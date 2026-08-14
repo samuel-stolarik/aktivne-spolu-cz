@@ -92,6 +92,13 @@
    nadpis jedním neporušeným kusem textu, takže ho čtečka obrazovky přečte
    normálně a nedá se rozbít výběrem myší. */
 
+/* Obal jednoho slova. Drží slovo pohromadě, aby se řádka nezalomila
+   uprostřed slova — jednotlivá písmena jsou totiž `inline-block` a bez
+   obalu by je prohlížeč mohl rozházet přes dva řádky. */
+.pohyb-ano .slovo-obal {
+  display: inline-block;
+}
+
 .pohyb-ano .pismeno,
 .pohyb-ano .slovo {
   display: inline-block;
@@ -260,8 +267,10 @@
 
 /* Velké číslo v přišpendleném sloupci. Při změně se překlopí:
    staré odejde nahoru, nové přijde zdola. */
+/* Pozor: `display` se tu záměrně nenastavuje. Řídí ho třídy `hidden lg:block`
+   v šabloně a pravidlo odsud by je přebilo — utility z Tailwindu jsou
+   ve vrstvě (@layer), takže prohrávají s každým pravidlem mimo ni. */
 .cislo-kroku {
-  display: block;
   font-size: clamp(5rem, 12vw, 9rem);
   font-weight: 600;
   line-height: 0.9;
@@ -389,9 +398,11 @@
   transform-origin: 50% 100%;
 }
 
+/* Pozor: na SVG prvcích schválně bez `translate3d` — Safari s 3D
+   transformacemi uvnitř SVG zachází nespolehlivě. */
 .pohyb-ano .spendlik {
   opacity: 0;
-  transform: translate3d(0, -26px, 0) scale(0.8);
+  transform: translate(0, -26px) scale(0.8);
   transition:
     opacity 420ms var(--krivka),
     transform 520ms var(--krivka);

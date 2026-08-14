@@ -10,7 +10,7 @@
  * i stránky nevybraných verzí.
  */
 interface Props {
-  aktivni: "linka" | "karta" | "kreativni";
+  aktivni: "linka" | "karta" | "kreativni" | "animovana";
 }
 
 const { aktivni } = Astro.props;
@@ -20,6 +20,7 @@ const verze = [
   { klic: "linka", odkaz: "/", popis: "A — uzemněná" },
   { klic: "karta", odkaz: "/varianta-b/", popis: "B — bílé listy" },
   { klic: "kreativni", odkaz: "/kreativni/", popis: "C — kreativní" },
+  { klic: "animovana", odkaz: "/animovana/", popis: "D — animovaná" },
 ];
 ---
 

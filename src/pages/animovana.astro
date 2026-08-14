@@ -1,0 +1,1329 @@
+---
+/**
+ * ANIMOVANÁ VERZE — nabídka pohybu k proškrtání.
+ *
+ * Třetí verze k porovnání, ne náhrada. Uzemněná je na /, kreativní
+ * na /kreativni/, tahle na /animovana/.
+ *
+ * ZADÁNÍ: každá sekce má nejméně dvě RŮZNÉ animace. Ne dvakrát totéž jinou
+ * rychlostí — dvě odlišné myšlenky. U každé sekce je níž komentář, který
+ * říká, které to jsou a co mají udělat. Podle něj se dá škrtat: každá
+ * animace je samostatná, vyhození jedné nerozbije ostatní.
+ *
+ * OBSAH A POŘADÍ SEKCÍ jsou převzaté z kreativní verze. Rozdíl je jen
+ * v jednom: kreativní verze nabízí dvě podoby sekce „Proč se zapojit"
+ * vedle sebe (karty / jeden důvod na obrazovku), tady je jen jedna —
+ * karty. Dvě varianty téhož by tu jen dvakrát ukazovaly stejné animace.
+ *
+ * TEXTY: doslova z podklady/texty.md a z kreativní verze. Nic přepsaného,
+ * nic dopsaného.
+ *
+ * BARVY: schválená paleta beze změny. Červená je jen na tlačítkách.
+ * Jediná výjimka, která na webu už je, je puntík u kategorie
+ * „Pohyb a pobyt venku".
+ *
+ * VYPNUTÝ POHYB: `prefers-reduced-motion` vypíná úplně všechno. Skrývání
+ * prvků visí na třídě `pohyb-ano`, kterou přidává krátký skript hned na
+ * začátku stránky — a jen tehdy, když návštěvník pohyb nezakázal. Když ho
+ * zakáže, nebo když nejede JavaScript, není nic průhledné ani posunuté
+ * a stránka se chová jako obyčejný dokument. Podrobněji viz animovana.css.
+ */
+import Layout from "../layouts/Layout.astro";
+import Ikona from "../components/Ikona.astro";
+import Tlacitko from "../components/Tlacitko.astro";
+import FormularKrokovy from "../components/FormularKrokovy.astro";
+import PrepinacVariant from "../components/PrepinacVariant.astro";
+import Ilustrace from "../components/Ilustrace.astro";
+import Mapa from "../components/Mapa.astro";
+import "../styles/animovana.css";
+
+// --- Data sekcí (převzatá z kreativní verze beze změny) -------------------
+
+// Tipy na aktivity rozdělené do tří kategorií přesně podle podkladů.
+// Každá kategorie má vlastní barvu puntíku, ať jdou od sebe rozeznat
+// i letmým pohledem.
+const kategorieTipu = [
+  {
+    nazev: "Kultura a tvořivost",
+    barva: "var(--color-merunka)",
+    polozky: [
+      "Společný zpěv",
+      "Výtvarná dílna",
+      "Tvoření dekorací",
+      "Společné čtení",
+    ],
+  },
+  {
+    nazev: "Pohyb a pobyt venku",
+    barva: "var(--color-tlacitko)",
+    polozky: ["Nenáročná procházka", "Zahradní hry", "Mölkky", "Pétanque"],
+  },
+  {
+    nazev: "Sdílení a setkávání",
+    barva: "var(--color-potvrzeni)",
+    polozky: ["Hraní stolních her", "Vyprávění příběhů", "Vzájemné učení"],
+  },
+];
+
+// Aktivity na střídačku, ne po kategoriích za sebou — jinak by na řádce
+// byly čtyři meruňkové, pak čtyři červené a pak tři zelené a vypadalo by to
+// jako tři slepené seznamy.
+const tipyNaStridacku = (() => {
+  const vysledek: { nazev: string; barva: string }[] = [];
+  const nejdelsi = Math.max(...kategorieTipu.map((k) => k.polozky.length));
+
+  for (let i = 0; i < nejdelsi; i++) {
+    for (const kategorie of kategorieTipu) {
+      const polozka = kategorie.polozky[i];
+      if (polozka) vysledek.push({ nazev: polozka, barva: kategorie.barva });
+    }
+  }
+  return vysledek;
+})();
+
+const skupiny = [
+  { popis: "Školy a školky", ikona: "school" },
+  { popis: "Mladé kolektivy a firmy", ikona: "building-2" },
+  { popis: "Neziskovky a komunity", ikona: "heart-handshake" },
+  { popis: "Gen Z a nadšenci", ikona: "sparkles" },
+];
+
+const duvody = [
+  {
+    ikona: "sparkles",
+    nadpis: "Smysluplný zážitek a lidské spojení",
+    text: "Oslavíte Mezinárodní den seniorů tvořivou, lidskou a citlivou formou. Vyzkoušíte si, jak snadné a obohacující je bořit bariéry a hledat to, co různé generace spojuje.",
+  },
+  {
+    ikona: "heart-handshake",
+    nadpis: "Hodnoty, které dávají smysl",
+    text: "Ať už zapojíte školní třídu, firemní tým nebo partu přátel, připomenete si význam mezigenerační solidarity a pomůžete rozvíjet přirozený respekt, empatii a úctu ke starším generacím.",
+  },
+  {
+    ikona: "users",
+    nadpis: "Zkušenost, která utuží tým",
+    text: "Společná příprava a realizace akce je skvělý teambuilding. Spojíte lidi pro dobrou věc — ať už jde o žáky ve třídě, kolegy v práci, členy spolku nebo přátele.",
+  },
+  {
+    ikona: "lightbulb",
+    nadpis: "Inspirace pro celou ČR",
+    text: "Vaše společné setkání nezůstane zapomenuto. Stane se inspirativní součástí celostátního Zásobníku mezigeneračních aktivit, kde usnadníte ostatním vymýšlet podobné mezigenerační akce.",
+  },
+  {
+    ikona: "award",
+    nadpis: "Certifikát a odměna",
+    text: "Každý zapojený jednotlivec, tým či skupina získá účastnický certifikát a bude zařazen/a do losování o poukazy na společnou večeři, sportovní nebo výtvarné pomůcky!",
+  },
+];
+
+const kroky = [
+  {
+    nadpis: "Najděte seniorské partnerské místo v okolí",
+    text: "Propojte se s místním klubem seniorů, domovem pro seniory nebo aktivními seniory ve vaší obci.",
+  },
+  {
+    nadpis: "Domluvte vhodnou a bezpečnou aktivitu",
+    text: "Zvolte program, který bude příjemný a zvládnutelný pro obě strany.",
+  },
+  {
+    nadpis: "Zaregistrujte se na webu",
+    text: "Vyplňte krátký přihlašovací formulář a uhradíte symbolický registrační poplatek.",
+  },
+  {
+    nadpis: "Prožijte setkání a sdílejte radost",
+    text: "V týdnu kolem 1. 10. proběhnou vaše akce. Následně, budete-li mít chuť se podělit, vyplníte do aplikace Zásobník nápadů krátký popis a fotky z vaší akce.",
+  },
+];
+
+// Ukázka záznamů v Zásobníku. Názvy aktivit jsou z podkladů (Tipy na
+// aktivity), údaje na kartách odpovídají tomu, na co se po akci ptá formulář.
+const ukazkaZasobniku = [
+  {
+    nazev: "Výtvarná dílna",
+    kategorie: "Kultura a tvořivost",
+    barva: "var(--color-merunka)",
+    narocnost: "Nenáročné",
+    pomucky: "Papír, pastelky, nůžky",
+  },
+  {
+    nazev: "Zahradní hry",
+    kategorie: "Pohyb a pobyt venku",
+    barva: "var(--color-tlacitko)",
+    narocnost: "Střední",
+    pomucky: "Mölkky, pétanque",
+  },
+  {
+    nazev: "Vyprávění příběhů",
+    kategorie: "Sdílení a setkávání",
+    barva: "var(--color-potvrzeni)",
+    narocnost: "Nenáročné",
+    pomucky: "Židle, klidný prostor",
+  },
+];
+
+const podpora = [
+  {
+    ikona: "message-circle",
+    nadpis: "Konzultace programu",
+    text: "Nejste si jistí vhodností aktivity? Rádi s vámi nápad zkonzultujeme.",
+    smer: "zleva",
+  },
+  {
+    ikona: "map-pin",
+    nadpis: "Pomoc s nasměrováním",
+    text: "Pokud váháte, koho v okolí oslovit, pokusíme se vás propojit se seniorskými organizacemi.",
+    smer: "zdola",
+  },
+  {
+    ikona: "award",
+    nadpis: "Certifikát a zařazení do losování",
+    text: "Ocenění pro žáky a možnost získat věcné odměny pro vaši třídu či skupinu.",
+    smer: "zprava",
+  },
+];
+---
+
+<Layout
+  titulek="Mezigeneračně aktivně spolu — animovaná verze"
+  popis="Zorganizujte mezigenerační setkání se seniory v týdnu kolem 1. října a staňte se součástí celostátního Zásobníku nápadů."
+  sMenu={true}
+>
+  {/* POZOR — tenhle skript musí zůstat úplně první.
+      Zapíná pohyb tím, že na <html> pověsí třídu `pohyb-ano`. Teprve na ní
+      visí všechna pravidla, která něco schovávají. Když ho návštěvník
+      nechce (nebo když JavaScript nejede), třída se nepřidá a stránka je
+      od první chvíle celá vidět.
+      Je vepsaný přímo do HTML (`is:inline`), aby se stihl vykonat dřív, než
+      prohlížeč vykreslí obsah pod ním — jinak by obsah na okamžik probliknul
+      a teprve pak zmizel. */}
+  <script is:inline>
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.documentElement.classList.add("pohyb-ano");
+    }
+  </script>
+
+  <PrepinacVariant aktivni="animovana" />
+
+  {/* Ukazatel průběhu čtení — orientace na dlouhé stránce. */}
+  <div class="pruh-postupu" id="pruh-postupu" aria-hidden="true"></div>
+
+  {/* ======================================================================
+      ÚVOD
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Nadpis se skládá. První řádka po písmenech, druhá po
+                  slovech. Má dát očím rytmus a zdržet je na hlavním sdělení.
+      ANIMACE 2 — Paralaxa. Ozdobná skvrna, ilustrace a text jedou při
+                  scrollu různou rychlostí, takže úvod má hloubku a nepůsobí
+                  jako plochý obrázek.
+      ANIMACE 3 — Ilustrace se naklání za polohou myši. Jen na zařízeních
+                  s myší; na dotyku by to nešlo vyvolat a nic se neděje.
+      TEXTEM SE NEHÝBE — paralaxa se týká jen ozdob a ilustrace.
+      ====================================================================== */}
+  <section
+    id="uvod"
+    class="relative overflow-hidden px-5 pt-8 pb-20"
+    style="background: linear-gradient(180deg, var(--color-plocha-tyrkys) 0%, var(--color-pozadi) 100%)"
+  >
+    {/* Ozdobné tvary v pozadí. Jedou pomaleji než obsah (ANIMACE 2). */}
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div
+        class="vrstva-paralaxy absolute -top-40 -right-32 h-[600px] w-[600px] rounded-full opacity-40 blur-3xl"
+        data-paralax="0.18"
+        style="background: var(--color-merunka-tlumena)"
+      >
+      </div>
+      <div
+        class="vrstva-paralaxy absolute -bottom-52 -left-40 h-[440px] w-[440px] rounded-full opacity-30 blur-3xl"
+        data-paralax="-0.12"
+        style="background: var(--color-plocha-tyrkys)"
+      >
+      </div>
+    </div>
+
+    <div
+      class="relative z-10 mx-auto grid max-w-obsah gap-10 lg:grid-cols-[1fr_auto] lg:items-center"
+    >
+      <div>
+        <h1 class="text-[clamp(2.5rem,6vw,4.75rem)] leading-[1.05] tracking-tight">
+          <span class="block" data-pismena>Propojme generace.</span>
+          <span class="block text-text" data-slova>
+            Vytvořte setkání, na které se nezapomíná.
+          </span>
+        </h1>
+
+        <p
+          class="mt-8 max-w-[680px] text-xl sm:text-2xl"
+          data-odhal="zdola"
+          style="--prodleva: 260ms"
+        >
+          Ať už vedete školu, tvoříte mladý pracovní kolektiv, působíte
+          v neziskovce nebo chcete s přáteli udělat něco smysluplného — oslavte
+          s námi Mezinárodní den seniorů (v týdnu kolem 1.&nbsp;10.).
+        </p>
+      </div>
+
+      {/* Ilustrace: paralaxa (ANIMACE 2) na obalu, sledování myši
+          (ANIMACE 3) na vnitřku, kreslení tahem při příchodu na vlastním SVG. */}
+      <div
+        class="vrstva-paralaxy justify-self-center lg:justify-self-end"
+        data-paralax="-0.16"
+      >
+        <div class="sleduje-mys text-tyrkys" data-mys="10">
+          <Ilustrace jmeno="senior-s-kytici" sirka={340} kresliSe />
+        </div>
+      </div>
+    </div>
+
+    <div class="relative z-10 mx-auto max-w-obsah">
+      {/* Pro koho to je — prostý výpis, na který se neklikají. */}
+      <ul class="mt-10 flex list-none flex-wrap gap-x-8 gap-y-3 p-0">
+        {
+          skupiny.map((skupina, i) => (
+            <li
+              class="flex items-center gap-2"
+              data-odhal="zdola"
+              style={`--prodleva: ${360 + i * 70}ms`}
+            >
+              <Ikona jmeno={skupina.ikona} velikost={22} />
+              <span>{skupina.popis}</span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div
+        class="mt-8 flex flex-wrap gap-4"
+        data-odhal="zdola"
+        style="--prodleva: 660ms"
+      >
+        <Tlacitko odkaz="#registrace" trida="magnet text-lg">
+          Chci se zapojit
+          <Ikona jmeno="arrow-right" velikost={22} trida="text-white" />
+        </Tlacitko>
+
+        {/* [DOPLNIT: informační leták v PDF] */}
+        <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi" trida="magnet">
+          <Ikona jmeno="download" velikost={20} trida="ikona-stazeni" />
+          Stáhnout leták
+        </Tlacitko>
+      </div>
+    </div>
+  </section>
+
+  {/* ======================================================================
+      PROČ SE ZAPOJIT
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Karty naskakují v kaskádě, každá o 80 ms později. Oko jde
+                  po nich popořadě místo toho, aby na něj spadlo šest karet
+                  naráz.
+      ANIMACE 2 — Plocha sekce se během průjezdu přelije z krémové do
+                  tyrkysové a zase zpět. Neplete se barva pozadí (to by
+                  prohlížeč překresloval), prolíná se překryvná vrstva.
+      ANIMACE 3 — Karta se naklání za kurzorem, aby bylo poznat, na které
+                  člověk zrovna je.
+      ====================================================================== */}
+  <section id="proc-se-zapojit" class="relative overflow-hidden bg-pozadi px-5 py-16">
+    <div class="prelivova-plocha" id="preliv-proc" aria-hidden="true"></div>
+
+    <div class="relative z-10 mx-auto max-w-obsah">
+      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+        Proč se do projektu zapojit, proč do toho jít?
+      </h2>
+      <span class="podtrzeni"></span>
+
+      <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          duvody.map((duvod, i) => (
+            <div data-odhal="zdola" style={`--prodleva: ${i * 80}ms`}>
+              <article class="naklon h-full rounded-2xl border border-merunka-tlumena bg-white p-7">
+                <Ikona jmeno={duvod.ikona} velikost={36} />
+                <h3 class="mt-4 text-xl">{duvod.nadpis}</h3>
+                <p class="mt-3 mb-0">{duvod.text}</p>
+              </article>
+            </div>
+          ))
+        }
+
+        <div data-odhal="zdola" style={`--prodleva: ${duvody.length * 80}ms`}>
+          <article
+            class="naklon flex h-full flex-col justify-center rounded-2xl p-7 text-white"
+            style="background: linear-gradient(135deg, var(--color-tyrkys), #0d5560)"
+          >
+            <Ikona jmeno="target" velikost={36} trida="text-white" />
+            <h3 class="mt-4 text-xl text-white">Cíl akce</h3>
+            <p class="mt-3 mb-0">
+              Podpora mezigenerační solidarity, vytváření přirozených vazeb mezi
+              nejmladší a nejstarší generací a oslava Mezinárodního dne seniorů
+              v duchu vzájemného respektu, lidskosti a radosti ze společně
+              stráveného času.
+            </p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ======================================================================
+      JAK TO FUNGUJE
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Svislá čára cesty se vykresluje podle toho, jak daleko je
+                  návštěvník odscrollovaný. Ukazuje postup, ne ozdobu:
+                  když se vrátí nahoru, čára se vrátí s ním.
+      ANIMACE 2 — Levý sloupec se přišpendlí a velké číslo v něm se překlápí
+                  podle toho, který krok je zrovna na obrazovce. Staré číslo
+                  odejde nahoru, nové přijde zdola.
+      ANIMACE 3 — Kolečko kroku, který je právě na řadě, se lehce zvětší.
+      ====================================================================== */}
+  <section id="jak-to-funguje" class="relative bg-plocha-tyrkys px-5 py-20">
+    <div class="mx-auto max-w-obsah">
+      <div class="grid gap-10 lg:grid-cols-[260px_1fr] lg:items-start">
+        {/* Přišpendlený sloupec (ANIMACE 2) */}
+        <div class="lg:sticky lg:top-28">
+          <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+            4 jednoduché kroky k realizaci
+          </h2>
+          <span class="podtrzeni"></span>
+
+          {/* Číslo je ozdoba, ne informace — pořadí kroku je vedle něj
+              v kolečku i v textu. Proto ho čtečka obrazovky přeskočí. */}
+          <span class="cislo-kroku mt-8 hidden lg:block" id="cislo-kroku" aria-hidden="true">
+            1
+          </span>
+
+          <div class="mt-6 hidden text-tyrkys lg:block">
+            <Ilustrace jmeno="mezigeneracne" sirka={190} kresliSe />
+          </div>
+        </div>
+
+        <div id="cesta-obal" class="relative">
+          {/* Čára se kreslí podle scrollu (ANIMACE 1). */}
+          <svg
+            class="pointer-events-none absolute top-0 left-5 h-full w-16 sm:left-8"
+            aria-hidden="true"
+            preserveAspectRatio="none"
+            viewBox="0 0 64 1000"
+          >
+            <path
+              id="cesta"
+              class="cesta"
+              d="M32 0 C 8 200, 56 300, 32 500 S 8 800, 32 1000"
+              fill="none"
+              stroke="var(--color-merunka)"
+              stroke-width="4"
+              stroke-linecap="round"></path>
+          </svg>
+
+          <ol class="relative m-0 list-none space-y-20 p-0">
+            {
+              kroky.map((krok, i) => (
+                <li
+                  class="krok relative flex items-start gap-6 pl-2 sm:gap-10 sm:pl-6"
+                  data-poradi-kroku={i + 1}
+                  data-odhal="zdola"
+                >
+                  <span
+                    class="kolecko-kroku z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-merunka text-2xl font-semibold text-text shadow-lg"
+                    aria-hidden="true"
+                  >
+                    {i + 1}
+                  </span>
+
+                  <div class="min-w-0 flex-1">
+                    <h3 class="text-2xl sm:text-3xl">{krok.nadpis}</h3>
+                    <p class="mt-3 mb-0 max-w-[600px] text-lg">{krok.text}</p>
+                  </div>
+                </li>
+              ))
+            }
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ======================================================================
+      TIPY NA AKTIVITY
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Řádka s nápady jede plynule do strany. Po najetí myší
+                  (a při focusu z klávesnice) se zastaví, aby se dala číst.
+      ANIMACE 2 — Položky legendy naskakují po sobě zleva, takže je vidět,
+                  že jde o tři samostatné okruhy, ne o jeden seznam.
+      ANIMACE 3 — Ozdobná skvrna v pozadí pomalu dýchá. Dlouhý cyklus, malá
+                  výchylka — jen aby sekce nepůsobila zamrzle.
+      ====================================================================== */}
+  <section id="tipy-na-aktivity" class="relative overflow-hidden bg-pozadi py-16">
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div
+        class="dycha absolute top-10 -left-24 h-[380px] w-[380px] rounded-full opacity-45 blur-3xl"
+        style="background: var(--color-plocha-tyrkys)"
+      >
+      </div>
+    </div>
+
+    <div class="relative z-10 mx-auto max-w-obsah px-5">
+      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+        Čím se můžete inspirovat?
+      </h2>
+      <span class="podtrzeni"></span>
+
+      {/* Legenda — barva puntíku je kategorie, ne ozdoba (ANIMACE 2). */}
+      <ul class="mt-6 flex flex-wrap gap-x-8 gap-y-2 p-0">
+        {
+          kategorieTipu.map((kategorie, i) => (
+            <li
+              class="flex items-center gap-2.5"
+              data-odhal="zleva"
+              style={`--prodleva: ${i * 110}ms`}
+            >
+              <span
+                class="h-3 w-3 shrink-0 rounded-full"
+                style={`background-color: ${kategorie.barva}`}
+              />
+              <span class="text-popisek font-semibold">{kategorie.nazev}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    {/* Jedoucí řádka (ANIMACE 1) */}
+    <div class="pas-obal relative z-10 mt-10 overflow-hidden">
+      <div class="pas gap-4" style="--doba-pasu: 46s">
+        {
+          [0, 1].map(() =>
+            tipyNaStridacku.map((tip) => (
+              <span class="flex items-center gap-3 rounded-full border-2 border-merunka-tlumena bg-white px-7 py-4 text-xl whitespace-nowrap">
+                <span
+                  class="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={`background-color: ${tip.barva}`}
+                />
+                {tip.nazev}
+              </span>
+            )),
+          )
+        }
+      </div>
+    </div>
+
+    <div class="relative z-10 mx-auto mt-12 max-w-obsah px-5">
+      <div
+        class="flex gap-4 rounded-2xl border-l-4 border-merunka bg-plocha-tyrkys p-7"
+        data-odhal="zdola"
+      >
+        <Ikona jmeno="shield-check" velikost={36} />
+        <div>
+          <h3 class="text-xl">Na co myslet při přípravě</h3>
+          <p class="mt-2 mb-0">
+            Prioritou je pohoda a bezpečnost všech účastníků. Předem si ověřte
+            očekávání seniorů, bezbariérovost prostoru, časovou náročnost
+            i případná zdravotní či pohybová omezení. Cílem je klidné
+            a příjemné mezigenerační setkání.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ======================================================================
+      ZÁSOBNÍK
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Balíček karet se při vjezdu do obrazovky rozevře do vějíře.
+                  Karty vyjíždějí zpod sebe postupně, ne naráz. Zásobník je
+                  výstup projektu, tak ho ukazujeme, ne popisujeme.
+      ANIMACE 2 — Paralaxa: balíček jede při scrollu jinou rychlostí než text
+                  vedle něj, takže se od sebe oddělí.
+      ANIMACE 3 — Ilustrace žáků u notebooku se vykreslí tah po tahu.
+      ====================================================================== */}
+  <section
+    id="zasobnik"
+    class="relative overflow-hidden px-5 py-24 text-white"
+    style="background: linear-gradient(135deg, var(--color-tyrkys) 0%, #0b4d58 100%)"
+  >
+    <div class="relative z-10 mx-auto max-w-obsah">
+      <div class="grid gap-14 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div>
+          <span
+            class="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-popisek font-semibold"
+            data-odhal="zdola"
+          >
+            <Ikona jmeno="sparkles" velikost={18} trida="text-white" />
+            Výstup celého projektu
+          </span>
+
+          <h2 class="mt-5 text-[clamp(1.75rem,3.5vw,2.75rem)] text-white" data-slova>
+            Co je to Zásobník nápadů?
+          </h2>
+          <span class="podtrzeni" style="background-color: var(--color-merunka)"
+          ></span>
+
+          <div class="mt-8 max-w-[620px] space-y-5 text-lg">
+            <p data-odhal="zdola" style="--prodleva: 80ms">
+              Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí
+              žáci ZŠ Magic Hill z Říčan u Prahy.
+            </p>
+            <p data-odhal="zdola" style="--prodleva: 160ms">
+              Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
+              (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
+              potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne
+              veřejně přístupná databáze plná ověřené inspirace pro organizátory
+              podobných akcí z celé ČR.
+            </p>
+          </div>
+
+          <div class="mt-8 flex flex-wrap items-center gap-8">
+            <p
+              class="m-0 inline-flex items-baseline gap-3 rounded-2xl bg-white/10 px-6 py-4"
+              data-odhal="zdola"
+              style="--prodleva: 240ms"
+            >
+              <span class="text-3xl font-semibold">1. listopadu</span>
+              <span>spouštíme databázi pro celou ČR</span>
+            </p>
+
+            {/* Žáci u notebooku — Zásobník staví kroužek na ZŠ Magic Hill,
+                takže tu má být vidět, kdo za aplikací stojí (ANIMACE 3). */}
+            <div class="text-white">
+              <Ilustrace jmeno="zaci-programuji" sirka={220} kresliSe />
+            </div>
+          </div>
+        </div>
+
+        {/* Vějíř karet (ANIMACE 1) na vrstvě s paralaxou (ANIMACE 2). */}
+        <div class="vrstva-paralaxy mx-auto max-w-full shrink-0" data-paralax="0.1">
+          <div
+            class="balicek relative h-[380px] w-[470px] max-w-full"
+            data-odhal="prolnuti"
+          >
+            {
+              ukazkaZasobniku.map((karta, i) => (
+                <article
+                  class="karta-zasobniku absolute top-6 left-1/2 w-[264px] rounded-2xl bg-white p-6 text-text shadow-2xl"
+                  style={`--poradi: ${i}; --prodleva: ${i * 110}ms`}
+                >
+                  {/* Kategorie se pozná podle puntíku, ne podle vybarvené
+                      plochy. V kreativní verzi je celý štítek v barvě
+                      kategorie — jenže „Pohyb a pobyt venku" má červenou
+                      a červená plocha na kartě se čte jako tlačítko.
+                      Puntík je přesně ta výjimka, která na webu už je,
+                      a drží stejný klíč jako legenda v sekci Tipy. */}
+                  <span
+                    class="inline-flex items-center gap-2 rounded-full bg-merunka-tlumena px-3 py-1 text-popisek font-semibold text-text"
+                  >
+                    <span
+                      class="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={`background-color: ${karta.barva}`}
+                    />
+                    {karta.kategorie}
+                  </span>
+
+                  <h3 class="mt-4 text-xl">{karta.nazev}</h3>
+
+                  <dl class="mt-4 space-y-2 text-popisek">
+                    <div class="flex gap-2">
+                      <dt class="font-semibold">Vhodné pro:</dt>
+                      <dd class="m-0">Senioři i děti</dd>
+                    </div>
+                    <div class="flex gap-2">
+                      <dt class="font-semibold">Náročnost:</dt>
+                      <dd class="m-0">{karta.narocnost}</dd>
+                    </div>
+                    <div class="flex gap-2">
+                      <dt class="font-semibold">Pomůcky:</dt>
+                      <dd class="m-0">{karta.pomucky}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ======================================================================
+      MAPKA PŘIHLÁŠENÝCH AKCÍ
+      ----------------------------------------------------------------------
+      Komponenta Mapa.astro si nese vlastní sekci i vlastní obsah, tak se
+      jí nesaháme dovnitř. Obě animace pracují zvenčí:
+
+      ANIMACE 1 — Celá sekce se prolne. Schválně BEZ posunu: transformace
+                  na rodiči mapy plete Leafletu počítání výřezu, takže by
+                  mapa mohla naskočit posunutá.
+      ANIMACE 2 — Ozdobné špendlíky nad mapou dopadají po sobě a pod nimi
+                  se rozbíhá kruh, jako když něco dosedne. Běží třikrát,
+                  ne donekonečna — trvale pulzující prvek u mapy odvádí
+                  pozornost od dat na ní.
+      ====================================================================== */}
+  <div class="relative" data-odhal="prolnuti">
+    <div
+      class="pointer-events-none absolute inset-x-0 top-0 z-10 hidden md:block"
+      aria-hidden="true"
+    >
+      <div class="mx-auto flex max-w-obsah justify-end px-5 pt-8">
+        <svg
+          width="150"
+          height="70"
+          viewBox="0 0 150 70"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="text-tyrkys"
+        >
+          {/* Kruh, který se rozbíhá pod prostředním špendlíkem. */}
+          <circle
+            class="vlna"
+            cx="75"
+            cy="58"
+            r="14"
+            fill="none"
+            stroke="var(--color-merunka)"
+            style="transform-origin: 75px 58px"></circle>
+
+          {
+            [
+              { x: 25, prodleva: 0 },
+              { x: 75, prodleva: 140 },
+              { x: 125, prodleva: 280 },
+            ].map((s) => (
+              <g
+                class="spendlik"
+                style={`--prodleva: ${s.prodleva}ms; transform-origin: ${s.x}px 58px`}
+              >
+                <path d={`M${s.x} 58 c 9 -13 13 -19 13 -26 a 13 13 0 1 0 -26 0 c 0 7 4 13 13 26 z`} />
+                <circle cx={s.x} cy="32" r="4.5" />
+              </g>
+            ))
+          }
+        </svg>
+      </div>
+    </div>
+
+    <Mapa />
+  </div>
+
+  {/* ======================================================================
+      PODPORA
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Karty přijíždějí střídavě zleva, zdola a zprava. Sbíhají
+                  se k sobě, takže je poznat, že patří k sobě, a přitom to
+                  není třikrát stejný pohyb.
+      ANIMACE 2 — Dvojice ilustrací u nadpisu se vykreslí tah po tahu, jako
+                  by je někdo maloval.
+      ANIMACE 3 — Ikona v kartě se při najetí nadechne — drobná odezva na to,
+                  že je karta pod kurzorem.
+      ====================================================================== */}
+  {/* `overflow-x-clip`: karty se odhalují bokem o 40 px a na úzké obrazovce
+      by z toho byl vodorovný posuvník. `clip` schválně místo `hidden` —
+      `hidden` by ze sekce udělalo posuvnou plochu a rozbilo přišpendlení. */}
+  <section id="podpora" class="overflow-x-clip bg-pozadi px-5 py-16">
+    <div class="mx-auto max-w-obsah">
+      <div class="flex items-end justify-between gap-8">
+        <div>
+          <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+            Jakou podporu od nás získáte?
+          </h2>
+          <span class="podtrzeni"></span>
+        </div>
+
+        {/* ANIMACE 2 — na mobilu se ilustrace schovají, tam by braly místo
+            textu. */}
+        <div class="hidden shrink-0 items-end gap-2 text-tyrkys md:flex">
+          <Ilustrace jmeno="babicka" sirka={130} kresliSe />
+          <Ilustrace jmeno="dedecek" sirka={130} kresliSe />
+        </div>
+      </div>
+
+      <div class="mt-12 grid gap-5 sm:grid-cols-3">
+        {
+          podpora.map((polozka) => (
+            <article
+              class="karta-podpory rounded-2xl border border-merunka-tlumena bg-white p-7"
+              data-odhal={polozka.smer}
+            >
+              <Ikona
+                jmeno={polozka.ikona}
+                velikost={36}
+                trida="ikona-karty"
+              />
+              <h3 class="mt-4 text-xl">{polozka.nadpis}</h3>
+              <p class="mt-3 mb-0">{polozka.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  {/* ======================================================================
+      REGISTRACE
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Částka se dopočítá od nuly. V HTML je napsaná rovnou cílová
+                  hodnota, takže bez pohybu (i bez JavaScriptu) tam prostě
+                  stojí „500 Kč" a nikdo nepozná, že se něco vypnulo.
+      ANIMACE 2 — Bílé boxy s vysvětlením dosednou překlopením kolem horní
+                  hrany, jeden po druhém — jako listy pokládané na stůl.
+      ANIMACE 3 — Kruh za částkou se při dopočtu rozšíří, aby se oko
+                  zastavilo na ceně.
+      Formuláře se nedotýkáme, ten má vlastní chování.
+      ====================================================================== */}
+  <section id="registrace" class="bg-plocha-tyrkys px-5 py-20">
+    <div class="mx-auto max-w-obsah">
+      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+        Registrace a poplatek
+      </h2>
+      <span class="podtrzeni"></span>
+
+      <div class="mt-12 grid gap-10 lg:grid-cols-[340px_1fr] lg:items-start">
+        <div class="space-y-5">
+          <div
+            class="relative overflow-hidden rounded-2xl bg-white p-7"
+            data-odhal="preklopeni"
+          >
+            {/* ANIMACE 3 — ozdobný kruh za částkou. */}
+            <span
+              class="kruh-za-castkou pointer-events-none absolute -top-14 -right-10 h-44 w-44 rounded-full"
+              style="background: var(--color-plocha-tyrkys)"
+              aria-hidden="true"></span>
+
+            <div class="relative">
+              <p class="m-0 text-popisek">Registrační poplatek</p>
+              <p class="mt-1 mb-0 text-5xl font-semibold text-tyrkys">
+                <span class="castka" data-pocitadlo="500">500</span> Kč
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="rounded-2xl bg-white p-7"
+            data-odhal="preklopeni"
+            style="--prodleva: 120ms"
+          >
+            <h3 class="text-xl">Na co je poplatek určen?</h3>
+            <p class="mt-2 mb-0">
+              Tato částka slouží k pokrytí nákladů spojených s celkovou
+              organizací a koordinací projektu, vývojem a technickým zajištěním
+              aplikace „Zásobník nápadů" a dalšími nezbytnými provozními náklady
+              na realizaci akce.
+            </p>
+          </div>
+
+          <div
+            class="rounded-2xl bg-white p-7"
+            data-odhal="preklopeni"
+            style="--prodleva: 240ms"
+          >
+            <h3 class="text-xl">Platba a fakturace</h3>
+            <p class="mt-2 mb-0">
+              Platbu lze pohodlně provést pomocí QR kódu nebo standardním
+              bankovním převodem. Systém vám po dokončení registrace v případě
+              potřeby automaticky vystaví fakturu pro účetnictví
+              školy/organizace.
+            </p>
+          </div>
+        </div>
+
+        <FormularKrokovy />
+      </div>
+    </div>
+  </section>
+
+  {/* ======================================================================
+      KE STAŽENÍ A KONTAKT
+      ----------------------------------------------------------------------
+      ANIMACE 1 — Tlačítko ke stažení se lehce přitáhne ke kurzoru. Posun je
+                  malý schválně: ovládací prvek, který utíká, se špatně
+                  trefuje.
+      ANIMACE 2 — Kontaktní údaje naskakují po sobě zleva, takže je poznat,
+                  že jsou dva a patří k sobě.
+      ANIMACE 3 — Ikona stahování při najetí poskočí dolů, směrem, kterým
+                  soubor „odejde".
+      ====================================================================== */}
+  {/* Stejný důvod jako u sekce Podpora — kontakty přijíždějí zleva. */}
+  <section id="ke-stazeni" class="overflow-x-clip bg-pozadi px-5 py-16">
+    <div class="mx-auto max-w-obsah">
+      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+        Ke stažení a kontakt
+      </h2>
+      <span class="podtrzeni"></span>
+
+      <div class="mt-10" data-odhal="zdola">
+        {/* [DOPLNIT: kompletní leták k akci v PDF] */}
+        <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi" trida="magnet">
+          <Ikona jmeno="file-text" velikost={20} trida="ikona-stazeni" />
+          Stáhnout kompletní leták k akci v PDF (pro pořadatele)
+        </Tlacitko>
+      </div>
+
+      <div
+        class="mt-10 flex flex-wrap items-center gap-x-10 gap-y-4 rounded-2xl border-l-4 border-merunka bg-plocha-tyrkys p-7"
+      >
+        <div data-odhal="zleva">
+          <h3 class="text-xl">Nevíte si rady?</h3>
+          <p class="mt-1 mb-0">Ozvěte se nám, rádi poradíme.</p>
+        </div>
+
+        <div class="flex flex-wrap gap-x-8 gap-y-3">
+          <a
+            href="tel:[DOPLNIT: telefon]"
+            class="flex min-h-11 items-center gap-2 text-lg font-semibold text-tyrkys no-underline"
+            data-odhal="zleva"
+            style="--prodleva: 140ms"
+          >
+            <Ikona jmeno="phone" velikost={22} />
+            [DOPLNIT: telefon]
+          </a>
+
+          <a
+            href="mailto:[DOPLNIT: e-mail]"
+            class="flex min-h-11 items-center gap-2 text-lg font-semibold text-tyrkys no-underline"
+            data-odhal="zleva"
+            style="--prodleva: 280ms"
+          >
+            <Ikona jmeno="mail" velikost={22} />
+            [DOPLNIT: e-mail]
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  // ==========================================================================
+  // Animovaná verze — všechen pohyb na stránce
+  //
+  // JAK JE TO POSTAVENÉ
+  //   * Odhalování při scrollu obsluhuje JEDEN IntersectionObserver. Prvek,
+  //     který se odhalí, přestane sledovat — animace se proto neopakuje,
+  //     když se návštěvník vrátí zpátky.
+  //   * Všechno, co závisí na poloze scrollu (pruh postupu, paralaxa,
+  //     přeliv plochy, kreslení cesty), počítá JEDNA smyčka svázaná
+  //     s requestAnimationFrame. Ne každý efekt vlastní posluchač scrollu.
+  //   * Reakce na myš má taky jednu smyčku a dohání kurzor se zpožděním,
+  //     aby to nebylo trhané.
+  //   * Hýbe se jen `transform` a `opacity`. Výjimkou je `stroke-dashoffset`
+  //     u kreslené cesty, ten jinak animovat nejde.
+  //
+  // VYPNUTÝ POHYB
+  //   Nic z toho se nespustí. Skrývání prvků visí na třídě `pohyb-ano`, která
+  //   se v takovém případě na stránku vůbec nedostane (viz skript v šabloně),
+  //   takže je od začátku všechno vidět na svém místě.
+  // ==========================================================================
+
+  const dotazNaPohyb = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const maMys = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+  /** Srovná všechno do cílové polohy — používá se při vypnutí pohybu. */
+  function odhalVsechno() {
+    document
+      .querySelectorAll<HTMLElement>(
+        "[data-odhal], .podtrzeni, .kresli-se, .spendlik, .slovo, .pismeno, .balicek, .kruh-za-castkou",
+      )
+      .forEach((prvek) => prvek.classList.add("je-videt"));
+  }
+
+  // Když si návštěvník pohyb vypne až za běhu (třeba v nastavení systému),
+  // třídu sundáme a obsah necháme viditelný. Nová animace se už nespustí.
+  dotazNaPohyb.addEventListener("change", (u) => {
+    if (!u.matches) return;
+    document.documentElement.classList.remove("pohyb-ano");
+    odhalVsechno();
+  });
+
+  if (dotazNaPohyb.matches) {
+    // Pro jistotu i tady, kdyby CSS někdo v budoucnu upravil.
+    odhalVsechno();
+  } else {
+    spustPohyb();
+  }
+
+  function spustPohyb() {
+    // ------------------------------------------------------------------
+    // Společný pozorovatel odhalování
+    // ------------------------------------------------------------------
+    const pozorovatel = new IntersectionObserver(
+      (zaznamy) => {
+        zaznamy.forEach((zaznam) => {
+          if (!zaznam.isIntersecting) return;
+          zaznam.target.classList.add("je-videt");
+          pozorovatel.unobserve(zaznam.target);
+        });
+      },
+      // Spustí se, až je prvek kousek uvnitř obrazovky, ne na její hraně.
+      { rootMargin: "0px 0px -80px 0px", threshold: 0.1 },
+    );
+
+    function sleduj(vyber: string) {
+      document
+        .querySelectorAll<HTMLElement>(vyber)
+        .forEach((prvek) => pozorovatel.observe(prvek));
+    }
+
+    // ------------------------------------------------------------------
+    // ÚVOD, ANIMACE 1 — skládání nadpisu po písmenech a po slovech
+    // ------------------------------------------------------------------
+    // Text rozsekáme na slova; u varianty „po písmenech" ještě uvnitř slova
+    // na jednotlivé znaky. Slovo zůstává vždycky pohromadě v jednom obalu,
+    // aby se řádek nezalomil uprostřed slova.
+    //
+    // Zpoždění zapisujeme rovnou do `transition-delay`, ne přes stovky
+    // časovačů — prohlížeč si kaskádu odbaví sám a levněji.
+    (function slozNadpisy() {
+      const rozsekej = (prvek: HTMLElement, poPismenech: boolean) => {
+        const puvodni = prvek.textContent ?? "";
+        const slova = puvodni.trim().split(/\s+/);
+        prvek.textContent = "";
+
+        let poradi = 0;
+
+        slova.forEach((slovo, indexSlova) => {
+          const obal = document.createElement("span");
+          obal.className = "slovo-obal";
+
+          if (poPismenech) {
+            Array.from(slovo).forEach((znak) => {
+              const kus = document.createElement("span");
+              kus.className = "pismeno";
+              kus.textContent = znak;
+              kus.style.transitionDelay = `${poradi * 28}ms`;
+              obal.appendChild(kus);
+              poradi++;
+            });
+          } else {
+            const kus = document.createElement("span");
+            kus.className = "slovo";
+            kus.textContent = slovo;
+            kus.style.transitionDelay = `${poradi * 55}ms`;
+            obal.appendChild(kus);
+            poradi++;
+          }
+
+          prvek.appendChild(obal);
+          if (indexSlova < slova.length - 1) {
+            prvek.appendChild(document.createTextNode(" "));
+          }
+        });
+      };
+
+      document
+        .querySelectorAll<HTMLElement>("[data-pismena]")
+        .forEach((prvek) => rozsekej(prvek, true));
+
+      document
+        .querySelectorAll<HTMLElement>("[data-slova]")
+        .forEach((prvek) => rozsekej(prvek, false));
+
+      // Odhaluje se celý nadpis naráz, kaskádu si pohlídají prodlevy v CSS.
+      const nadpisy = document.querySelectorAll<HTMLElement>(
+        "[data-pismena], [data-slova]",
+      );
+
+      const pozorovatelNadpisu = new IntersectionObserver(
+        (zaznamy) => {
+          zaznamy.forEach((zaznam) => {
+            if (!zaznam.isIntersecting) return;
+            zaznam.target
+              .querySelectorAll<HTMLElement>(".pismeno, .slovo")
+              .forEach((kus) => kus.classList.add("je-videt"));
+            pozorovatelNadpisu.unobserve(zaznam.target);
+          });
+        },
+        { rootMargin: "0px 0px -60px 0px", threshold: 0.1 },
+      );
+
+      nadpisy.forEach((n) => pozorovatelNadpisu.observe(n));
+    })();
+
+    // ------------------------------------------------------------------
+    // Odhalování obsahu, podtržení nadpisů, kreslené ilustrace, špendlíky
+    // ------------------------------------------------------------------
+    sleduj("[data-odhal]");
+    sleduj(".podtrzeni");
+    sleduj(".kresli-se");
+    sleduj(".spendlik");
+    sleduj(".vlna");
+
+    // ------------------------------------------------------------------
+    // Jedna smyčka pro všechno, co závisí na poloze scrollu
+    // ------------------------------------------------------------------
+    const priScrollu: Array<() => void> = [];
+    let ceka = false;
+
+    function prekresli() {
+      if (ceka) return;
+      ceka = true;
+      requestAnimationFrame(() => {
+        ceka = false;
+        priScrollu.forEach((efekt) => efekt());
+      });
+    }
+
+    // --- Pruh postupu čtení (celá stránka) ---------------------------
+    (function pruhPostupu() {
+      const pruh = document.querySelector<HTMLElement>("#pruh-postupu");
+      if (!pruh) return;
+
+      priScrollu.push(() => {
+        const vyska = document.body.scrollHeight - window.innerHeight;
+        const podil = vyska > 0 ? window.scrollY / vyska : 0;
+        pruh.style.transform = `scaleX(${Math.min(Math.max(podil, 0), 1)})`;
+      });
+    })();
+
+    // --- ÚVOD + ZÁSOBNÍK, ANIMACE 2 — paralaxa -----------------------
+    // Vrstva se posouvá podle toho, jak daleko je od středu obrazovky.
+    // Výchylka je omezená na 70 px: větší už by prvek utekl z kompozice
+    // a na dlouhé stránce by se rozešel s textem, ke kterému patří.
+    (function paralaxa() {
+      const vrstvy = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-paralax]"),
+      );
+      if (vrstvy.length === 0) return;
+
+      priScrollu.push(() => {
+        const stredObrazovky = window.innerHeight / 2;
+
+        vrstvy.forEach((vrstva) => {
+          const r = vrstva.getBoundingClientRect();
+          // Vrstvy mimo obrazovku přeskakujeme, ať se nepočítá zbytečně.
+          if (r.bottom < -200 || r.top > window.innerHeight + 200) return;
+
+          const rychlost = Number(vrstva.dataset.paralax ?? 0);
+          const odchylka = r.top + r.height / 2 - stredObrazovky;
+          const posun = Math.max(-70, Math.min(70, -odchylka * rychlost));
+          vrstva.style.setProperty("--posun", `${posun.toFixed(1)}px`);
+        });
+      });
+    })();
+
+    // --- PROČ SE ZAPOJIT, ANIMACE 2 — přeliv plochy ------------------
+    // Překryvná vrstva se prolne, jak sekce projíždí obrazovkou:
+    // na krajích je průhledná, uprostřed plná.
+    (function prelivPlochy() {
+      const vrstva = document.querySelector<HTMLElement>("#preliv-proc");
+      const sekce = document.querySelector<HTMLElement>("#proc-se-zapojit");
+      if (!vrstva || !sekce) return;
+
+      priScrollu.push(() => {
+        const r = sekce.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight) {
+          vrstva.style.opacity = "0";
+          return;
+        }
+
+        // 0 = sekce přichází zdola, 1 = odchází nahoru
+        const prubeh =
+          (window.innerHeight - r.top) / (window.innerHeight + r.height);
+        const omezeny = Math.max(0, Math.min(1, prubeh));
+        // Náběh a doběh: uprostřed plná, na krajích nic.
+        const sila = 1 - Math.abs(omezeny * 2 - 1);
+        vrstva.style.opacity = sila.toFixed(3);
+      });
+    })();
+
+    // --- JAK TO FUNGUJE, ANIMACE 1 — kreslení cesty ------------------
+    (function kresleniCesty() {
+      const cesta = document.querySelector<SVGPathElement>("#cesta");
+      const obal = document.querySelector<HTMLElement>("#cesta-obal");
+      if (!cesta || !obal) return;
+
+      const delka = cesta.getTotalLength();
+      cesta.style.setProperty("--delka-cesty", String(delka));
+
+      priScrollu.push(() => {
+        const r = obal.getBoundingClientRect();
+        // 0 = sekce přichází zdola, 1 = odchází nahoru
+        const podil = 1 - (r.bottom - window.innerHeight * 0.5) / r.height;
+        const omezeny = Math.max(0, Math.min(1, podil));
+        cesta.style.strokeDashoffset = String(delka * (1 - omezeny));
+      });
+    })();
+
+    window.addEventListener("scroll", prekresli, { passive: true });
+    window.addEventListener("resize", prekresli, { passive: true });
+    prekresli();
+
+    // ------------------------------------------------------------------
+    // JAK TO FUNGUJE, ANIMACE 2 a 3 — přišpendlené číslo a živé kolečko
+    // ------------------------------------------------------------------
+    // Sledujeme úzký pruh uprostřed obrazovky. Krok, který v něm je, je
+    // „na řadě": jeho kolečko se zvětší a velké číslo v přišpendleném
+    // sloupci se na něj překlopí.
+    (function prispendlenyKrok() {
+      const kroky = Array.from(document.querySelectorAll<HTMLElement>(".krok"));
+      const cislo = document.querySelector<HTMLElement>("#cislo-kroku");
+      if (kroky.length === 0) return;
+
+      let posledni = "";
+
+      const pozorovatelKroku = new IntersectionObserver(
+        (zaznamy) => {
+          zaznamy.forEach((zaznam) => {
+            const prvek = zaznam.target as HTMLElement;
+            prvek.classList.toggle("je-na-rade", zaznam.isIntersecting);
+
+            if (!zaznam.isIntersecting || !cislo) return;
+
+            const poradi = prvek.dataset.poradiKroku ?? "";
+            if (poradi === posledni) return;
+            posledni = poradi;
+
+            // Překlopení: staré číslo odejde nahoru, nové přijde zdola.
+            cislo.classList.add("prekloplo");
+            window.setTimeout(() => {
+              cislo.textContent = poradi;
+              cislo.classList.remove("prekloplo");
+            }, 220);
+          });
+        },
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+
+      kroky.forEach((krok) => pozorovatelKroku.observe(krok));
+    })();
+
+    // ------------------------------------------------------------------
+    // REGISTRACE, ANIMACE 1 a 3 — dopočítání částky a kruh za ní
+    // ------------------------------------------------------------------
+    // V HTML je rovnou cílové číslo, tady ho jen na chvíli srazíme na nulu
+    // a necháme dopočítat. Trvá to necelou vteřinu, ať se na to nečeká.
+    (function dopocitejCastku() {
+      const cisla = document.querySelectorAll<HTMLElement>("[data-pocitadlo]");
+      if (cisla.length === 0) return;
+
+      const pozorovatelCisel = new IntersectionObserver(
+        (zaznamy) => {
+          zaznamy.forEach((zaznam) => {
+            if (!zaznam.isIntersecting) return;
+            const prvek = zaznam.target as HTMLElement;
+            pozorovatelCisel.unobserve(prvek);
+
+            // Ozdobný kruh za částkou se rozšíří spolu s dopočtem.
+            prvek
+              .closest("[data-odhal]")
+              ?.querySelector(".kruh-za-castkou")
+              ?.classList.add("je-videt");
+
+            const cil = Number(prvek.dataset.pocitadlo ?? 0);
+            const doba = 900;
+            const zacatek = performance.now();
+
+            const krok = (ted: number) => {
+              const podil = Math.min((ted - zacatek) / doba, 1);
+              // Zpomalení na konci, ať číslo „dosedne" a neuseknme ho.
+              const zmirneny = 1 - Math.pow(1 - podil, 3);
+              prvek.textContent = String(Math.round(cil * zmirneny));
+              if (podil < 1) requestAnimationFrame(krok);
+            };
+
+            requestAnimationFrame(krok);
+          });
+        },
+        { threshold: 0.5 },
+      );
+
+      cisla.forEach((c) => pozorovatelCisel.observe(c));
+    })();
+
+    // ------------------------------------------------------------------
+    // Reakce na myš — jen tam, kde myš opravdu je
+    // ------------------------------------------------------------------
+    // Na dotykovém zařízení by se to nedalo vyvolat a jen by to ubíralo
+    // výkon, tak to tam vůbec nespouštíme.
+    if (!maMys) return;
+
+    // --- ÚVOD, ANIMACE 3 — ilustrace se naklání za kurzorem ----------
+    (function ilustraceZaMysi() {
+      const prvky = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-mys]"),
+      );
+      if (prvky.length === 0) return;
+
+      let cilX = 0;
+      let cilY = 0;
+      let x = 0;
+      let y = 0;
+      let bezi = false;
+
+      window.addEventListener(
+        "pointermove",
+        (u) => {
+          // −1 až 1 podle polohy kurzoru v okně.
+          cilX = (u.clientX / window.innerWidth) * 2 - 1;
+          cilY = (u.clientY / window.innerHeight) * 2 - 1;
+          if (!bezi) {
+            bezi = true;
+            requestAnimationFrame(krok);
+          }
+        },
+        { passive: true },
+      );
+
+      function krok() {
+        // Kurzor doháníme se zpožděním, ať se ilustrace netrhá.
+        x += (cilX - x) * 0.08;
+        y += (cilY - y) * 0.08;
+
+        prvky.forEach((prvek) => {
+          const sila = Number(prvek.dataset.mys ?? 10);
+          prvek.style.setProperty("--mys-x", `${(x * sila).toFixed(2)}px`);
+          prvek.style.setProperty("--mys-y", `${(y * sila).toFixed(2)}px`);
+          prvek.style.setProperty("--mys-uhel", `${(x * 1.5).toFixed(2)}deg`);
+        });
+
+        // Když se kurzor zastavil a dojeli jsme k němu, smyčku ukončíme.
+        if (Math.abs(cilX - x) < 0.001 && Math.abs(cilY - y) < 0.001) {
+          bezi = false;
+          return;
+        }
+        requestAnimationFrame(krok);
+      }
+    })();
+
+    // --- PROČ SE ZAPOJIT, ANIMACE 3 — náklon karty za kurzorem -------
+    (function naklonKaret() {
+      document.querySelectorAll<HTMLElement>(".naklon").forEach((karta) => {
+        karta.addEventListener(
+          "pointermove",
+          (u) => {
+            const r = karta.getBoundingClientRect();
+            const px = (u.clientX - r.left) / r.width - 0.5;
+            const py = (u.clientY - r.top) / r.height - 0.5;
+            // Výchylka je schválně malá — přehnaný náklon působí lacině
+            // a text na kartě se hůř čte.
+            karta.style.transform = `perspective(900px) rotateX(${(-py * 5).toFixed(2)}deg) rotateY(${(px * 5).toFixed(2)}deg) translateY(-3px)`;
+          },
+          { passive: true },
+        );
+
+        karta.addEventListener("pointerleave", () => {
+          karta.style.transform = "";
+        });
+      });
+    })();
+
+    // --- KE STAŽENÍ, ANIMACE 1 — magnetické tlačítko -----------------
+    (function magnetickaTlacitka() {
+      document.querySelectorAll<HTMLElement>(".magnet").forEach((tlacitko) => {
+        tlacitko.addEventListener(
+          "pointermove",
+          (u) => {
+            const r = tlacitko.getBoundingClientRect();
+            const px = u.clientX - (r.left + r.width / 2);
+            const py = u.clientY - (r.top + r.height / 2);
+            // Nejvýš pár pixelů, ať se tlačítko dá pořád trefit.
+            tlacitko.style.transform = `translate(${(px * 0.12).toFixed(1)}px, ${(py * 0.12).toFixed(1)}px)`;
+          },
+          { passive: true },
+        );
+
+        tlacitko.addEventListener("pointerleave", () => {
+          tlacitko.style.transform = "";
+        });
+      });
+    })();
+  }
+</script>
