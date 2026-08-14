@@ -1,0 +1,554 @@
+/* ==========================================================================
+   ANIMOVANÁ VERZE — pohyb v každé sekci
+   ==========================================================================
+   Doprovází src/pages/animovana.astro. Je to třetí verze k porovnání,
+   ne náhrada uzemněné ani kreativní podoby.
+
+   TŘI PRAVIDLA, KTERÁ TENHLE SOUBOR DRŽÍ:
+
+   1. VYPNUTÝ POHYB VYPÍNÁ ÚPLNĚ VŠECHNO.
+      Prvky se neschovávají v CSS napevno. Všechno skrývání visí na třídě
+      `.pohyb-ano`, kterou na <html> pověsí krátký skript v hlavičce stránky
+      — a to jen tehdy, když návštěvník pohyb nezakázal. Když ho zakáže
+      (nebo když nejede JavaScript), třída se nikdy nepřidá, žádné pravidlo
+      se neuplatní a obsah je od první chvíle vidět v cílové poloze.
+      Nic nezůstane průhledné ani posunuté. Blok na konci souboru to ještě
+      jednou pojistí.
+
+   2. ANIMUJE SE JEN `transform` A `opacity`.
+      Nikde se nehýbe s rozměry, odsazením ani pozicí. Prohlížeč to zvládne
+      na grafické kartě, takže i slabší notebook zůstane plynulý.
+      Jedinou výjimkou je `stroke-dashoffset` u vykreslovaných čar — ten se
+      jinak animovat nedá a týká se dvou malých SVG.
+
+   3. ANIMACE SE NEOPAKUJE.
+      Co se jednou odhalí, zůstane odhalené. Skript prvek přestane sledovat.
+      Projet stránku nahoru a dolů proto neznamená dívat se na totéž znovu.
+
+   BARVY: schválená paleta beze změny. Červená patří výhradně tlačítkům,
+   v ozdobách se neobjevuje. Jediná výjimka je puntík u kategorie
+   „Pohyb a pobyt venku", který takhle na webu už je.
+   ========================================================================== */
+
+:root {
+  /* Jedna křivka pro celou stránku — rychlý rozjezd, měkké dosednutí.
+     Díky tomu působí různé animace jako jeden rukopis, ne jako slepenec. */
+  --krivka: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ==========================================================================
+   1. SPOLEČNÝ ZÁKLAD — odhalování při scrollu
+   ==========================================================================
+   Používá se napříč sekcemi. Směr se volí hodnotou atributu `data-odhal`,
+   zpoždění v kaskádě proměnnou `--prodleva` přímo v šabloně (počítá se
+   při sestavení, ne v prohlížeči). */
+
+.pohyb-ano [data-odhal] {
+  opacity: 0;
+  transition:
+    opacity 620ms var(--krivka),
+    transform 620ms var(--krivka);
+  transition-delay: var(--prodleva, 0ms);
+}
+
+.pohyb-ano [data-odhal="zdola"] {
+  transform: translate3d(0, 34px, 0);
+}
+
+.pohyb-ano [data-odhal="zleva"] {
+  transform: translate3d(-40px, 0, 0);
+}
+
+.pohyb-ano [data-odhal="zprava"] {
+  transform: translate3d(40px, 0, 0);
+}
+
+.pohyb-ano [data-odhal="zvetseni"] {
+  transform: scale(0.94);
+}
+
+/* Překlopení kolem horní hrany — list papíru, který dosedne na stůl. */
+.pohyb-ano [data-odhal="preklopeni"] {
+  transform: perspective(1000px) rotateX(14deg) translate3d(0, 18px, 0);
+  transform-origin: 50% 0%;
+}
+
+/* Samotné prolnutí, bez posunu. Pro místa, kde se posouvat nesmí —
+   typicky kolem mapy, aby si Leaflet nepočítal rozměry v transformaci. */
+.pohyb-ano [data-odhal="prolnuti"] {
+  transform: none;
+}
+
+.pohyb-ano [data-odhal].je-videt {
+  opacity: 1;
+  transform: none;
+}
+
+/* ==========================================================================
+   2. SKLÁDÁNÍ TEXTU
+   ==========================================================================
+   Nadpis nenaskočí naráz, ale po částech. Rozsekání na písmena a slova dělá
+   skript — a jen tehdy, když je pohyb povolený. Při vypnutém pohybu zůstane
+   nadpis jedním neporušeným kusem textu, takže ho čtečka obrazovky přečte
+   normálně a nedá se rozbít výběrem myší. */
+
+.pohyb-ano .pismeno,
+.pohyb-ano .slovo {
+  display: inline-block;
+  opacity: 0;
+  transition:
+    opacity 520ms var(--krivka),
+    transform 520ms var(--krivka);
+}
+
+.pohyb-ano .pismeno {
+  transform: translate3d(0, 0.5em, 0);
+}
+
+.pohyb-ano .slovo {
+  transform: translate3d(0, 0.4em, 0);
+}
+
+.pohyb-ano .pismeno.je-videt,
+.pohyb-ano .slovo.je-videt {
+  opacity: 1;
+  transform: none;
+}
+
+/* ==========================================================================
+   3. PODTRŽENÍ NADPISU
+   ==========================================================================
+   Meruňková čárka pod nadpisem se vykreslí zleva doprava. Ve výchozím stavu
+   (bez pohybu) je rovnou celá — utilita `.podtrzeni` z global.css má
+   `scaleX(0)`, tady ji proto pro jistotu srovnáme zpátky. */
+
+.podtrzeni {
+  transform: scaleX(1);
+}
+
+.pohyb-ano .podtrzeni {
+  transform: scaleX(0);
+}
+
+.pohyb-ano .podtrzeni.je-videt {
+  transform: scaleX(1);
+}
+
+/* ==========================================================================
+   4. VYKRESLOVÁNÍ OBRYSOVÝCH ILUSTRACÍ
+   ==========================================================================
+   Postava se nakreslí tah po tahu, jako by ji někdo maloval. Bez pohybu je
+   od začátku hotová. Hodnota 1000 je schválně větší než nejdelší tah. */
+
+.pohyb-ano .kresli-se :is(circle, path) {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+
+.pohyb-ano .kresli-se.je-videt :is(circle, path) {
+  animation: kresli-obrys 1.5s ease-out forwards;
+}
+
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(1) { animation-delay: 0ms; }
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(2) { animation-delay: 80ms; }
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(3) { animation-delay: 160ms; }
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(4) { animation-delay: 240ms; }
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(5) { animation-delay: 320ms; }
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(6) { animation-delay: 400ms; }
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(7) { animation-delay: 480ms; }
+.pohyb-ano .kresli-se.je-videt :is(circle, path):nth-child(n + 8) { animation-delay: 560ms; }
+
+@keyframes kresli-obrys {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ==========================================================================
+   5. UKAZATEL PRŮBĚHU ČTENÍ (celá stránka)
+   ==========================================================================
+   Tenký pruh nahoře. Není to animace sekce, ale orientace: dlouhá stránka
+   bez něj působí nekonečně. Šířku řídí `transform: scaleX()`, ne `width` —
+   měnit šířku by nutilo prohlížeč přepočítávat rozvržení při každém pixelu
+   scrollu. */
+
+.pruh-postupu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  height: 4px;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--color-tyrkys), var(--color-merunka));
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   6. ÚVOD (hero)
+   ==========================================================================
+   ANIMACE 1 — nadpis se skládá po písmenech (první řádka) a po slovech
+              (druhá řádka).
+   ANIMACE 2 — paralaxa: ozdobná skvrna, ilustrace a text jedou při scrollu
+              různou rychlostí. Posun řídí skript proměnnou `--posun`.
+   ANIMACE 3 — ilustrace se naklání za polohou myši (jen na zařízeních
+              s myší, na dotyku se nic neděje). */
+
+.vrstva-paralaxy {
+  transform: translate3d(0, var(--posun, 0px), 0);
+  will-change: transform;
+}
+
+/* Bez pohybu žádný posun — vrstvy zůstanou tam, kam patří. */
+:root:not(.pohyb-ano) .vrstva-paralaxy {
+  transform: none;
+}
+
+/* Ilustrace reagující na myš. Výchylka je malá schválně; ilustrace, která
+   ujíždí přes půl obrazovky, přebíjí text vedle sebe. */
+.sleduje-mys {
+  transform: translate3d(var(--mys-x, 0px), var(--mys-y, 0px), 0)
+    rotate(var(--mys-uhel, 0deg));
+  transition: transform 300ms ease-out;
+}
+
+:root:not(.pohyb-ano) .sleduje-mys {
+  transform: none;
+}
+
+/* ==========================================================================
+   7. PROČ SE ZAPOJIT
+   ==========================================================================
+   ANIMACE 1 — karty naskakují v kaskádě, každá o kousek později
+              (`--prodleva` v šabloně).
+   ANIMACE 2 — plocha sekce se během průjezdu přelije z krémové do tyrkysové
+              a zase zpět. Nemíchá se barva pozadí (to by prohlížeč musel
+              překreslovat), ale prolíná se překryvná vrstva přes `opacity`.
+   ANIMACE 3 — karta se naklání za kurzorem. */
+
+.prelivova-plocha {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--color-plocha-tyrkys);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Naklánění karty za kurzorem. Náklon je 5 stupňů — víc už působí lacině
+   a text na kartě se hůř čte. */
+.naklon {
+  transition: transform 220ms ease-out;
+  will-change: transform;
+}
+
+/* ==========================================================================
+   8. JAK TO FUNGUJE
+   ==========================================================================
+   ANIMACE 1 — svislá čára cesty se vykresluje podle toho, jak daleko je
+              návštěvník odscrollovaný. Není to smyčka: kreslí se dopředu
+              i zpět podle scrollu, takže je pořád vidět, kde v postupu je.
+   ANIMACE 2 — levý sloupec se přišpendlí a velké číslo v něm se překlápí
+              podle toho, který krok je zrovna na obrazovce.
+   ANIMACE 3 — kolečko kroku, který je právě na řadě, se lehce zvětší. */
+
+.pohyb-ano .cesta {
+  stroke-dasharray: var(--delka-cesty);
+  stroke-dashoffset: var(--delka-cesty);
+}
+
+/* Velké číslo v přišpendleném sloupci. Při změně se překlopí:
+   staré odejde nahoru, nové přijde zdola. */
+.cislo-kroku {
+  display: block;
+  font-size: clamp(5rem, 12vw, 9rem);
+  font-weight: 600;
+  line-height: 0.9;
+  color: var(--color-merunka);
+  transition:
+    transform 300ms var(--krivka),
+    opacity 300ms var(--krivka);
+}
+
+.cislo-kroku.prekloplo {
+  opacity: 0;
+  transform: translate3d(0, -18px, 0);
+}
+
+.kolecko-kroku {
+  transition: transform 300ms var(--krivka);
+}
+
+.krok.je-na-rade .kolecko-kroku {
+  transform: scale(1.14);
+}
+
+/* ==========================================================================
+   9. TIPY NA AKTIVITY
+   ==========================================================================
+   ANIMACE 1 — řádka s nápady jede plynule do strany. Po najetí myší se
+              zastaví, aby se dala přečíst.
+   ANIMACE 2 — položky legendy naskakují po sobě zleva.
+   ANIMACE 3 — ozdobná skvrna v pozadí pomalu „dýchá". */
+
+.pas {
+  display: flex;
+  width: max-content;
+}
+
+.pohyb-ano .pas {
+  animation: pas-jede var(--doba-pasu, 46s) linear infinite;
+}
+
+/* Zastavení na hover i na klávesnicový focus — kdo se pohybuje tabulátorem,
+   má stejnou možnost si řádku zastavit jako ten, kdo najede myší. */
+.pas-obal:hover .pas,
+.pas-obal:focus-within .pas {
+  animation-play-state: paused;
+}
+
+@keyframes pas-jede {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    /* Obsah je v šabloně dvakrát, posun o polovinu je proto bezešvý. */
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* Pomalé dýchání ozdobného tvaru. Cyklus je dlouhý a výchylka malá —
+   má to jen bránit dojmu, že stránka zamrzla. */
+.pohyb-ano .dycha {
+  animation: dychani 9s ease-in-out infinite;
+}
+
+@keyframes dychani {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+/* ==========================================================================
+   10. ZÁSOBNÍK
+   ==========================================================================
+   ANIMACE 1 — balíček karet se při vjezdu do obrazovky rozevře do vějíře.
+              Karty vyjíždějí zpod sebe postupně, ne naráz.
+   ANIMACE 2 — paralaxa: balíček karet jede při scrollu jinou rychlostí
+              než text vedle něj.
+   ANIMACE 3 — ilustrace žáků u notebooku se vykreslí tah po tahu. */
+
+/* Cílová (rozevřená) poloha. V ní karty leží i bez jakéhokoliv pohybu.
+   Posun o polovinu šířky je v transformaci schválně — karty jsou umístěné
+   na střed obalu a Tailwindí `-translate-x-1/2` by nám transformaci
+   přepsalo. */
+.karta-zasobniku {
+  transform: translateX(-50%) rotate(calc((var(--poradi) - 1) * 9deg));
+  transform-origin: 50% 150%;
+  transition:
+    transform 620ms var(--krivka),
+    box-shadow 380ms ease-out;
+  transition-delay: var(--prodleva, 0ms);
+  z-index: var(--poradi);
+}
+
+/* Zavřený balíček — všechny karty na sobě. Jen když je pohyb povolený. */
+.pohyb-ano .balicek:not(.je-videt) .karta-zasobniku {
+  transform: translateX(-50%) rotate(0deg) translateY(14px);
+}
+
+/* Najetí myší vějíř rozevře ještě víc — je vidět, co je pod vrchní kartou. */
+.balicek:hover .karta-zasobniku {
+  transform: translateX(-50%) rotate(calc((var(--poradi) - 1) * 15deg));
+}
+
+.karta-zasobniku:hover {
+  z-index: 10;
+}
+
+.balicek:hover .karta-zasobniku:hover {
+  transform: translateX(-50%) rotate(calc((var(--poradi) - 1) * 15deg))
+    translateY(-18px);
+  box-shadow: 0 28px 60px -20px rgba(0, 0, 0, 0.45);
+}
+
+/* ==========================================================================
+   11. MAPKA
+   ==========================================================================
+   ANIMACE 1 — celá sekce se prolne. Schválně BEZ posunu: transformace na
+              rodiči mapy mate Leaflet při počítání výřezu.
+   ANIMACE 2 — ozdobné špendlíky nad mapou dopadají po sobě a pod nimi se
+              rozbíhá kruh, jako když něco dosedne. */
+
+.spendlik {
+  transform-origin: 50% 100%;
+}
+
+.pohyb-ano .spendlik {
+  opacity: 0;
+  transform: translate3d(0, -26px, 0) scale(0.8);
+  transition:
+    opacity 420ms var(--krivka),
+    transform 520ms var(--krivka);
+  transition-delay: var(--prodleva, 0ms);
+}
+
+.pohyb-ano .spendlik.je-videt {
+  opacity: 1;
+  transform: none;
+}
+
+/* Kruh, který se rozbíhá pod špendlíky. Běží jen chvíli, ne donekonečna —
+   trvale pulzující prvek u mapy odvádí pozornost od dat na ní. */
+.pohyb-ano .vlna.je-videt {
+  animation: vlna-se-rozbiha 2.4s ease-out 3;
+}
+
+@keyframes vlna-se-rozbiha {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   12. PODPORA
+   ==========================================================================
+   ANIMACE 1 — karty přijíždějí střídavě zleva a zprava, ne všechny stejně.
+   ANIMACE 2 — dvojice ilustrací se vykreslí tahem po tahu.
+   ANIMACE 3 — ikona v kartě se při najetí nadechne (drobná odezva na to,
+              že je karta pod kurzorem). */
+
+.karta-podpory .ikona-karty {
+  transition: transform 260ms var(--krivka);
+}
+
+.karta-podpory:hover .ikona-karty {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+/* ==========================================================================
+   13. REGISTRACE
+   ==========================================================================
+   ANIMACE 1 — částka se dopočítá od nuly. V HTML je napsaná rovnou cílová
+              hodnota, takže bez pohybu (i bez JavaScriptu) je vidět „500 Kč".
+   ANIMACE 2 — bílé boxy s vysvětlením dosednou překlopením kolem horní
+              hrany, jeden po druhém.
+   ANIMACE 3 — kruh za částkou se při dopočtu rozšíří. */
+
+.castka {
+  font-variant-numeric: tabular-nums;
+}
+
+.kruh-za-castkou {
+  transform: scale(0.6);
+  opacity: 0;
+  transition:
+    transform 900ms var(--krivka),
+    opacity 900ms var(--krivka);
+}
+
+.kruh-za-castkou.je-videt {
+  transform: scale(1);
+  opacity: 1;
+}
+
+:root:not(.pohyb-ano) .kruh-za-castkou {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ==========================================================================
+   14. KE STAŽENÍ A KONTAKT
+   ==========================================================================
+   ANIMACE 1 — tlačítko se lehce přitáhne ke kurzoru (magnet).
+   ANIMACE 2 — kontaktní údaje naskakují po sobě zleva.
+   ANIMACE 3 — ikona stahování při najetí poskočí dolů a vrátí se. */
+
+.magnet {
+  transition: transform 260ms var(--krivka);
+  will-change: transform;
+}
+
+.magnet .ikona-stazeni {
+  transition: transform 260ms var(--krivka);
+}
+
+.magnet:hover .ikona-stazeni {
+  transform: translate3d(0, 3px, 0);
+}
+
+/* ==========================================================================
+   VYPNUTÍ POHYBU — POVINNÉ, NENÍ NA PROŠKRTÁNÍ
+   ==========================================================================
+   Publikum zahrnuje seniory a lidi citlivé na pohyb.
+
+   Hlavní pojistka je v tom, že se třída `.pohyb-ano` vůbec nepřidá — tím
+   padnou skoro všechna pravidla výše. Tenhle blok je druhá pojistka pro
+   případ, že by někdo skrývání omylem zavedl bez ní: srovná do cílové
+   polohy úplně všechno, co se na stránce hýbe.
+
+   global.css navíc plošně vypíná `animation` i `transition` na všem. */
+@media (prefers-reduced-motion: reduce) {
+  .pruh-postupu {
+    display: none;
+  }
+
+  [data-odhal],
+  .pismeno,
+  .slovo,
+  .spendlik,
+  .kruh-za-castkou,
+  .duvod {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .podtrzeni {
+    transform: scaleX(1) !important;
+  }
+
+  .vrstva-paralaxy,
+  .sleduje-mys,
+  .naklon,
+  .magnet,
+  .cislo-kroku,
+  .kolecko-kroku {
+    transform: none !important;
+  }
+
+  /* Ilustrace je od začátku hotová, nic se nemaluje. */
+  .kresli-se :is(circle, path) {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  .cesta {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  /* Řádka s nápady stojí. Zůstane čitelná v základní poloze. */
+  .pas {
+    transform: none !important;
+  }
+
+  /* Balíček karet zůstane rozevřený, jen se nikam nepřeklápí. */
+  .karta-zasobniku {
+    transform: translateX(-50%) rotate(calc((var(--poradi) - 1) * 9deg)) !important;
+  }
+
+  /* Vlna u mapy nemá bez pohybu co dělat. */
+  .vlna {
+    display: none;
+  }
+}
