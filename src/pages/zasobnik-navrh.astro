@@ -1,0 +1,27 @@
+---
+/**
+ * Pracovní stránka s návrhem sekce „Co je to Zásobník nápadů?".
+ *
+ * Do ostrého webu nezasahuje — návrh se hodnotí tady, obalený ve stejném
+ * layoutu (menu + patička), aby bylo vidět, jak sedí ke zbytku webu.
+ * Teprve odsouhlasená podoba se přenese do ObsahStranky.astro.
+ */
+import Layout from "../layouts/Layout.astro";
+import SekceZasobnik from "../components/zasobnik/SekceZasobnik.astro";
+import "../styles/zasobnik-navrh.css";
+---
+
+<Layout
+  titulek="Návrh sekce Zásobník nápadů — pracovní stránka"
+  popis="Pracovní návrh nové podoby sekce „Co je to Zásobník nápadů?" pro web aktivne-spolu.cz."
+>
+  {/* Nenápadný proužek, ať se pracovní stránka nesplete s ostrým webem */}
+  <div
+    class="border-b border-merunka-tlumena bg-plocha-tyrkys px-5 py-2 text-center text-popisek"
+  >
+    Pracovní návrh — nová podoba sekce „Co je to Zásobník nápadů?“. Na ostrý
+    web se přenese až po odsouhlasení.
+  </div>
+
+  <SekceZasobnik />
+</Layout>

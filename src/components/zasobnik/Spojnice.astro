@@ -1,0 +1,73 @@
+---
+/**
+ * Spojnice mezi zastávkami „cesty nápadu".
+ *
+ * Na počítači vodorovná vlnka, na mobilu svislá — podle toho, jak jsou
+ * zastávky poskládané. Čára se při vjetí do obrazovky dokreslí zleva
+ * doprava (resp. shora dolů); kreslení řeší zasobnik-navrh.css přes
+ * třídy `najezd` (existující pozorovatel v Layout.astro) a `spojnice-cesty`.
+ *
+ * Barvy podle designového systému: čára je meruňková tlumená (role
+ * „spojnice mezi kolečky"), šipka na konci plná meruňková (role „marker"),
+ * aby byl směr předání znát i letmým pohledem.
+ *
+ * Je to čistá dekorace — čtečkám obrazovky se schovává, pořadí zastávek
+ * nese samotné HTML.
+ */
+interface Props {
+  /** Pořadí pro postupné naskakování (zpoždění 60 ms na krok) */
+  poradi: number;
+}
+
+const { poradi } = Astro.props;
+---
+
+<div
+  class="najezd spojnice-cesty flex justify-center lg:mt-4 lg:min-w-16 lg:flex-1"
+  data-poradi={poradi}
+  aria-hidden="true"
+>
+  {/* Vodorovná varianta (od lg nahoru). preserveAspectRatio="none" nechá
+      vlnku roztáhnout do volné šířky, non-scaling-stroke drží tloušťku čáry. */}
+  <svg
+    class="hidden h-12 w-full lg:block"
+    viewBox="0 0 120 48"
+    preserveAspectRatio="none"
+    fill="none"
+  >
+    <path
+      class="cara"
+      d="M4 26 C 40 8, 78 44, 114 26"
+      pathLength="100"
+      stroke="var(--color-merunka-tlumena)"
+      stroke-width="3.5"
+      stroke-linecap="round"
+      vector-effect="non-scaling-stroke"></path>
+    <path
+      class="sipka"
+      d="M109 20 L 115 26 L 109 32"
+      stroke="var(--color-merunka)"
+      stroke-width="3.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      vector-effect="non-scaling-stroke"></path>
+  </svg>
+
+  {/* Svislá varianta (mobil) */}
+  <svg class="h-16 w-10 lg:hidden" viewBox="0 0 40 64" fill="none">
+    <path
+      class="cara"
+      d="M20 4 C 34 20, 6 38, 20 54"
+      pathLength="100"
+      stroke="var(--color-merunka-tlumena)"
+      stroke-width="3.5"
+      stroke-linecap="round"></path>
+    <path
+      class="sipka"
+      d="M12 48 L 20 58 L 28 48"
+      stroke="var(--color-merunka)"
+      stroke-width="3.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"></path>
+  </svg>
+</div>

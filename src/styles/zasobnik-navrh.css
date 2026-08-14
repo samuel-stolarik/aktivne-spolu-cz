@@ -1,0 +1,45 @@
+/* ==========================================================================
+   Styly návrhu sekce „Co je to Zásobník nápadů?" — stránka /zasobnik-navrh/
+
+   Všechno ostatní (barvy, písmo, najíždění při scrollu) drží designový
+   systém v global.css. Tady je jen to, co potřebuje schéma „cesta nápadu":
+   dokreslování spojnic mezi zastávkami.
+   ========================================================================== */
+
+/* Čára spojnice se dokreslí, jako by ji někdo vedl tužkou.
+   Trik: pathLength="100" v SVG přepočítá délku čáry na 100 jednotek,
+   takže stačí u všech spojnic posunout stroke-dashoffset ze 100 na 0 —
+   bez měření skutečné délky každé křivky. */
+.spojnice-cesty .cara {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 900ms ease-out 250ms;
+}
+
+.spojnice-cesty.je-videt .cara {
+  stroke-dashoffset: 0;
+}
+
+/* Šipka na konci naskočí, až když čára dojede (250 + 900 ms). */
+.spojnice-cesty .sipka {
+  opacity: 0;
+  transition: opacity 250ms ease-out 1100ms;
+}
+
+.spojnice-cesty.je-videt .sipka {
+  opacity: 1;
+}
+
+/* Vypnutí pohybu — povinné. global.css vypíná transition všude,
+   tady navíc vracíme kresbu do hotového stavu: čára celá, šipka vidět.
+   Obsah tedy zůstane úplný, jen se nic nehýbe. */
+@media (prefers-reduced-motion: reduce) {
+  .spojnice-cesty .cara {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+
+  .spojnice-cesty .sipka {
+    opacity: 1;
+  }
+}

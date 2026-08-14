@@ -1,0 +1,68 @@
+---
+/**
+ * Návrh nové podoby sekce „Co je to Zásobník nápadů?".
+ *
+ * MYŠLENKA: Zásobník je výstup celého projektu. Akce nekončí úklidem
+ * židlí — stane se z ní záznam, podle kterého ji zopakuje někdo na
+ * druhém konci republiky. Sekce proto nestojí na popisu aplikace,
+ * ale na PŘEDÁNÍ: nahoře schválený text, pod ním „cesta nápadu"
+ * od vaší akce přes formulář (který vytvářejí žáci) až k organizátorům
+ * z celé ČR.
+ *
+ * Schválený text (podklady/texty.md, sekce 6) je vložený doslova a celý.
+ * První odstavec je vysazený větším stupněm jako přímá odpověď na otázku
+ * v nadpisu — to nejsilnější na Zásobníku je, kdo ho staví. Jediná věta
+ * navíc je dole a nese značku [NÁVRH TEXTU: …] — na ostrý web smí až
+ * po schválení zadavatelem.
+ *
+ * Sekce zůstává na krémovém pozadí: tyrkysová plocha podle systému
+ * patří sekcím, kde návštěvník něco dělá (Jak to funguje, Registrace).
+ */
+import Sekce from "../Sekce.astro";
+import NadpisSekce from "../NadpisSekce.astro";
+import CestaNapadu from "./CestaNapadu.astro";
+---
+
+<Sekce id="zasobnik">
+  {/* Nadstřešní štítek — „Unikátní výstup" je titulek sekce v podkladech */}
+  <p class="najezd m-0" data-poradi="0">
+    <span
+      class="inline-flex items-center rounded-full bg-merunka px-4 py-1.5 text-popisek font-semibold"
+    >
+      Unikátní výstup
+    </span>
+  </p>
+
+  <NadpisSekce poradi={0} trida="mt-4">Co je to Zásobník nápadů?</NadpisSekce>
+
+  {/* Odstavec 1 jako zvětšené „lede" — přímá odpověď na otázku z nadpisu */}
+  <p
+    class="najezd mt-8 max-w-[820px] text-xl leading-relaxed sm:text-2xl"
+    data-poradi="1"
+  >
+    Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí žáci ZŠ
+    Magic Hill z Říčan u Prahy.
+  </p>
+
+  {/* Odstavec 2 — beze změn; jen datum spuštění je tučně, protože je to
+      jediný pevný bod, který si má návštěvník odnést. */}
+  <p class="najezd mt-5 max-w-[820px]" data-poradi="2">
+    Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce (pro
+    koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly potřeba) a
+    nahrajete fotografie. <strong>Od 1. listopadu</strong> tak vznikne veřejně
+    přístupná databáze plná ověřené inspirace pro organizátory podobných akcí
+    z celé ČR.
+  </p>
+
+  <CestaNapadu />
+
+  {/* Věta, kterou schválené texty neříkají nahlas: akce nezůstane u vás.
+      Označená podle dohody — na ostrý web smí až po schválení. */}
+  <p
+    class="najezd mx-auto mt-12 max-w-[720px] text-center text-lg font-semibold text-tyrkys"
+    data-poradi="6"
+  >
+    [NÁVRH TEXTU: Váš nápad tak nezůstane jen u vás — stane se návodem pro
+    někoho na druhém konci republiky.]
+  </p>
+</Sekce>

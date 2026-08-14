@@ -1,0 +1,147 @@
+---
+/**
+ * „Cesta nápadu" — podpisový prvek navrhované sekce Zásobníku.
+ *
+ * Tři zastávky čtené zleva doprava (na mobilu shora dolů) vyprávějí,
+ * co se s akcí stane dál:
+ *
+ *   1. Vaše akce            — setkání proběhne u vás,
+ *   2. jednoduchý formulář  — zapíšete ho do Zásobníku; okno aplikace,
+ *                             pod kterým sedí žáci, kteří ji vytvářejí,
+ *   3. veřejná databáze     — a od 1. listopadu ho najde organizátor
+ *                             podobné akce kdekoli v ČR.
+ *
+ * Zastávky spojuje čára, která se při scrollu dokreslí (zasobnik-navrh.css).
+ * Všechny popisky jsou doslovné obraty ze schválených podkladů
+ * (podklady/texty.md) — žádný nový text tu nevzniká.
+ *
+ * Barvy drží systém: ikony tyrkysové, spojnice meruňková tlumená,
+ * štítky meruňkové s tmavým textem. Červená tu není — patří tlačítkům.
+ */
+import Ikona from "../Ikona.astro";
+import Ilustrace from "../Ilustrace.astro";
+import Spojnice from "./Spojnice.astro";
+
+/** Pole formuláře — doslova ze schváleného textu sekce 6. */
+const poleFormulare = [
+  "pro koho byla akce vhodná",
+  "jaká byla náročnost",
+  "jaké pomůcky byly potřeba",
+];
+---
+
+<div
+  class="mt-14 flex flex-col items-center gap-1 lg:flex-row lg:items-start lg:gap-0"
+>
+  {/* --- Zastávka 1: vaše akce ------------------------------------------ */}
+  <div
+    class="najezd flex flex-col items-center text-center lg:w-52 lg:shrink-0"
+    data-poradi="1"
+  >
+    <div
+      class="flex h-18 w-18 items-center justify-center rounded-full bg-plocha-tyrkys"
+    >
+      <Ikona jmeno="heart-handshake" velikost={34} />
+    </div>
+    <h3 class="mt-4 text-xl">Vaše akce</h3>
+    <p class="mt-1 max-w-48 text-popisek">v týdnu kolem 1. 10.</p>
+  </div>
+
+  <Spojnice poradi={2} />
+
+  {/* --- Zastávka 2: okno aplikace + žáci, kteří ji vytvářejí ------------ */}
+  <div
+    class="najezd flex w-full max-w-[360px] flex-col items-center lg:w-auto lg:shrink-0"
+    data-poradi="3"
+  >
+    {/* Okno prohlížeče — Zásobník je webová aplikace, ne leták.
+        Puntíky v liště jsou meruňkové, ne semaforové: červená patří
+        výhradně tlačítkům. */}
+    <div
+      class="w-full overflow-hidden rounded-2xl border border-merunka-tlumena bg-white shadow-[0_16px_32px_-20px_rgba(69,68,63,0.35)]"
+    >
+      <div
+        class="flex items-center gap-1.5 border-b border-merunka-tlumena bg-plocha-tyrkys px-4 py-2.5"
+      >
+        <span class="h-2.5 w-2.5 rounded-full bg-merunka" aria-hidden="true"
+        ></span>
+        <span
+          class="h-2.5 w-2.5 rounded-full bg-merunka-tlumena"
+          aria-hidden="true"></span>
+        <span
+          class="h-2.5 w-2.5 rounded-full border border-merunka-tlumena"
+          aria-hidden="true"></span>
+        <span class="ml-2 text-popisek font-semibold text-tyrkys">
+          Zásobník nápadů
+        </span>
+      </div>
+
+      <div class="px-6 py-5">
+        <h3 class="text-xl">Jednoduchý formulář</h3>
+
+        {/* Tři pole s fajfkou — přesně ta, která jmenuje schválený text.
+            Návštěvník vidí celý rozsah práce, která ho po akci čeká:
+            tři odpovědi a fotky. */}
+        <ul class="mt-3 list-none space-y-2.5 p-0">
+          {
+            poleFormulare.map((popis) => (
+              <li class="flex items-center gap-2.5 border-b border-merunka-tlumena pb-2.5 text-popisek">
+                <Ikona jmeno="circle-check" velikost={20} />
+                {popis}
+              </li>
+            ))
+          }
+          <li class="flex items-center gap-2.5 text-popisek">
+            <Ikona jmeno="camera" velikost={20} />
+            fotografie
+            {/* Náhledy fotek jen naznačené plochou — fotografie na webu
+                nejsou a nebudou. */}
+            <span class="ml-auto flex gap-1.5" aria-hidden="true">
+              <span
+                class="flex h-7 w-9 items-center justify-center rounded bg-plocha-tyrkys"
+              >
+                <Ikona jmeno="image" velikost={14} />
+              </span>
+              <span class="h-7 w-9 rounded bg-plocha-tyrkys"></span>
+              <span class="h-7 w-9 rounded bg-plocha-tyrkys"></span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    {/* Autoři aplikace sedí přímo pod „svým" oknem — umístění ilustrace
+        tu něco znamená, není to ozdoba do rohu. */}
+    <div class="mt-2 flex flex-col items-center text-tyrkys">
+      <Ilustrace jmeno="zaci-programuji" sirka={180} />
+      <span
+        class="mt-2 rounded-full bg-merunka px-4 py-1.5 text-popisek font-semibold text-text"
+      >
+        vytvářejí žáci ZŠ Magic Hill
+      </span>
+    </div>
+  </div>
+
+  <Spojnice poradi={4} />
+
+  {/* --- Zastávka 3: veřejná databáze pro celou ČR ----------------------- */}
+  <div
+    class="najezd flex flex-col items-center text-center lg:w-56 lg:shrink-0"
+    data-poradi="5"
+  >
+    <div
+      class="flex h-18 w-18 items-center justify-center rounded-full bg-plocha-tyrkys"
+    >
+      <Ikona jmeno="lightbulb" velikost={34} />
+    </div>
+    <h3 class="mt-4 text-xl">Veřejně přístupná databáze</h3>
+    <p class="mt-1 text-popisek">
+      ověřená inspirace pro organizátory podobných akcí z celé ČR
+    </p>
+    <span
+      class="mt-3 rounded-full bg-merunka px-4 py-1.5 text-popisek font-semibold"
+    >
+      od 1. listopadu
+    </span>
+  </div>
+</div>
