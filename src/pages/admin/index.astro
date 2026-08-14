@@ -19,6 +19,12 @@
  * PROČ NEPOUŽÍVÁ SPOLEČNÝ Layout.astro
  * Ten do stránky přidává menu, patičku a načítání přepsaných textů. Do
  * administrace nic z toho nepatří — v ní se texty upravují, ne zobrazují.
+ *
+ * NÁHLED WEBU UVNITŘ ADMINISTRACE
+ * V záložce s texty je vložený rám (`iframe`) se skutečným webem a v něm jdou
+ * texty upravovat klepnutím. Web se do rámu načítá jako obyčejná stránka —
+ * do veřejných souborů se kvůli tomu nic nepřidalo. Vyznačení upravitelných
+ * míst i obsluhu klepnutí přidává až prohlížeč správce (components/admin/nahled.ts).
  */
 import "../../styles/global.css";
 ---
@@ -238,13 +244,28 @@ import "../../styles/global.css";
         <section data-panel="texty" class="pt-6" hidden>
           <h2 class="mt-0 text-xl">Texty a obrázky na webu</h2>
           <p class="max-w-[720px] text-popisek">
-            U každého pole je napsané, kde na webu ten text najdete. Po uložení
-            se změna projeví na webu do několika vteřin — stačí stránku obnovit.
+            Upravovat jde dvěma způsoby.{" "}
+            <strong>V náhledu webu</strong>{" "}klepnete rovnou na text, který
+            chcete změnit.{" "}
+            <strong>V seznamu</strong>{" "}jsou všechny texty pod sebou — hodí
+            se na to, na co se v náhledu klepnout nedá. Po uložení se změna
+            projeví na webu do několika vteřin, stačí stránku obnovit.
             Tlačítkem „Vrátit původní" se text vrátí do stavu, ve kterém web
             vznikl.
           </p>
 
-          <div class="mt-4 flex flex-wrap gap-4">
+          <div class="mt-4 flex flex-wrap items-center gap-4">
+            {/* Přepínač je vidět vždycky. Skrytý způsob úprav, o kterém člověk
+                neví, se rovná způsobu, který neexistuje. */}
+            <div class="admin-prepinac" role="group" aria-label="Způsob úprav">
+              <button type="button" data-pohled="nahled" aria-pressed="true">
+                Klepnutím v náhledu webu
+              </button>
+              <button type="button" data-pohled="seznam" aria-pressed="false">
+                V seznamu všech textů
+              </button>
+            </div>
+
             <button type="button" id="tlacitko-nacist-texty" class="admin-tlacitko-vedlejsi">
               Načíst znovu
             </button>
@@ -252,7 +273,54 @@ import "../../styles/global.css";
 
           <p id="hlaska-texty" class="admin-hlaska mt-4"></p>
 
-          <div id="seznam-textu" class="mt-6 max-w-[860px]"></div>
+          {/* --- Úprava klepnutím v náhledu ------------------------------ */}
+          <div data-cast-textu="nahled" class="mt-6" hidden>
+            <div class="flex flex-wrap items-center gap-4">
+              <button type="button" id="tlacitko-nacist-nahled" class="admin-tlacitko-vedlejsi">
+                Načíst náhled znovu
+              </button>
+
+              <label class="admin-zaskrtavatko" for="prepinac-znaceni">
+                <input type="checkbox" id="prepinac-znaceni" checked />
+                Vyznačit texty, na které jde klepnout
+              </label>
+            </div>
+
+            <p id="hlaska-nahledu" class="admin-hlaska mt-4"></p>
+
+            {/* Texty, které se v náhledu nenašly. Mlčet se nesmí — správce by
+                je marně hledal. */}
+            <div id="nenalezene-texty" class="admin-karta mt-4 max-w-[720px] text-popisek" hidden></div>
+
+            <p class="mt-4 text-popisek">
+              Náhled je jen na ukázku: nic se v něm neodešle a odkazy v něm
+              nikam nevedou.
+            </p>
+
+            {/*
+              Náhled skutečného webu.
+
+              `src` se doplňuje až v prohlížeči, po přihlášení — nepřihlášený
+              člověk tak nenačítá nic zbytečně.
+
+              `sandbox` schválně BEZ `allow-forms`: z náhledu tím pádem nejde
+              odeslat formulář, ani kdyby obsluha klepnutí selhala. Stránka je
+              na stejné adrese jako administrace, proto `allow-same-origin` —
+              bez toho by administrace do náhledu neviděla a nešlo by v něm
+              nic vyznačit ani upravit.
+            */}
+            <iframe
+              id="ram-nahledu"
+              class="admin-ram mt-2"
+              title="Náhled webu — klepnutím na text ho upravíte"
+              sandbox="allow-same-origin allow-scripts"
+            ></iframe>
+          </div>
+
+          {/* --- Úprava v seznamu ---------------------------------------- */}
+          <div data-cast-textu="seznam" hidden>
+            <div id="seznam-textu" class="mt-6 max-w-[860px]"></div>
+          </div>
         </section>
 
         {/* --- Obrázky --------------------------------------------------- */}
@@ -456,6 +524,7 @@ import "../../styles/global.css";
         display: none;
       }
 
+      .admin-hlaska[data-stav="rozepsano"],
       .admin-hlaska[data-stav="probiha"] {
         color: var(--color-text);
       }
@@ -482,9 +551,16 @@ import "../../styles/global.css";
         line-height: 1;
       }
 
+      .admin-hlaska[data-stav="rozepsano"] .admin-znacka,
       .admin-hlaska[data-stav="probiha"] .admin-znacka {
         background-color: var(--color-merunka-tlumena);
         color: var(--color-text);
+      }
+
+      /* Rozepsáno je stav, ne chyba — proto stejná tlumená barva jako
+         u „ukládám". Odlišuje se značkou (tužka) a hlavně slovy. */
+      .admin-hlaska[data-stav="rozepsano"] {
+        font-weight: 600;
       }
 
       .admin-hlaska[data-stav="hotovo"] .admin-znacka {
@@ -552,6 +628,105 @@ import "../../styles/global.css";
       .admin-souradnice[data-stav="chybi"] .admin-znacka {
         background-color: var(--color-chyba);
         color: #fff;
+      }
+
+      /* --- Přepínač způsobu úprav -----------------------------------------
+         Vypadá jako dvě tlačítka vedle sebe; zvolené je zvýrazněné plochou,
+         ne červenou — ta patří jen tlačítkům, která něco provedou. */
+      .admin-prepinac {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        border: 1px solid var(--color-merunka-tlumena);
+        border-radius: 0.625rem;
+        background-color: #fff;
+      }
+
+      .admin-prepinac button {
+        min-height: 2.75rem; /* 44 px — spodní hranice klikací plochy */
+        padding: 0.5rem 1rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: transparent;
+        color: var(--color-text);
+        font: inherit;
+        font-size: var(--text-popisek);
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .admin-prepinac button:hover {
+        background-color: var(--color-plocha-tyrkys);
+      }
+
+      .admin-prepinac button[aria-pressed="true"] {
+        background-color: var(--color-tyrkys);
+        color: #fff;
+      }
+
+      /* --- Zaškrtávátko ---------------------------------------------------- */
+      .admin-zaskrtavatko {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+        font-size: var(--text-popisek);
+        cursor: pointer;
+      }
+
+      .admin-zaskrtavatko input {
+        width: 1.25rem;
+        height: 1.25rem;
+        accent-color: var(--color-tyrkys);
+        cursor: pointer;
+      }
+
+      /* --- Náhled webu ------------------------------------------------------
+         Rám s opravdovým webem. Vysoký tak, aby v něm šlo pracovat, ale aby
+         nad ním pořád byla vidět tlačítka administrace. */
+      .admin-ram {
+        display: block;
+        width: 100%;
+        height: min(72vh, 900px);
+        min-height: 420px;
+        border: 1px solid var(--color-merunka-tlumena);
+        border-radius: 0.75rem;
+        background-color: #fff;
+      }
+
+      /* --- Kartička s úpravou nad náhledem ---------------------------------
+         Leží v administraci, ne uvnitř náhledu — do stránky v rámu se nic
+         nevkládá. Umisťuje ji skript k textu, kterého se týká. */
+      .admin-editor {
+        position: fixed;
+        z-index: 30;
+        width: min(420px, calc(100vw - 24px));
+        max-height: calc(100vh - 24px);
+        overflow-y: auto;
+        padding: 1rem;
+        border: 2px solid var(--color-tyrkys);
+        border-radius: 0.75rem;
+        background-color: #fff;
+        box-shadow: 0 12px 32px rgb(69 68 63 / 0.22);
+      }
+
+      /* Odrážkový výpis v administraci. Schválně vlastní pravidlo, ne pomocné
+         třídy Tailwindu — ty by přibyly do společného souboru se styly, který
+         si stahuje i veřejný web. */
+      .admin-vypis {
+        padding-left: 1.25rem;
+        list-style: disc;
+      }
+
+      .admin-editor-kde {
+        margin: 0 0 0.25rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--color-text);
+        opacity: 0.7;
       }
 
       /* --- Karty ---------------------------------------------------------- */

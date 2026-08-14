@@ -1,23 +1,46 @@
 /**
  * Úprava textů a obrázků webu.
  *
- * Seznam toho, co jde upravit, je v src/lib/obsah.ts. Tady se z něj vyrobí
- * formulář: u každé položky je napsané, kde na webu je, a pole, do kterého
- * se napíše nové znění.
+ * Upravovat jde dvěma způsoby a oba pracují se stejnými daty (obsahStav.ts):
  *
- * Ukládá se po jedné položce. Schválně — správce vidí u každé zvlášť,
- * jestli se uložení povedlo, a když vypadne spojení, nepřijde o všechno.
+ *   NÁHLED  — v administraci se ukáže skutečný web a klepnutím na text se
+ *             rovnou upravuje. Tenhle způsob je hlavní; obsluhuje ho nahled.ts.
+ *   SEZNAM  — políčka pod sebou, u každého popis, kde na webu je. Tenhle
+ *             způsob zůstává, protože ne na všechno se dá klepnout: obrázky
+ *             v patičce, texty, které se ukážou jen v některém stavu
+ *             formuláře, a cokoli, co se v náhledu nepodaří najít.
+ *
+ * Seznam vykresluje tenhle soubor. Ukládá se po jedné položce — správce vidí
+ * u každé zvlášť, jestli se to povedlo, a když vypadne spojení, nepřijde
+ * o všechno.
  *
  * Když se text vrátí na původní znění (tlačítkem „Vrátit původní"), řádek
  * se z databáze smaže a web se vrátí k tomu, co je v HTML.
  */
 import { KATALOG, skupinyKatalogu, type PolozkaObsahu } from "../../lib/obsah";
-import { zavolej } from "./klient";
 import { nahrajObrazek } from "./obrazky";
-import { sHlasenim, ukazStav, type DruhStavu } from "./stav";
-
-/** Uložené přepisy z databáze: klíč → nové znění. */
-let prepisy: Record<string, string> = {};
+import {
+  jeUpraveno,
+  nactiPrepisy,
+  priZmeneObsahu,
+  ulozZneni,
+  vratPuvodniZneni,
+  zneni,
+} from "./obsahStav";
+import {
+  jeNahledNacteny,
+  nactiNahled,
+  nastavPrepnutiNaSeznam,
+  pripravNahled,
+  zavriUpravu,
+} from "./nahled";
+import {
+  jeRozepsane,
+  oznacRozepsane,
+  sHlasenim,
+  ukazStav,
+  type DruhStavu,
+} from "./stav";
 
 /**
  * Hláška, která se má objevit na nově vykreslené kartě.
@@ -31,11 +54,8 @@ interface HlaskaKarty {
   text: string;
 }
 
-/** Aktuální znění položky — buď přepis, nebo původní text z HTML. */
-function souhrnneZneni(polozka: PolozkaObsahu): string {
-  const prepis = prepisy[polozka.klic];
-  return typeof prepis === "string" && prepis !== "" ? prepis : polozka.vychozi;
-}
+/** Vykreslené karty seznamu, aby šly po změně překreslit jednotlivě. */
+const karty = new Map<string, HTMLElement>();
 
 // ---------------------------------------------------------------------------
 // UKLÁDÁNÍ
@@ -48,45 +68,21 @@ async function ulozPolozku(
   tlacitko: HTMLButtonElement,
   poUlozeni: (hlaskaProNovouKartu: HlaskaKarty) => void,
 ): Promise<void> {
-  const nova = hodnota.trim();
-
-  if (nova === "") {
-    ukazStav(
-      hlaska,
-      "chyba",
-      'Pole nesmí zůstat prázdné. Když chcete původní znění, použijte tlačítko „Vrátit původní".',
-    );
-    return;
-  }
-
-  // Shoda s původním zněním = přepis není potřeba. Místo ukládání prázdné
-  // změny se řádek radši smaže, ať v databázi nezůstává nic zbytečného.
-  const jePuvodni = nova === polozka.vychozi.trim();
-
-  const hotovo = jePuvodni
-    ? "Uloženo — text je stejný jako původní, web ho bere z původního znění."
-    : "Uloženo. Na webu se text objeví po obnovení stránky.";
-
   const vysledek = await sHlasenim(
     hlaska,
-    { probiha: "Ukládám…", hotovo },
-    async () => {
-      if (jePuvodni) {
-        await zavolej("zrus-obsah", { klic: polozka.klic });
-        delete prepisy[polozka.klic];
-      } else {
-        await zavolej("uloz-obsah", { klic: polozka.klic, hodnota: nova });
-        prepisy[polozka.klic] = nova;
-      }
-      return true;
-    },
+    { probiha: "Ukládám…", hotovo: "Uloženo." },
+    () => ulozZneni(polozka, hodnota),
     {
       tlacitko,
-      zopakovat: () => void ulozPolozku(polozka, hodnota, hlaska, tlacitko, poUlozeni),
+      zopakovat: () =>
+        void ulozPolozku(polozka, hodnota, hlaska, tlacitko, poUlozeni),
     },
   );
 
-  if (vysledek) poUlozeni({ druh: "hotovo", text: hotovo });
+  if (vysledek === undefined) return;
+
+  oznacRozepsane(`seznam:${polozka.klic}`, false);
+  poUlozeni({ druh: "hotovo", text: vysledek });
 }
 
 async function vratPuvodni(
@@ -95,23 +91,20 @@ async function vratPuvodni(
   tlacitko: HTMLButtonElement,
   poVraceni: (hlaskaProNovouKartu: HlaskaKarty) => void,
 ): Promise<void> {
-  const hotovo = "Hotovo. Na webu je zase původní znění.";
-
   const vysledek = await sHlasenim(
     hlaska,
-    { probiha: "Vracím původní znění…", hotovo },
-    async () => {
-      await zavolej("zrus-obsah", { klic: polozka.klic });
-      delete prepisy[polozka.klic];
-      return true;
-    },
+    { probiha: "Vracím původní znění…", hotovo: "Hotovo." },
+    () => vratPuvodniZneni(polozka),
     {
       tlacitko,
       zopakovat: () => void vratPuvodni(polozka, hlaska, tlacitko, poVraceni),
     },
   );
 
-  if (vysledek) poVraceni({ druh: "hotovo", text: hotovo });
+  if (vysledek === undefined) return;
+
+  oznacRozepsane(`seznam:${polozka.klic}`, false);
+  poVraceni({ druh: "hotovo", text: vysledek });
 }
 
 // ---------------------------------------------------------------------------
@@ -124,8 +117,9 @@ function vykresliPolozku(
 ): HTMLElement {
   const karta = document.createElement("div");
   karta.className = "admin-karta";
+  karty.set(polozka.klic, karta);
 
-  const jeUpraveno = typeof prepisy[polozka.klic] === "string";
+  const jeZmeneno = jeUpraveno(polozka.klic);
 
   // --- popisek, ať je jasné, kde na webu ta věc je ---
   const popisek = document.createElement("label");
@@ -136,7 +130,7 @@ function vykresliPolozku(
   const znacka = document.createElement("span");
   znacka.className = "admin-stitek";
   znacka.textContent = "upraveno";
-  if (jeUpraveno) popisek.append(" ", znacka);
+  if (jeZmeneno) popisek.append(" ", znacka);
 
   karta.append(popisek);
 
@@ -146,14 +140,19 @@ function vykresliPolozku(
   // Po uložení se karta překreslí — přibude na ní štítek „upraveno"
   // a tlačítko „Vrátit původní". Potvrzení o uložení se přenese na novou
   // kartu, aby správci nezmizelo před očima.
+  //
+  // Překresluje se ta karta, která je na stránce PRÁVĚ TEĎ. Mezitím ji totiž
+  // mohlo vyměnit hlášení o změně (viz priZmeneObsahu níž) a překreslení
+  // té staré, už odpojené, by nikde nebylo vidět.
   const prekresli = (hlaskaProNovouKartu?: HlaskaKarty) => {
-    karta.replaceWith(vykresliPolozku(polozka, hlaskaProNovouKartu));
+    const soucasna = karty.get(polozka.klic) ?? karta;
+    soucasna.replaceWith(vykresliPolozku(polozka, hlaskaProNovouKartu));
   };
 
   // --- obrázek ------------------------------------------------------------
   if (polozka.typ === "obrazek") {
     const nahled = document.createElement("img");
-    nahled.src = souhrnneZneni(polozka);
+    nahled.src = zneni(polozka);
     nahled.alt = "";
     nahled.className = "admin-nahled";
     // Obrázek se nemusí načíst (třeba smazaný soubor) — ať to je vidět.
@@ -179,25 +178,19 @@ function vykresliPolozku(
         const adresa = await nahrajObrazek(soubor, hlaska);
         if (!adresa) return;
 
-        const hotovo = "Uloženo. Na webu se obrázek objeví po obnovení stránky.";
-
         const vysledek = await sHlasenim(
           hlaska,
-          { probiha: "Ukládám nový obrázek…", hotovo },
-          async () => {
-            await zavolej("uloz-obsah", { klic: polozka.klic, hodnota: adresa });
-            prepisy[polozka.klic] = adresa;
-            return true;
-          },
+          { probiha: "Ukládám nový obrázek…", hotovo: "Uloženo." },
+          () => ulozZneni(polozka, adresa),
         );
 
-        if (vysledek) prekresli({ druh: "hotovo", text: hotovo });
+        if (vysledek !== undefined) prekresli({ druh: "hotovo", text: vysledek });
       })();
     });
 
     karta.append(nahled, vyber);
 
-    if (jeUpraveno) {
+    if (jeZmeneno) {
       const vratit = document.createElement("button");
       vratit.type = "button";
       vratit.className = "admin-tlacitko-vedlejsi mt-3";
@@ -223,7 +216,7 @@ function vykresliPolozku(
 
   pole.id = `pole-${polozka.klic}`;
   pole.className = "admin-pole";
-  pole.value = souhrnneZneni(polozka);
+  pole.value = zneni(polozka);
 
   if (pole instanceof HTMLTextAreaElement) {
     pole.rows = Math.min(8, Math.max(3, Math.ceil(pole.value.length / 70)));
@@ -232,11 +225,28 @@ function vykresliPolozku(
       polozka.typ === "email" ? "email" : polozka.typ === "telefon" ? "tel" : "text";
   }
 
+  // Rozepsaný text se musí poznat na první pohled — jinak by vypadal jako
+  // uložený. Zároveň se poznamená, že se okno nemá zavřít bez zeptání.
+  pole.addEventListener("input", () => {
+    const jinak = pole.value !== zneni(polozka);
+    oznacRozepsane(`seznam:${polozka.klic}`, jinak);
+
+    if (jinak) {
+      ukazStav(
+        hlaska,
+        "rozepsano",
+        "Rozepsáno — zatím neuloženo. Uložíte tlačítkem Uložit.",
+      );
+    } else {
+      ukazStav(hlaska, "nic");
+    }
+  });
+
   karta.append(pole);
 
   // Původní znění je vidět jen tehdy, když se od zobrazeného liší. Jinak by
   // to byla zbytečná dvojitá informace.
-  if (jeUpraveno && prepisy[polozka.klic] !== polozka.vychozi) {
+  if (jeZmeneno && zneni(polozka) !== polozka.vychozi) {
     const puvodni = document.createElement("p");
     puvodni.className = "admin-puvodni";
     puvodni.textContent = `Původní znění: ${polozka.vychozi}`;
@@ -255,7 +265,7 @@ function vykresliPolozku(
   );
   radekTlacitek.append(ulozit);
 
-  if (jeUpraveno) {
+  if (jeZmeneno) {
     const vratit = document.createElement("button");
     vratit.type = "button";
     vratit.className = "admin-tlacitko-vedlejsi";
@@ -282,6 +292,7 @@ function vykresliTexty(): void {
   if (!misto) return;
 
   misto.textContent = "";
+  karty.clear();
 
   for (const skupina of skupinyKatalogu()) {
     const blok = document.createElement("section");
@@ -304,6 +315,61 @@ function vykresliTexty(): void {
   }
 }
 
+// Když se text uloží v náhledu, seznam to musí ukázat taky. Jinak by každý
+// pohled ukazoval něco jiného.
+priZmeneObsahu((klic) => {
+  const karta = karty.get(klic);
+  const polozka = KATALOG.find((p) => p.klic === klic);
+  if (!karta || !polozka) return;
+
+  // Do rozepsané karty se nesahá — správce by přišel o to, co má napsané.
+  // Místo toho se u ní napíše, že novější znění je jinde.
+  if (jeRozepsane(`seznam:${klic}`)) {
+    ukazStav(
+      karta.querySelector<HTMLElement>(".admin-hlaska"),
+      "rozepsano",
+      "Rozepsáno — a text se mezitím změnil v náhledu. Uložením přepíšete novější znění.",
+    );
+    return;
+  }
+
+  karta.replaceWith(vykresliPolozku(polozka));
+});
+
+// ---------------------------------------------------------------------------
+// PŘEPÍNÁNÍ MEZI NÁHLEDEM A SEZNAMEM
+// ---------------------------------------------------------------------------
+
+/** Který způsob úprav je právě vidět. */
+let pohled: "nahled" | "seznam" = "nahled";
+
+function prepniPohled(nazev: "nahled" | "seznam", nacitat = true): void {
+  // Rozepsaná úprava v náhledu se nesmí ztratit tím, že se přepne pohled.
+  if (nazev !== "nahled" && !zavriUpravu()) return;
+
+  pohled = nazev;
+
+  for (const tlacitko of document.querySelectorAll<HTMLButtonElement>("[data-pohled]")) {
+    tlacitko.setAttribute(
+      "aria-pressed",
+      tlacitko.dataset.pohled === nazev ? "true" : "false",
+    );
+  }
+
+  for (const cast of document.querySelectorAll<HTMLElement>("[data-cast-textu]")) {
+    cast.hidden = cast.dataset.castTextu !== nazev;
+  }
+
+  // Náhled se načítá až ve chvíli, kdy se na něj člověk podívá. Načítat web
+  // do rámu pokaždé, i když ho nikdo nechce vidět, by bylo zbytečné —
+  // a před přihlášením by to bylo úplně zbytečné.
+  if (nacitat && nazev === "nahled" && !jeNahledNacteny()) void nactiNahled();
+}
+
+// ---------------------------------------------------------------------------
+// NAČTENÍ
+// ---------------------------------------------------------------------------
+
 export async function nactiTexty(): Promise<void> {
   const hlaska = document.getElementById("hlaska-texty");
   const tlacitko = document.getElementById(
@@ -313,17 +379,18 @@ export async function nactiTexty(): Promise<void> {
   const vysledek = await sHlasenim(
     hlaska,
     { probiha: "Načítám texty…", hotovo: "Texty jsou načtené." },
-    () =>
-      zavolej<{ obsah: { klic: string; hodnota: string }[] }>("obsah"),
+    async () => {
+      await nactiPrepisy();
+      return true;
+    },
     { tlacitko, zopakovat: () => void nactiTexty() },
   );
 
   if (!vysledek) return;
 
-  prepisy = {};
-  for (const radek of vysledek.obsah) prepisy[radek.klic] = radek.hodnota;
-
   vykresliTexty();
+  if (pohled === "nahled") void nactiNahled();
+
   window.setTimeout(() => ukazStav(hlaska, "nic"), 3000);
 }
 
@@ -331,4 +398,18 @@ export function pripravTexty(): void {
   document.getElementById("tlacitko-nacist-texty")?.addEventListener("click", () => {
     void nactiTexty();
   });
+
+  for (const tlacitko of document.querySelectorAll<HTMLButtonElement>("[data-pohled]")) {
+    tlacitko.addEventListener("click", () =>
+      prepniPohled(tlacitko.dataset.pohled === "seznam" ? "seznam" : "nahled"),
+    );
+  }
+
+  pripravNahled();
+  // Z náhledu se dá odskočit na seznam u textů, na které se nedá klepnout.
+  nastavPrepnutiNaSeznam(() => prepniPohled("seznam"));
+
+  // Jen nastavit výchozí pohled. Web do rámu se natáhne až po přihlášení,
+  // spolu s texty (viz nactiTexty).
+  prepniPohled("nahled", false);
 }

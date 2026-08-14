@@ -38,6 +38,18 @@
  * i `vychozi` tady v katalogu. Hlídá to kontrola `npm run kontrola-obsahu`
  * (skript scripts/kontrola-obsahu.mjs), která projde sestavený web a ohlásí
  * každou položku, jejíž původní text už na stránce není.
+ *
+ * ===========================================================================
+ * TENTÝŽ KÓD POUŽÍVÁ I KLIKACÍ NÁHLED V ADMINISTRACI
+ * ===========================================================================
+ * V administraci se web ukazuje ve vloženém rámu a texty v něm jdou upravovat
+ * klepnutím. Hledání prvků i vkládání textu dělá přesně tenhle soubor, jen
+ * nad dokumentem toho rámu — proto mají funkce nepovinný parametr `kde`.
+ *
+ * Díky tomu se administrace nemůže s webem rozejít: kdyby náhled párování
+ * dělal po svém, upravovalo by se v něm něco jiného, než co se pak objeví
+ * návštěvníkovi. Do veřejných komponent se přitom pořád nesahá — editační
+ * vrstva vzniká až v prohlížeči správce a v HTML po ní není ani stopa.
  */
 
 // ---------------------------------------------------------------------------
@@ -671,23 +683,71 @@ export function vlozTextDoPrvku(prvek: Element, novy: string): void {
   for (let i = 1; i < useky.length; i++) useky[i].nodeValue = '';
 }
 
+/** Najde obrázky s danou adresou. Stejně jako u textů se páruje podle obsahu. */
+export function najdiObrazkySAdresou(
+  adresa: string,
+  kde: Document = document,
+): HTMLImageElement[] {
+  const nalezene: HTMLImageElement[] = [];
+  for (const obrazek of kde.querySelectorAll('img')) {
+    // `getAttribute` schválně: `obrazek.src` vrací doplněnou celou adresu
+    // včetně domény, kdežto v HTML je napsaná zkrácená („/obrazky/logo.png").
+    if (obrazek.getAttribute('src') === adresa) nalezene.push(obrazek);
+  }
+  return nalezene;
+}
+
+/**
+ * Vymění adresu jednoho obrázku.
+ *
+ * Rozměry zapsané v HTML platí pro původní obrázek. U nového by natahovaly
+ * nebo mačkaly poměr stran, tak je pustíme.
+ */
+export function vlozObrazekDoPrvku(obrazek: Element, novaAdresa: string): void {
+  obrazek.setAttribute('src', novaAdresa);
+  obrazek.removeAttribute('width');
+  obrazek.removeAttribute('height');
+}
+
 /** Přepis jednoho obrázku. Mění se adresa u všech výskytů. */
-function prepisObrazek(puvodniAdresa: string, novaAdresa: string): number {
+function prepisObrazek(
+  puvodniAdresa: string,
+  novaAdresa: string,
+  kde: Document = document,
+): number {
   let zmeneno = 0;
-  for (const obrazek of document.querySelectorAll('img')) {
+  for (const obrazek of kde.querySelectorAll('img')) {
     // `getAttribute` schválně: `obrazek.src` vrací doplněnou celou adresu
     // včetně domény, kdežto v HTML je napsaná zkrácená („/obrazky/logo.png").
     const soucasna = obrazek.getAttribute('src') ?? '';
     if (soucasna !== puvodniAdresa || soucasna === novaAdresa) continue;
 
-    obrazek.setAttribute('src', novaAdresa);
-    // Rozměry v HTML platí pro původní obrázek. U nového by natahovaly
-    // nebo mačkaly poměr stran, tak je pustíme.
-    obrazek.removeAttribute('width');
-    obrazek.removeAttribute('height');
+    vlozObrazekDoPrvku(obrazek, novaAdresa);
     zmeneno++;
   }
   return zmeneno;
+}
+
+/**
+ * U telefonu a e-mailu přenastaví i to, kam odkaz vede.
+ *
+ * Bez toho by se zobrazovalo nové číslo, ale volalo by se na staré.
+ */
+export function srovnejOdkaz(
+  prvek: Element,
+  typ: TypObsahu,
+  hodnota: string,
+): void {
+  if (typ !== 'telefon' && typ !== 'email') return;
+
+  const odkaz = prvek.closest('a');
+  if (!odkaz) return;
+
+  if (typ === 'telefon') {
+    odkaz.setAttribute('href', `tel:${hodnota.replace(/[\s()]/g, '')}`);
+  } else {
+    odkaz.setAttribute('href', `mailto:${hodnota.trim()}`);
+  }
 }
 
 /**
@@ -698,9 +758,14 @@ function prepisObrazek(puvodniAdresa: string, novaAdresa: string): number {
  * obsah stránky nikam neposkočí a nic neblikne.
  *
  * @param prepisy Dvojice klíč → nový text, tak jak přišly z databáze.
+ * @param kde     Ve kterém dokumentu se přepisuje. Ve výchozím stavu samotná
+ *                stránka; administrace sem posílá dokument náhledu.
  * @returns Kolik míst na stránce se změnilo. Slouží jen k ladění.
  */
-export function pouzijPrepisy(prepisy: Record<string, string>): number {
+export function pouzijPrepisy(
+  prepisy: Record<string, string>,
+  kde: Document = document,
+): number {
   let zmeneno = 0;
 
   for (const polozka of KATALOG) {
@@ -710,29 +775,17 @@ export function pouzijPrepisy(prepisy: Record<string, string>): number {
     if (typeof novy !== 'string' || novy.trim() === '') continue;
 
     if (polozka.typ === 'obrazek') {
-      zmeneno += prepisObrazek(polozka.vychozi, novy.trim());
+      zmeneno += prepisObrazek(polozka.vychozi, novy.trim(), kde);
       continue;
     }
 
     // Přepis se shoduje s původním zněním → není co dělat.
     if (sjednotText(novy) === sjednotText(polozka.vychozi)) continue;
 
-    for (const prvek of najdiPrvkySTextem(polozka.vychozi)) {
+    for (const prvek of najdiPrvkySTextem(polozka.vychozi, kde)) {
       vlozTextDoPrvku(prvek, novy.trim());
+      srovnejOdkaz(prvek, polozka.typ, novy);
       zmeneno++;
-
-      // U telefonu a e-mailu se musí přenastavit i to, kam odkaz vede.
-      // Jinak by se zobrazovalo nové číslo, ale volalo se na staré.
-      if (polozka.typ === 'telefon' || polozka.typ === 'email') {
-        const odkaz = prvek.closest('a');
-        if (!odkaz) continue;
-
-        if (polozka.typ === 'telefon') {
-          odkaz.setAttribute('href', `tel:${novy.replace(/[\s()]/g, '')}`);
-        } else {
-          odkaz.setAttribute('href', `mailto:${novy.trim()}`);
-        }
-      }
     }
   }
 

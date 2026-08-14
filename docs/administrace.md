@@ -5,7 +5,8 @@ Stránka `/admin/` slouží správci webu ke dvěma věcem:
 1. **vidí, kdo se přihlásil** přes registrační formulář, může měnit stav
    přihlášky a stáhnout všechno do tabulky pro Excel,
 2. **upravuje texty a obrázky na webu** bez toho, aby web musel někdo znovu
-   sestavit a nahrát na hosting.
+   sestavit a nahrát na hosting — buď klepnutím přímo do náhledu webu, nebo
+   v seznamu všech textů.
 
 Odkaz na administraci nikde na webu není a být nesmí. Do adresního řádku se
 zadává ručně: `https://aktivne-spolu.cz/admin/`.
@@ -84,6 +85,45 @@ Z toho plyne to nejdůležitější:
 Přepis se s místem na stránce páruje **podle původního textu**, ne podle
 značek v HTML. Seznam všeho upravitelného je v `src/lib/obsah.ts` a u každé
 položky je napsané, kde na webu je a jaké je její původní znění.
+
+### Dva způsoby, jak text upravit
+
+V záložce **Texty a obrázky na webu** se přepíná mezi dvěma způsoby. Oba
+zapisují do stejné tabulky, takže co se uloží v jednom, je hned vidět
+i v druhém.
+
+**Klepnutím v náhledu webu** (výchozí). V administraci se ukáže skutečný web,
+upravitelné texty jsou v něm vyznačené a klepnutím na text se rovnou otevře
+kartička s polem. Co se do pole píše, je hned vidět v náhledu; dokud se
+neuloží, je u toho napsané „Rozepsáno — zatím neuloženo".
+
+**V seznamu všech textů.** Políčka pod sebou, u každého popis, kde na webu je.
+Zůstává tu proto, že klepnout nejde na všechno: na text, který se ukáže jen
+v některém stavu formuláře, na obrázek použitý jinde než na hlavní stránce
+a vůbec na cokoli, co se v náhledu nepodaří najít. Co se v náhledu nenašlo,
+administrace vypíše jménem a nabídne odskok do seznamu.
+
+Ke dni psaní jde klepnutím upravit **všech 65 položek katalogu** (65 položek
+na 69 místech — logo a hlavní tlačítko jsou na stránce dvakrát).
+
+### Jak je klikací náhled udělaný
+
+Web se ukazuje ve vloženém rámu (`iframe`). Rám i administrace jsou na stejné
+adrese, takže administrace vidí do dokumentu náhledu a pracuje s ním rovnou —
+bez posílání zpráv mezi okny.
+
+> **Do veřejných stránek se kvůli tomu nepřidal ani řádek.**
+> Vyznačení textů, obsluha klepnutí i styly vzniknou až v prohlížeči správce.
+> V souborech, které jdou na hosting, po editační vrstvě není ani stopa.
+
+Hledání textu na stránce dělá tentýž kód jako na webu (`src/lib/obsah.ts`),
+jen nad dokumentem rámu — proto mají jeho funkce nepovinný parametr `kde`.
+Kdyby si náhled párování dělal po svém, upravovalo by se v něm něco jiného,
+než co se pak objeví návštěvníkovi.
+
+Náhled je **jen na ukázku**: klepnutí uvnitř rámu se zastavuje, takže z něj
+nejde odeslat přihlášku ani odejít na jinou stránku. Rám má k tomu ještě
+`sandbox` bez `allow-forms`, takže odeslání formuláře zakazuje i sám prohlížeč.
 
 ### Pozor při změně textů v kódu
 
