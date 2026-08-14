@@ -305,6 +305,11 @@ const { predel = "linka" } = Astro.props;
     nazev_poradatele?: string | null;
     /** Nemusí dorazit, pořadatel ho nemusel vyplnit. */
     napad_na_aktivitu?: string | null;
+    /**
+     * Den konání ve strojovém tvaru RRRR-MM-DD. Do češtiny se převádí až tady.
+     * U starších přihlášek z doby, kdy se datum nesbíralo, chybí.
+     */
+    datum_akce?: string | null;
     lat?: number | string | null;
     lng?: number | string | null;
   }
@@ -470,6 +475,22 @@ const { predel = "linka" } = Astro.props;
 
     function nazevTypu(typ: string): string {
       return NAZVY_PORADATELU[typ] ?? "";
+    }
+
+    /**
+     * Datum česky: `2026-10-01` → `1. 10. 2026`.
+     *
+     * Skládá se z částí zapsaného řetězce, ne přes `new Date()`. Prohlížeč
+     * čte `2026-10-01` jako půlnoc UTC, takže by se v západnějším pásmu
+     * ukázalo 30. 9. — den, na který se akce nekoná.
+     *
+     * Prázdný výsledek znamená „datum neznáme" a nikde se nic nevypíše.
+     * Nikdy se nevypisuje ISO tvar ani „undefined".
+     */
+    function datumCesky(hodnota: unknown): string {
+      const casti = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text(hodnota));
+      if (!casti) return "";
+      return `${Number(casti[3])}. ${Number(casti[2])}. ${casti[1]}`;
     }
 
     /** „Olomoucký" → „Olomoucký kraj", ale „Praha" nechá být. */

@@ -247,37 +247,21 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
 
     <div class="relative z-10 mx-auto max-w-obsah">
 
-      {/* ---- Kdo jste — drobný výběr cílové skupiny ----
-          Nejsou to karty, ale malé ikonky s názvem hned nad tlačítky.
-          Zároveň je to přepínač: níž na stránce ztlumí důvody, které se
-          vybrané skupiny netýkají. Proto to jsou <button>, ne text. */}
-      <div id="skupiny" class="mt-10 grid grid-cols-2 gap-2 lg:grid-cols-4">
+      {/* ---- Pro koho to je ----
+          Jen výpis, na který se neklikají. Dřív to byl přepínač, který níž
+          na stránce ztlumil důvody netýkající se vybrané skupiny — zadavatel
+          si vyžádal prostý výpis bez rámečků a bez prokliku, takže filtrování
+          zaniklo. Kdyby se k němu někdy vracelo, je v historii gitu. */}
+      <ul class="mt-10 flex list-none flex-wrap gap-x-8 gap-y-3 p-0">
         {
           skupiny.map((skupina) => (
-            <button
-              type="button"
-              class="skupina flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-2 border-merunka-tlumena bg-white/70 px-3 py-2 text-left"
-              data-skupina={skupina.klic}
-              aria-pressed="false"
-            >
-              <Ikona jmeno={skupina.ikona} velikost={22} trida="shrink-0" />
-              <span class="flex-1 leading-tight" data-nazev-skupiny>
-                {skupina.popis}
-              </span>
-
-              {/* Fajfka se objeví až po výběru. Bez ní nebylo poznat,
-                  že se kliknutím vůbec něco stalo. Místo si drží pořád,
-                  aby se při výběru nic nepřeskládalo. */}
-              <span
-                class="znacka-vybrano flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-tyrkys text-white opacity-0"
-                aria-hidden="true"
-              >
-                <Ikona jmeno="check" velikost={14} trida="text-white" />
-              </span>
-            </button>
+            <li class="flex items-center gap-2">
+              <Ikona jmeno={skupina.ikona} velikost={22} />
+              <span>{skupina.popis}</span>
+            </li>
           ))
         }
-      </div>
+      </ul>
 
       <div class="mt-8 flex flex-wrap gap-4">
         <Tlacitko odkaz="#registrace" trida="magnet text-lg">
@@ -292,24 +276,6 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
         </Tlacitko>
       </div>
 
-      {/* Slovní potvrzení výběru. Samotné ztlumení důvodů níž na stránce
-          bylo k ničemu — dělo se to mimo obrazovku, takže to vypadalo,
-          že kliknutí nic nedělá. */}
-      <div
-        id="vysledek-vyberu"
-        class="mt-8 hidden items-center gap-4 rounded-xl border-l-4 border-merunka bg-plocha-tyrkys p-5"
-        role="status"
-      >
-        <Ikona jmeno="circle-check" velikost={28} />
-        <p class="m-0 flex-1" data-text-vyberu></p>
-        <a
-          href="#proc-se-zapojit"
-          class="flex min-h-11 items-center gap-2 font-semibold text-tyrkys no-underline"
-        >
-          Ukázat
-          <Ikona jmeno="arrow-right" velikost={20} />
-        </a>
-      </div>
 
     </div>
 
@@ -340,8 +306,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
         {
           duvody.map((duvod) => (
             <article
-              class="pro-skupinu naklon rounded-2xl border border-merunka-tlumena bg-white p-7"
-              data-pro={duvod.pro.join(" ")}
+              class="naklon rounded-2xl border border-merunka-tlumena bg-white p-7"
             >
               <Ikona jmeno={duvod.ikona} velikost={36} />
               <h3 class="mt-4 text-xl">{duvod.nadpis}</h3>
@@ -392,8 +357,7 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
           {
             duvody.map((duvod, i) => (
               <article
-                class="duvod-e pro-skupinu rounded-2xl bg-white p-8 sm:p-10"
-                data-pro={duvod.pro.join(" ")}
+                class="duvod-e rounded-2xl bg-white p-8 sm:p-10"
                 data-poradi-duvodu={i + 1}
               >
                 <Ikona jmeno={duvod.ikona} velikost={44} />
@@ -1120,72 +1084,4 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
     });
   })();
 
-  // --- Výběr cílové skupiny ------------------------------------------------
-  // Po výběru se zvýrazní obsah, který se dané skupiny týká. Ostatní
-  // se jen ztlumí, nezmizí — schovávat obsah před člověkem, který si
-  // vybral špatně, by bylo horší než ho nechat vidět.
-  (function vyberSkupiny() {
-    const obal = document.querySelector<HTMLElement>("#skupiny");
-    const vysledek = document.querySelector<HTMLElement>("#vysledek-vyberu");
-    if (!obal || !vysledek) return;
-
-    const tlacitka = obal.querySelectorAll<HTMLButtonElement>("[data-skupina]");
-    const bloky = document.querySelectorAll<HTMLElement>(".pro-skupinu");
-    const textVysledku = vysledek.querySelector<HTMLElement>("[data-text-vyberu]");
-    const vybrane = new Set<string>();
-
-    function sklonuj(pocet: number): string {
-      if (pocet === 1) return "1 důvod";
-      if (pocet >= 2 && pocet <= 4) return `${pocet} důvody`;
-      return `${pocet} důvodů`;
-    }
-
-    function prekresli() {
-      obal!.classList.toggle("skupiny-maji-vybrano", vybrane.size > 0);
-
-      let sedicich = 0;
-
-      bloky.forEach((blok) => {
-        if (vybrane.size === 0) {
-          blok.classList.remove("utlumeno");
-          return;
-        }
-        const patriK = (blok.dataset.pro ?? "").split(" ");
-        const sedi = patriK.some((klic) => vybrane.has(klic));
-        blok.classList.toggle("utlumeno", !sedi);
-        if (sedi) sedicich++;
-      });
-
-      // Potvrzení výběru přímo u karet, ať je hned vidět, že klik něco udělal.
-      if (vybrane.size === 0) {
-        vysledek!.classList.add("hidden");
-        vysledek!.classList.remove("flex");
-        return;
-      }
-
-      const nazvy = Array.from(obal!.querySelectorAll<HTMLElement>(
-        '[data-skupina][aria-pressed="true"] [data-nazev-skupiny]',
-      )).map((n) => n.textContent?.trim() ?? "");
-
-      if (textVysledku) {
-        textVysledku.textContent =
-          `Níže zvýrazňujeme ${sklonuj(sedicich)}, které se týkají vás: ${nazvy.join(", ")}.`;
-      }
-      vysledek!.classList.remove("hidden");
-      vysledek!.classList.add("flex");
-    }
-
-    tlacitka.forEach((tlacitko) => {
-      tlacitko.addEventListener("click", () => {
-        const klic = tlacitko.dataset.skupina!;
-        const bylVybran = vybrane.has(klic);
-
-        if (bylVybran) vybrane.delete(klic);
-        else vybrane.add(klic);
-
-        tlacitko.setAttribute("aria-pressed", String(!bylVybran));
-        prekresli();
-      });
-    });
-  })();
 </script>

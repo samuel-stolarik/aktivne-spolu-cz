@@ -37,6 +37,12 @@
  */
 import Ikona from "./Ikona.astro";
 import Tlacitko from "./Tlacitko.astro";
+import {
+  DATUM_JE_POVINNE,
+  NAPOVEDA_DATUM,
+  OBDOBI_DO,
+  OBDOBI_OD,
+} from "../lib/datumAkce";
 
 const kraje = [
   "Praha",
@@ -335,9 +341,12 @@ const poleTridy =
         </div>
       </div>
 
-      {/* === Krok 5 — místo =========================================== */}
+      {/* === Krok 5 — místo a datum =================================== */}
+      {/* Datum je tady schválně, ne mezi kontakty. Pro člověka je „kde a kdy"
+          jedna otázka o akci samotné, kdežto e-mail a telefon jsou otázka
+          o něm. Míchat to dohromady by krok zbytečně roztříštilo. */}
       <div class="krok" data-krok="misto" hidden>
-        <h4 class="otazka">Kde se setkání uskuteční?</h4>
+        <h4 class="otazka">Kde a kdy se setkání uskuteční?</h4>
 
         <div class="mt-4 grid gap-5 sm:grid-cols-2">
           <div>
@@ -363,6 +372,33 @@ const poleTridy =
               {kraje.map((kraj) => <option value={kraj}>{kraj}</option>)}
             </select>
             <p class="chyba" data-chyba-pro="kraj"></p>
+          </div>
+
+          {/* Popisek je viditelný nad polem, nápověda o termínu pod ním.
+              `min` a `max` nechají prohlížeč zašedit dny mimo období, ale
+              NEJSOU kontrola — dají se obejít. Skutečná kontrola je ve
+              skriptu níž a znovu v Edge Funkci. */}
+          <div class="sm:col-span-2">
+            <label for="datum_akce-k" class="popisek">
+              Datum konání akce{" "}
+              {
+                DATUM_JE_POVINNE ? (
+                  <span class="povinne">povinné</span>
+                ) : (
+                  <span class="text-popisek font-normal">(nepovinné)</span>
+                )
+              }
+            </label>
+            <input
+              id="datum_akce-k"
+              name="datum_akce"
+              type="date"
+              min={OBDOBI_OD}
+              max={OBDOBI_DO}
+              class={`${poleTridy} sm:max-w-[16rem]`}
+            />
+            <p class="mt-2 mb-0 text-popisek">{NAPOVEDA_DATUM}</p>
+            <p class="chyba" data-chyba-pro="datum_akce"></p>
           </div>
         </div>
       </div>
@@ -735,6 +771,7 @@ const poleTridy =
 
 <script>
   import { nactiUdajeZAresu, type FakturacniUdaje } from "../lib/ares";
+  import { ceskyDatum, zkontrolujDatum } from "../lib/datumAkce";
 
   const obal = document.querySelector<HTMLElement>("#prihlaska-krokova-obal");
   const formular = document.querySelector<HTMLFormElement>("#prihlaska-krokova");
@@ -884,6 +921,11 @@ const poleTridy =
       mesto: () => (hodnota("mesto") ? null : "Vyplňte město."),
       kraj: () => (hodnota("kraj") ? null : "Vyberte kraj."),
 
+      // Hláška se liší podle toho, co je špatně — jinak zní „vyplňte datum"
+      // a jinak „datum je mimo období akce". Pravidla i věty jsou ve sdíleném
+      // souboru, ať se obě verze formuláře nerozejdou.
+      datum_akce: () => zkontrolujDatum(hodnota("datum_akce")),
+
       forma_platby: () =>
         hodnota("forma_platby") ? null : "Vyberte formu platby.",
 
@@ -960,9 +1002,9 @@ const poleTridy =
       },
       {
         klic: "misto",
-        nazev: "Místo konání",
-        pole: ["mesto", "kraj"],
-        souhrn: ["mesto", "kraj"],
+        nazev: "Místo a datum",
+        pole: ["mesto", "kraj", "datum_akce"],
+        souhrn: ["mesto", "kraj", "datum_akce"],
         jeVidet: () => true,
       },
       {
@@ -1228,6 +1270,7 @@ const poleTridy =
       telefon: "Telefon",
       mesto: "Město",
       kraj: "Kraj",
+      datum_akce: "Datum konání akce",
       napad_na_aktivitu: "Nápad na aktivitu",
       forma_platby: "Forma platby",
       fakt_nazev: "Název na faktuře",
@@ -1254,6 +1297,15 @@ const poleTridy =
       },
     };
 
+    /**
+     * Hodnoty, které se nedají přeložit tabulkou, protože je jich nekonečně
+     * mnoho. Datum se ukládá strojově (2026-10-01), v rekapitulaci ale musí
+     * být česky — jinak by člověk kontroloval údaj, který takhle nezadával.
+     */
+    const upravaHodnot: Record<string, (zapsano: string) => string> = {
+      datum_akce: ceskyDatum,
+    };
+
     function sestavPrehled() {
       prehled!.replaceChildren();
 
@@ -1277,7 +1329,10 @@ const poleTridy =
 
           const vypis = document.createElement("span");
           vypis.className = "block font-semibold break-words";
-          vypis.textContent = citelneHodnoty[pole]?.[zapsano] ?? zapsano;
+          vypis.textContent =
+            citelneHodnoty[pole]?.[zapsano] ??
+            upravaHodnot[pole]?.(zapsano) ??
+            zapsano;
 
           text.append(popisek, vypis);
 

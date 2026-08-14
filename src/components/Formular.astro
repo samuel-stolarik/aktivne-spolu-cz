@@ -20,6 +20,12 @@
  */
 import Ikona from "./Ikona.astro";
 import Tlacitko from "./Tlacitko.astro";
+import {
+  DATUM_JE_POVINNE,
+  NAPOVEDA_DATUM,
+  OBDOBI_DO,
+  OBDOBI_OD,
+} from "../lib/datumAkce";
 
 const kraje = [
   "Praha",
@@ -241,6 +247,36 @@ const poleTridy =
           {kraje.map((kraj) => <option value={kraj}>{kraj}</option>)}
         </select>
         <p class="chyba" data-chyba-pro="kraj"></p>
+      </div>
+
+      {/* --- Datum konání ---------------------------------------------
+          Patří k „kde a kdy", proto hned za město a kraj. Popisek je
+          viditelný nad polem, nápověda o termínu pod ním — do popisku
+          by se nevešla a jako placeholder by po prvním kliknutí zmizela.
+          `min` a `max` nechají prohlížeč zašedit dny mimo období, ale
+          NEJSOU kontrola: dají se obejít a formulář na ně nespoléhá.
+          Skutečná kontrola je níž ve skriptu a znovu v Edge Funkci. */}
+      <div class="sm:col-span-2">
+        <label for="datum_akce" class="popisek">
+          Datum konání akce{" "}
+          {
+            DATUM_JE_POVINNE ? (
+              <span class="povinne">povinné</span>
+            ) : (
+              <span class="text-popisek font-normal">(nepovinné)</span>
+            )
+          }
+        </label>
+        <input
+          id="datum_akce"
+          name="datum_akce"
+          type="date"
+          min={OBDOBI_OD}
+          max={OBDOBI_DO}
+          class={`${poleTridy} sm:max-w-[16rem]`}
+        />
+        <p class="mt-2 mb-0 text-popisek">{NAPOVEDA_DATUM}</p>
+        <p class="chyba" data-chyba-pro="datum_akce"></p>
       </div>
 
       <div class="sm:col-span-2">
@@ -469,6 +505,7 @@ const poleTridy =
 
 <script>
   import { nactiUdajeZAresu, type FakturacniUdaje } from "../lib/ares";
+  import { zkontrolujDatum } from "../lib/datumAkce";
 
   const formular = document.querySelector<HTMLFormElement>("#prihlaska");
   const blokIco = document.querySelector<HTMLElement>("#blok-ico");
@@ -761,6 +798,15 @@ const poleTridy =
       const telefon = text("telefon");
       if (telefon && telefon.replace(/\D/g, "").length < 9) {
         ukazChybu("telefon", "Telefon musí mít alespoň 9 číslic.");
+        vChybe = true;
+      }
+
+      // Datum konání. Hláška se liší podle toho, co je špatně — jinak zní
+      // „vyplňte datum" a jinak „datum je mimo období akce". Pravidla i věty
+      // jsou ve sdíleném souboru, ať se obě verze formuláře nerozejdou.
+      const chybaData = zkontrolujDatum(text("datum_akce"));
+      if (chybaData) {
+        ukazChybu("datum_akce", chybaData);
         vChybe = true;
       }
 

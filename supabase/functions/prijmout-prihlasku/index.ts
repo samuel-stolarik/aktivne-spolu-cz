@@ -103,6 +103,35 @@ function odpoved(req: Request, telo: unknown, stav = 200): Response {
 
 const TYPY_PORADATELE = ['skola', 'organizace', 'jednotlivec'] as const;
 const FORMY_PLATBY = ['qr', 'prevod'] as const;
+
+/**
+ * Je datum konání povinné?
+ *
+ * TOHLE JE MÍSTO, KDE SE POVINNOST PŘEPÍNÁ NA SERVERU. Druhé (a poslední)
+ * místo je `DATUM_JE_POVINNE` v src/lib/datumAkce.ts, odkud ho berou oba
+ * formuláře. V databázi se měnit nemusí nic — sloupec `datum_akce` je
+ * schválně nullable, aby přepnutí nepotřebovalo migraci.
+ *
+ * Proč je povinné: podle sekce „Jak to funguje" si pořadatel domlouvá termín
+ * se seniorským místem dřív, než se registruje, takže datum v tu chvíli zná.
+ */
+const DATUM_JE_POVINNE = true;
+
+/**
+ * Rozmezí, ve kterém se akce konají. Ročník 2026.
+ *
+ * Široké schválně — celé září a říjen. Akce mají probíhat v týdnu kolem
+ * 1. října, ale kdo se se seniorským místem domluví až na 5. října, do
+ * projektu patří stejně. Kontrola je pojistka proti překlepu v roce, ne
+ * nástroj na vymáhání termínu; doporučený termín je jen nápověda ve formuláři.
+ *
+ * Musí sedět s podmínkou `prihlasky_datum_akce_obdobi` v migraci
+ * 20260814120000_datum_akce.sql a s `src/lib/datumAkce.ts`. Kdyby se rozešly,
+ * databáze by zápis odmítla a člověk by uviděl nesrozumitelnou chybu místo
+ * srozumitelné hlášky u pole.
+ */
+const OBDOBI_OD = '2026-09-01';
+const OBDOBI_DO = '2026-10-31';
 const KRAJE = [
   'Praha',
   'Středočeský',
@@ -151,6 +180,66 @@ function jeTelefon(hodnota: string): boolean {
   return /^[0-9]{9,15}$/.test(cislice);
 }
 
+/**
+ * Datum v českém tvaru: `2026-10-01` → `1. 10. 2026`.
+ *
+ * Skládá se z částí zapsaného řetězce, ne přes `new Date()`. Server běží
+ * v UTC a `new Date('2026-10-01')` je půlnoc UTC — po převodu do jiného pásma
+ * by v e-mailu svítil 30. 9., tedy den, který nikdo nevyplnil.
+ */
+function datumCesky(iso: string): string {
+  const casti = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  if (!casti) return iso;
+  return `${Number(casti[3])}. ${Number(casti[2])}. ${casti[1]}`;
+}
+
+/** Rozmezí česky do chybové hlášky: „od 1. 9. 2026 do 31. 10. 2026". */
+function obdobiCesky(): string {
+  return `od ${datumCesky(OBDOBI_OD)} do ${datumCesky(OBDOBI_DO)}`;
+}
+
+/**
+ * Kontrola data konání akce. Dělá se TADY a nezávisle na formuláři —
+ * požadavek může přijít i mimo prohlížeč a klientské kontrole se nevěří.
+ *
+ * Hlášky jsou schválně TŘI RŮZNÉ a každá říká něco jiného. „Zkontrolujte
+ * datum" by člověku neporadilo nic: musí být poznat, jestli pole zapomněl,
+ * jestli je v něm nesmysl, nebo jestli je jen mimo období akce.
+ *
+ * @returns `null` když je datum v pořádku, jinak celou českou větu k poli.
+ */
+function zkontrolujDatum(hodnota: string): string | null {
+  if (!hodnota) {
+    return DATUM_JE_POVINNE ? 'Vyplňte datum, kdy se akce bude konat.' : null;
+  }
+
+  const casti = /^(\d{4})-(\d{2})-(\d{2})$/.exec(hodnota);
+  if (!casti) {
+    return 'Datum nemá správný tvar. Vyberte ho prosím z kalendáře, například 1. 10. 2026.';
+  }
+
+  // 31. února má správný tvar, ale je to neexistující den. Z kalendáře ho
+  // vybrat nejde, ručně zapsat ano.
+  const rok = Number(casti[1]);
+  const mesic = Number(casti[2]);
+  const den = Number(casti[3]);
+  const zkouska = new Date(Date.UTC(rok, mesic - 1, den));
+  if (
+    zkouska.getUTCFullYear() !== rok ||
+    zkouska.getUTCMonth() !== mesic - 1 ||
+    zkouska.getUTCDate() !== den
+  ) {
+    return 'Takový den neexistuje. Vyberte prosím datum z kalendáře.';
+  }
+
+  // Porovnání řetězců stačí — tvar RRRR-MM-DD se řadí stejně jako datum.
+  if (hodnota < OBDOBI_OD || hodnota > OBDOBI_DO) {
+    return `Datum je mimo období akce. Setkání se konají v týdnu kolem 1. 10., vyberte prosím datum ${obdobiCesky()}.`;
+  }
+
+  return null;
+}
+
 interface Prihlaska {
   typ_poradatele: string;
   nazev_poradatele: string;
@@ -159,6 +248,8 @@ interface Prihlaska {
   telefon: string;
   mesto: string;
   kraj: string;
+  /** Den konání ve tvaru RRRR-MM-DD. `null` jen kdyby pole bylo nepovinné. */
+  datum_akce: string | null;
   napad_na_aktivitu: string | null;
   forma_platby: string;
   fakt_nazev: string | null;
@@ -203,6 +294,13 @@ function zkontroluj(vstup: Record<string, unknown>): { data: Prihlaska } | { chy
   const kraj = text(vstup.kraj);
   if (!kraj) chyby.kraj = 'Vyberte kraj.';
   else if (!KRAJE.includes(kraj as typeof KRAJE[number])) chyby.kraj = 'Tenhle kraj neznáme. Vyberte ze seznamu.';
+
+  // Datum konání. Chyba se hlásí u pole `datum_akce`, ať ji formulář umí
+  // ukázat přímo pod ním a nemusí ji lepit do souhrnu.
+  const datumZapsany = text(vstup.datum_akce);
+  const chybaData = zkontrolujDatum(datumZapsany);
+  if (chybaData) chyby.datum_akce = chybaData;
+  const datum_akce = datumZapsany || null;
 
   const napadRaw = text(vstup.napad_na_aktivitu);
   if (napadRaw.length > 2000) chyby.napad_na_aktivitu = 'Nápad je moc dlouhý (nejvýš 2000 znaků).';
@@ -258,6 +356,7 @@ function zkontroluj(vstup: Record<string, unknown>): { data: Prihlaska } | { chy
       telefon,
       mesto,
       kraj,
+      datum_akce,
       napad_na_aktivitu,
       forma_platby,
       fakt_nazev,
@@ -365,6 +464,19 @@ function textEmailu(
     `Dobrý den, ${p.kontaktni_osoba},`,
     '',
     'děkujeme za přihlášku. Máme ji u sebe a počítáme s vámi.',
+  ];
+
+  // Datum česky, nikdy ve tvaru 2026-10-01. Píšeme ho i proto, aby si člověk
+  // hned všiml, kdyby v kalendáři omylem klikl na jiný den, než chtěl.
+  if (p.datum_akce) {
+    radky.push(
+      '',
+      `Vaše setkání máme zapsané na ${datumCesky(p.datum_akce)}.`,
+      'Kdyby se termín změnil, stačí nám odpovědět na tenhle e-mail.',
+    );
+  }
+
+  radky.push(
     '',
     `Zbývá zaplatit účastnický poplatek, a to do ${u.splatnost}:`,
     '',
@@ -372,7 +484,7 @@ function textEmailu(
     `  Číslo účtu:         ${u.cisloUctu}`,
     `  Variabilní symbol:  ${vs}`,
     `  Splatnost:          ${u.splatnost}`,
-  ];
+  );
 
   if (u.iban) radky.push(`  IBAN (ze zahraničí): ${u.iban}`);
 
@@ -433,6 +545,13 @@ function htmlEmailu(
         style="display:block;border:1px solid #e5e5e5;"></p>`
     : '';
 
+  // Datum česky, nikdy ve tvaru 2026-10-01. Píšeme ho i proto, aby si člověk
+  // hned všiml, kdyby v kalendáři omylem klikl na jiný den, než chtěl.
+  const terminBlok = p.datum_akce
+    ? `<p style="margin:0 0 16px;">Vaše setkání máme zapsané na <strong>${e(datumCesky(p.datum_akce))}</strong>.
+       Kdyby se termín změnil, stačí nám odpovědět na tenhle e-mail.</p>`
+    : '';
+
   const fakturaBlok = p.forma_platby === 'prevod'
     ? `<p style="margin:24px 0 0;">Fakturu vám pošleme e-mailem, jakmile ji vystavíme.
        Její číslo bude končit vaším variabilním symbolem <strong>${vs}</strong>, ať se to nedá splést.</p>`
@@ -442,6 +561,7 @@ function htmlEmailu(
 <html lang="cs"><body style="margin:0;padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#1a1a1a;">
   <p style="margin:0 0 16px;">Dobrý den, ${e(p.kontaktni_osoba)},</p>
   <p style="margin:0 0 16px;">děkujeme za přihlášku. Máme ji u sebe a počítáme s vámi.</p>
+  ${terminBlok}
   <p style="margin:0 0 8px;">Zbývá zaplatit účastnický poplatek, a to do <strong>${e(u.splatnost)}</strong>:</p>
   <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 8px;">
     <tr><td style="color:#555;">Částka</td><td><strong>${castkaSlovy(CASTKA_KC)} Kč</strong></td></tr>

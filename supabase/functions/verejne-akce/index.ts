@@ -50,7 +50,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
  *   typ_poradatele    — škola / organizace / jednotlivec, podle toho ikona
  *   nazev_poradatele  — u jednotlivce se do odpovědi NEDOSTANE, viz níž
  *   napad_na_aktivitu — co chtějí dělat; text psaný pro veřejnost
+ *   datum_akce        — kdy se setkání koná; údaj o veřejné akci, ne o člověku
  *   lat, lng          — souřadnice dohledané při schválení
+ *
+ * K `datum_akce`: je to den konání ohlášené veřejné akce, tedy stejná
+ * kategorie údaje jako město. Nevypovídá nic o soukromí pořadatele a pro
+ * návštěvníka mapky je to ta druhá půlka informace — vedle „kde" ještě „kdy".
  */
 const SLOUPCE_PRO_MAPU = [
   'mesto',
@@ -58,6 +63,7 @@ const SLOUPCE_PRO_MAPU = [
   'typ_poradatele',
   'nazev_poradatele',
   'napad_na_aktivitu',
+  'datum_akce',
   'lat',
   'lng',
 ].join(', ');
@@ -117,6 +123,8 @@ interface VerejnaAkce {
   typ_poradatele: string;
   nazev_poradatele?: string;
   napad_na_aktivitu?: string;
+  /** Den konání ve tvaru RRRR-MM-DD. Do češtiny ho převádí mapka. */
+  datum_akce?: string;
   lat: number;
   lng: number;
 }
@@ -159,6 +167,12 @@ function verejnaPodoba(radek: Record<string, unknown>): VerejnaAkce | null {
   // rozlišovat prázdný text od chybějícího.
   const napad = String(radek.napad_na_aktivitu ?? '').trim();
   if (napad) akce.napad_na_aktivitu = napad;
+
+  // Datum posíláme strojově (RRRR-MM-DD) a do češtiny ho převede až mapka.
+  // Starší přihlášky z doby, kdy se datum nesbíralo, ho nemají — pak v
+  // odpovědi klíč vůbec není a mapka místo něj nic nevypíše.
+  const datum = String(radek.datum_akce ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datum)) akce.datum_akce = datum;
 
   return akce;
 }

@@ -283,56 +283,6 @@
   user-select: none;
 }
 
-/* --- Vybraná cílová skupina -------------------------------------------- */
-/* Drobné ikonky v úvodní obrazovce se navzájem "utlumí", když jednu
-   vyberete. Ukazuje to, že se obsah stránky podle výběru mění. */
-.skupina {
-  transition:
-    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 300ms ease-out,
-    border-color 200ms ease-out,
-    background-color 200ms ease-out,
-    box-shadow 300ms ease-out;
-}
-
-.skupiny-maji-vybrano .skupina:not([aria-pressed="true"]) {
-  opacity: 0.45;
-}
-
-/* Posun je malý schválně — u drobné položky by velký skok rušil. */
-.skupina[aria-pressed="true"] {
-  transform: translateY(-2px);
-  border-color: var(--color-tyrkys);
-  background-color: var(--color-plocha-tyrkys);
-  box-shadow: 0 10px 24px -14px rgba(18, 112, 127, 0.55);
-}
-
-/* Fajfka v rohu vybrané karty. Bez viditelného potvrzení působilo
-   kliknutí jako by se nic nestalo. */
-.znacka-vybrano {
-  transform: scale(0.6);
-  transition:
-    opacity 200ms ease-out,
-    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.skupina[aria-pressed="true"] .znacka-vybrano {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* --- Zvýraznění obsahu podle skupiny ----------------------------------- */
-.pro-skupinu {
-  transition:
-    opacity 300ms ease-out,
-    filter 300ms ease-out;
-}
-
-.pro-skupinu.utlumeno {
-  opacity: 0.3;
-  filter: grayscale(0.7);
-}
-
 /* --- Odpočet do akce ---------------------------------------------------- */
 .odpocet-cislo {
   font-variant-numeric: tabular-nums;
@@ -371,14 +321,6 @@
 
   .cesta {
     stroke-dashoffset: 0 !important;
-  }
-
-  .skupina[aria-pressed="true"] {
-    transform: none;
-  }
-
-  .znacka-vybrano {
-    transform: none !important;
   }
 
   .duvod-e {
