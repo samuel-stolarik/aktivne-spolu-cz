@@ -1,7 +1,7 @@
 ---
 import { existsSync } from "node:fs";
 /**
- * Obsah úvodní stránky — osm sekcí v pořadí schváleném zadavatelem.
+ * Obsah úvodní stránky — devět sekcí v pořadí schváleném zadavatelem.
  *
  * Texty jsou převzaté doslova z podklady/texty.md. Nepřepisují se,
  * nezkracují a nedoplňuje se vlastní copy — jsou schválené zadavatelem.
@@ -17,6 +17,7 @@ import Kroky from "./Kroky.astro";
 import Ikona from "./Ikona.astro";
 import Tlacitko from "./Tlacitko.astro";
 import Formular from "./Formular.astro";
+import Mapa from "./Mapa.astro";
 
 interface Props {
   predel?: "linka" | "karta";
@@ -304,7 +305,12 @@ const kartaNaPlose = predel === "karta";
   </div>
 </Sekce>
 
-{/* --- 7. Registrace a poplatek (tyrkysová plocha) -------------------- */}
+{/* --- 7. Mapka přihlášených akcí -------------------------------------
+    Stojí schválně před registrací. Je to důkaz, že se projekt opravdu děje —
+    ať to člověk vidí dřív, než se rozhoduje, jestli se přihlásí. */}
+<Mapa predel={predel} />
+
+{/* --- 8. Registrace a poplatek (tyrkysová plocha) -------------------- */}
 <Sekce id="registrace" predel={predel} plocha>
   <NadpisSekce poradi={0}>Registrace a poplatek</NadpisSekce>
 
@@ -342,7 +348,7 @@ const kartaNaPlose = predel === "karta";
   </div>
 </Sekce>
 
-{/* --- 8. Ke stažení a kontakt ---------------------------------------- */}
+{/* --- 9. Ke stažení a kontakt ---------------------------------------- */}
 <Sekce id="ke-stazeni" predel={predel}>
   <NadpisSekce poradi={0}>Ke stažení a kontakt</NadpisSekce>
 

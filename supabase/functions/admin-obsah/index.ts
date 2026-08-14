@@ -25,6 +25,7 @@
 // a ne přes policy, je v migraci 20260812160000_administrace.sql.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { najdiSouradnice, type KlientProFrontu } from '../_shared/nominatim.ts';
 
 // ---------------------------------------------------------------------------
 // NASTAVENÍ
@@ -36,8 +37,16 @@ const BUCKET_OBRAZKY = 'obsah-obrazky';
 /** Jak dlouho platí jednorázová adresa pro nahrání obrázku (v sekundách). */
 const PLATNOST_ADRESY_S = 120;
 
-/** Povolené stavy přihlášky. Musí sedět s podmínkou v migraci přihlášek. */
+/** Povolené stavy PLATBY. Musí sedět s podmínkou v migraci přihlášek. */
 const STAVY = ['nova', 'zaplaceno', 'zruseno'] as const;
+
+/**
+ * Povolená rozhodnutí o ZVEŘEJNĚNÍ na mapce.
+ *
+ * Je to jiná osa než `stav` výš — zaplaceno neznamená schváleno na mapu.
+ * `ceka` je tu proto, aby šlo hotové rozhodnutí vzít zpět.
+ */
+const SCHVALENI = ['ceka', 'schvaleno', 'zamitnuto'] as const;
 
 /** Sloupce, které administrace o přihlášce dostane. */
 const SLOUPCE_PRIHLASKY = [
@@ -55,7 +64,18 @@ const SLOUPCE_PRIHLASKY = [
   'variabilni_symbol',
   'stav',
   'faktura_cislo',
+  'schvaleno',
+  'schvalil',
+  'schvaleno_kdy',
+  'lat',
+  'lng',
+  'souradnice_stav',
+  'souradnice_duvod',
 ].join(', ');
+
+/** Sloupce o schválení a souřadnicích, které se vracejí po každé změně. */
+const SLOUPCE_SCHVALENI =
+  'id, schvaleno, schvalil, schvaleno_kdy, lat, lng, souradnice_stav, souradnice_duvod';
 
 // ---------------------------------------------------------------------------
 // CORS
@@ -262,6 +282,200 @@ async function zmenStav(
   }
 
   return odpoved(req, { ulozeno: true, stav: data[0].stav });
+}
+
+// ---------------------------------------------------------------------------
+// SCHVÁLENÍ NA VEŘEJNOU MAPKU
+// ---------------------------------------------------------------------------
+// Pozor, tohle je něco jiného než změna stavu platby výš. Rozhoduje se tu,
+// jestli se akce objeví na VEŘEJNÉ MAPCE na webu — tedy jestli ji uvidí
+// kdokoli na světě. Zaplacení s tím nemá nic společného.
+
+/** Slovní podoba rozhodnutí pro hlášky a záznamy v logu. */
+const NAZVY_SCHVALENI: Record<string, string> = {
+  ceka: 'čeká na rozhodnutí',
+  schvaleno: 'schváleno na mapu',
+  zamitnuto: 'zamítnuto',
+};
+
+/**
+ * Dohledá souřadnice města a uloží je k přihlášce.
+ *
+ * Vrací zapsané hodnoty, aby je volající mohl poslat rovnou administraci.
+ * NIKDY nevyhazuje výjimku — neúspěšné hledání je běžný výsledek, ne chyba.
+ */
+async function dohledejAUloz(
+  klient: ReturnType<typeof createClient>,
+  id: string,
+  mesto: string,
+): Promise<Record<string, unknown>> {
+  // Klient se předává dál kvůli sdílené frontě dotazů na Nominatim.
+  // Pořadí přiděluje databáze, aby se souběžná schválení nesešla naráz.
+  const nalez = await najdiSouradnice(
+    mesto,
+    klient as unknown as KlientProFrontu,
+  );
+
+  if (nalez.stav !== 'nalezeno') {
+    // Do logu jde konkrétní důvod, ať se dá dohledat, jestli šlo o překlep
+    // v názvu města, nebo o výpadek služby.
+    console.warn(
+      `Souřadnice pro přihlášku ${id} (město „${mesto}") se nepodařilo dohledat: ${nalez.stav} — ${nalez.duvod}`,
+    );
+  }
+
+  const zmena = {
+    lat: nalez.lat,
+    lng: nalez.lng,
+    souradnice_stav: nalez.stav,
+    souradnice_kdy: new Date().toISOString(),
+    souradnice_duvod: nalez.duvod || null,
+  };
+
+  const { data, error } = await klient
+    .from('prihlasky')
+    .update(zmena)
+    .eq('id', id)
+    .select(SLOUPCE_SCHVALENI);
+
+  if (error) {
+    // Souřadnice se nepodařilo uložit. Schválení samotné tím padnout nesmí,
+    // takže se vrátí aspoň to, co jsme zjistili, a zapíše se to do logu.
+    console.error(`Uložení souřadnic pro ${id} selhalo:`, error.message);
+    return {
+      ...zmena,
+      souradnice_stav: 'chyba',
+      souradnice_duvod:
+        'Souřadnice se našly, ale nepodařilo se je uložit do databáze. Zkuste je prosím dohledat znovu.',
+    };
+  }
+
+  return (data?.[0] as Record<string, unknown>) ?? zmena;
+}
+
+/**
+ * Rozhodnutí o zveřejnění jedné přihlášky na mapce.
+ *
+ * Při schválení se rovnou zkusí dohledat souřadnice města. Když se to
+ * nepovede, SCHVÁLENÍ PŘESTO PLATÍ — akce se jen zatím neukáže na mapce
+ * a v administraci je u ní vidět, proč. To je schválně: rozhodnutí správkyně
+ * nesmí padnout kvůli tomu, že cizí mapová služba zrovna nejede.
+ */
+async function schval(
+  req: Request,
+  klient: ReturnType<typeof createClient>,
+  telo: Record<string, unknown>,
+  spravce: Spravce,
+): Promise<Response> {
+  const id = typeof telo.id === 'string' ? telo.id.trim() : '';
+  const rozhodnuti =
+    typeof telo.rozhodnuti === 'string' ? telo.rozhodnuti.trim() : '';
+
+  if (!id) {
+    return chyba(req, 'Chybí údaj o tom, kterou přihlášku měnit.', 400);
+  }
+  if (!(SCHVALENI as readonly string[]).includes(rozhodnuti)) {
+    return chyba(
+      req,
+      `Neznámé rozhodnutí „${rozhodnuti}". Povolené jsou: schválit, zamítnout, vrátit k rozhodnutí.`,
+      400,
+    );
+  }
+
+  const { data, error } = await klient
+    .from('prihlasky')
+    .update({
+      schvaleno: rozhodnuti,
+      schvalil: spravce.email,
+      schvaleno_kdy: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select(`${SLOUPCE_SCHVALENI}, mesto`);
+
+  if (error) {
+    console.error('Uložení rozhodnutí o mapce selhalo:', error.message);
+    return chyba(
+      req,
+      'Rozhodnutí se nepodařilo uložit. Zkuste to prosím znovu.',
+      503,
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return chyba(req, 'Přihláška se nenašla. Nejspíš byla mezitím smazána.', 404);
+  }
+
+  const radek = data[0] as Record<string, unknown>;
+  console.log(
+    `Přihláška ${id}: ${NAZVY_SCHVALENI[rozhodnuti]} (rozhodl ${spravce.email}).`,
+  );
+
+  let souradnice: Record<string, unknown> = radek;
+
+  // Souřadnice se hledají JEN při schválení a JEN když je ještě nemáme.
+  // Nominatim má limit jeden dotaz za vteřinu a je to cizí služba zadarmo —
+  // nemá smysl se ptát na totéž znovu, když už odpověď máme.
+  const uzMameSouradnice = radek.lat !== null && radek.lng !== null;
+  if (rozhodnuti === 'schvaleno' && !uzMameSouradnice) {
+    souradnice = await dohledejAUloz(klient, id, String(radek.mesto ?? ''));
+  }
+
+  return odpoved(req, {
+    ulozeno: true,
+    schvaleno: rozhodnuti,
+    schvalil: spravce.email,
+    schvaleno_kdy: souradnice.schvaleno_kdy ?? radek.schvaleno_kdy,
+    lat: souradnice.lat ?? null,
+    lng: souradnice.lng ?? null,
+    souradnice_stav: souradnice.souradnice_stav ?? 'nezjistovano',
+    souradnice_duvod: souradnice.souradnice_duvod ?? null,
+  });
+}
+
+/**
+ * Nový pokus o dohledání souřadnic jedné přihlášky.
+ *
+ * Používá se, když hledání napoprvé selhalo — třeba kvůli překlepu v názvu
+ * města nebo proto, že mapová služba zrovna nejela.
+ */
+async function dohledejSouradnice(
+  req: Request,
+  klient: ReturnType<typeof createClient>,
+  telo: Record<string, unknown>,
+): Promise<Response> {
+  const id = typeof telo.id === 'string' ? telo.id.trim() : '';
+  if (!id) {
+    return chyba(req, 'Chybí údaj o tom, které přihlášce hledat souřadnice.', 400);
+  }
+
+  const { data, error } = await klient
+    .from('prihlasky')
+    .select('id, mesto')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Načtení přihlášky pro hledání souřadnic selhalo:', error.message);
+    return chyba(
+      req,
+      'Přihlášku se nepodařilo načíst. Zkuste to prosím znovu.',
+      503,
+    );
+  }
+
+  if (!data) {
+    return chyba(req, 'Přihláška se nenašla. Nejspíš byla mezitím smazána.', 404);
+  }
+
+  const vysledek = await dohledejAUloz(klient, id, String(data.mesto ?? ''));
+
+  return odpoved(req, {
+    ulozeno: true,
+    lat: vysledek.lat ?? null,
+    lng: vysledek.lng ?? null,
+    souradnice_stav: vysledek.souradnice_stav ?? 'chyba',
+    souradnice_duvod: vysledek.souradnice_duvod ?? null,
+  });
 }
 
 /** Všechny uložené přepisy textů a obrázků. */
@@ -503,6 +717,10 @@ Deno.serve(async (req) => {
       return await seznamPrihlasek(req, klient);
     case 'zmen-stav':
       return await zmenStav(req, klient, telo);
+    case 'schval':
+      return await schval(req, klient, telo, overeni.spravce);
+    case 'dohledej-souradnice':
+      return await dohledejSouradnice(req, klient, telo);
     case 'obsah':
       return await seznamObsahu(req, klient);
     case 'uloz-obsah':

@@ -27,6 +27,7 @@ import FormularKrokovy from "../components/FormularKrokovy.astro";
 import PrepinacVariant from "../components/PrepinacVariant.astro";
 import Stitek from "../components/Stitek.astro";
 import Ilustrace from "../components/Ilustrace.astro";
+import Mapa from "../components/Mapa.astro";
 import "../styles/kreativni.css";
 
 // Tipy na aktivity rozdělené do tří kategorií přesně podle podkladů.
@@ -664,6 +665,14 @@ const nadpisHero2 = "Vytvořte setkání, na které se nezapomíná.";
       </div>
     </div>
   </section>
+
+  {/* ================= MAPKA PŘIHLÁŠENÝCH AKCÍ ================= */}
+  {/* Hned za Zásobníkem a před Registrací. Je to jediné místo na stránce,
+      kde jsou živá data, ne sliby — důkaz, že se projekt opravdu děje.
+      Má být vidět dřív, než se člověk rozhoduje o přihlášení.
+      Komponenta si nese vlastní <section id="mapa">, takže ji stejně jako
+      ostatní sekce chytne skript s najížděním na konci stránky. */}
+  <Mapa />
 
   {/* ================= PODPORA ================= */}
   <section id="podpora" class="bg-pozadi px-5 py-16">

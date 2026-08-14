@@ -451,3 +451,18 @@ verify_jwt = false
 [functions.ares-lookup]
 enabled = true
 verify_jwt = false
+
+# Data pro veřejnou mapku přihlášených akcí.
+#
+# `verify_jwt = false` je tu záměr: mapku si otevře každý návštěvník webu
+# a nikdo se kvůli ní nepřihlašuje.
+#
+# Že je funkce otevřená, ale NEZNAMENÁ, že jsou otevřená data. Funkce vydá
+# jen akce schválené správcem a jen neosobní pole (město, kraj, typ pořadatele,
+# souřadnice). E-maily, telefony, kontaktní osoby, variabilní symboly ani
+# fakturační údaje se z ní dostat nedají — výběr polí je natvrdo v kódu funkce.
+# U jednotlivce se navíc vynechává i název pořadatele, protože je to jméno
+# soukromé osoby.
+[functions.verejne-akce]
+enabled = true
+verify_jwt = false

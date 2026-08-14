@@ -1,0 +1,857 @@
+---
+/**
+ * Mapka přihlášených akcí.
+ *
+ * Ukazuje, kde po republice se chystají mezigenerační setkání. Data bere
+ * z veřejné Edge Funkce, která vrací JEN schválené akce:
+ *
+ *     GET {PUBLIC_SUPABASE_URL}/functions/v1/verejne-akce
+ *
+ * Volá se bez přihlášení. Kdyby funkce vyžadovala klíč (401/403), zkusí se
+ * dotaz ještě jednou s veřejným anonymním klíčem — víc už ne.
+ *
+ * PROČ LEAFLET A OPENSTREETMAP
+ * Zdarma, bez klíče a bez registrace. U neziskovky je to podstatné —
+ * nikdo nemusí hlídat kredit ani obnovovat API klíč. Placené mapové služby
+ * (Google, Mapbox) by projekt uvázaly na účet, který jednou nikdo nezaplatí.
+ *
+ * ŽÁDNÉ MAPY PŘI OTEVŘENÍ STRÁNKY
+ * Leaflet je velká knihovna a mapa je až dole na stránce. Nestahuje se proto
+ * při načtení webu, ale teprve když se sekce blíží do obrazovky. Když navíc
+ * není žádná akce, mapa se nestáhne vůbec — nemá co ukazovat.
+ *
+ * PŘÍSTUPNOST
+ * Publikum zahrnuje seniory. Mapa nesmí být jediná cesta k informaci, takže
+ * vedle ní (na mobilu pod ní) je textový seznam krajů a měst ze stejných dat.
+ * Kdo neovládá mapu myší nebo používá čtečku obrazovky, dostane se ke všemu.
+ *
+ * STAVY SE NEFIXLUJÍ
+ * Načítá se / nepovedlo se / zatím žádné akce jsou tři různé stavy a každý
+ * má vlastní slovní hlášku. Žádné věčně točící kolečko: dotaz má časový
+ * limit a po jeho vypršení se ukáže chyba s tlačítkem „Zkusit znovu".
+ * Když je JavaScript vypnutý, hláška „načítáme" se vůbec nezobrazí (viz
+ * <noscript> níž) — místo ní je vysvětlení, proč mapa není.
+ */
+import Sekce from "./Sekce.astro";
+import NadpisSekce from "./NadpisSekce.astro";
+import Ikona from "./Ikona.astro";
+import Tlacitko from "./Tlacitko.astro";
+
+interface Props {
+  /** Způsob oddělení sekcí — předává se do Sekce.astro */
+  predel?: "linka" | "karta";
+}
+
+const { predel = "linka" } = Astro.props;
+---
+
+<Sekce id="mapa" predel={predel} linkaNahore>
+  <NadpisSekce poradi={0}>Kde všude se setkání chystají?</NadpisSekce>
+
+  {/* Úvodní věta musí dávat smysl i ve chvíli, kdy na mapě zatím nic není
+      nebo se ji nepodařilo načíst. Proto neslibuje, co je na ní vidět. */}
+  <p class="najezd mt-4 max-w-[720px]" data-poradi="1">
+    Schválená přihlášená setkání se objevují na mapě. Přibývají průběžně,
+    jak přihlášky procházejí schválením.
+  </p>
+
+  <div
+    class="najezd mt-10 grid gap-8 lg:grid-cols-[1fr_320px] lg:items-start"
+    data-poradi="2"
+  >
+    {/* --- Vizuální část ---------------------------------------------- */}
+    <div>
+      {/* Plocha má pevnou výšku, takže se stránka nehne, ať už v ní nakonec
+          je mapa, hláška o chybě nebo věta „zatím nic". Pozadí je tyrkysová
+          plocha z palety, ne šedá díra. */}
+      <div
+        id="mapa-plocha"
+        class="relative h-[420px] w-full overflow-hidden rounded-xl border border-merunka-tlumena bg-plocha-tyrkys sm:h-[520px]"
+      >
+        {/* Samotná mapa. Ukáže se, až je opravdu vykreslená. */}
+        <div id="mapa-platno" class="absolute inset-0 hidden"></div>
+
+        {/* Stavy. Vždycky je vidět nejvýš jeden. Čtečka obrazovky se o změně
+            dozví díky aria-live. */}
+        {/* Vrstva se stavy leží NA mapě a má vlastní pozadí, aby ji úplně
+            zakryla. Mapa se totiž musí do stránky vložit dřív, než je
+            hotová — Leaflet si jinak nezměří plochu a spočítá špatný výřez. */}
+        <div
+          id="mapa-stavy"
+          class="absolute inset-0 z-10 flex items-center justify-center bg-plocha-tyrkys p-6"
+          aria-live="polite"
+        >
+          {/* NAČÍTÁ SE — viditelné, ale nenápadné. */}
+          <p id="mapa-nacita" class="m-0 flex items-center gap-3 text-tyrkys">
+            <span class="mapa-tecka" aria-hidden="true"></span>
+            Načítáme přihlášená místa…
+          </p>
+
+          {/* NEPOVEDLO SE — česky, s ikonou a s možností zkusit to znovu. */}
+          <div id="mapa-chyba" class="max-w-[420px] text-center" hidden>
+            <Ikona jmeno="cloud-off" velikost={36} trida="mx-auto" />
+            {/* Když pošle vysvětlení server, přepíše se text téhle věty
+                za jeho — je konkrétnější. Jinak zůstane tahle. */}
+            <p id="mapa-chyba-text" class="mt-3">
+              Mapu se teď nepodařilo načíst. Nejspíš to je chvilkový výpadek
+              spojení.
+            </p>
+            <Tlacitko id="mapa-znovu" varianta="vedlejsi" trida="mt-2">
+              <Ikona jmeno="rotate-ccw" velikost={20} />
+              Zkusit znovu
+            </Tlacitko>
+          </div>
+
+          {/* ZATÍM ŽÁDNÉ AKCE — běžný stav na začátku projektu, ne chyba.
+              Proto tu není nic o problému ani červená barva. */}
+          <div id="mapa-prazdno" class="max-w-[440px] text-center" hidden>
+            <Ikona jmeno="map-pin" velikost={36} trida="mx-auto" />
+            <p class="mt-3">
+              Zatím tu není žádná schválená akce. Jakmile se první pořadatelé
+              přihlásí, objeví se tady jejich města — a vaše může být mezi
+              prvními.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Vysvětlení ovládání. Kdo mapu neovládá, má vedle ní seznam. */}
+      <p id="mapa-ovladani" class="mt-2 mb-0 text-popisek" hidden>
+        Mapu přiblížíte tlačítky <strong>+</strong> a <strong>−</strong>,
+        posunete tažením myší. Podrobnosti k místu se ukážou po kliknutí
+        na značku. Stejné údaje jsou i v seznamu.
+      </p>
+
+      {/* Bez JavaScriptu se mapa nevykreslí. Místo věčného „načítáme"
+          řekneme rovnou, jak se k informaci dostat jinak. */}
+      <noscript>
+        <style>
+          #mapa-nacita {
+            display: none;
+          }
+        </style>
+        <p class="mt-4 mb-0">
+          Mapa potřebuje zapnutý JavaScript. Přehled přihlášených míst vám
+          rádi pošleme — ozvěte se nám na kontaktech dole na stránce.
+        </p>
+      </noscript>
+    </div>
+
+    {/* --- Textový seznam ---------------------------------------------
+        Rovnocenná cesta k téže informaci, ne poznámka pod čarou.
+        Naplní ho skript z týchž dat jako mapu. */}
+    <div id="mapa-seznam-obal" hidden>
+      <h3 class="text-xl">Seznam míst</h3>
+      <p id="mapa-souhrn" class="mt-1 mb-0"></p>
+      <ul id="mapa-seznam" class="mt-4 list-none space-y-4 p-0"></ul>
+    </div>
+  </div>
+</Sekce>
+
+<style is:global>
+  /* ==========================================================================
+     Mapka přihlášených akcí
+     Třídy jsou globální schválně: značky a bubliny vyrábí Leaflet v JavaScriptu,
+     takže by se na ně scoped styly Astra nedostaly. Všechno má předponu
+     `mapa-` nebo `leaflet-`, aby nemohlo přetéct do zbytku webu.
+     ========================================================================== */
+
+  /* --- Tečka u hlášky „načítáme" ---------------------------------------- */
+  /* Nenápadné bliknutí, ne kolotoč. Při prefers-reduced-motion se animace
+     vypne globálním pravidlem v global.css a zůstane statická tečka. */
+  .mapa-tecka {
+    display: inline-block;
+    height: 10px;
+    width: 10px;
+    border-radius: 9999px;
+    background-color: var(--color-tyrkys);
+    animation: mapa-tepe 1.4s ease-in-out infinite;
+  }
+
+  @keyframes mapa-tepe {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* --- Značka na mapě ---------------------------------------------------- */
+  /* Tyrkysová, ne červená. Červená patří na webu výhradně tlačítkům —
+     kdyby byla i na značkách, přestala by znamenat „tady se kliká". */
+  .mapa-znacka {
+    display: flex;
+    height: 28px;
+    width: 28px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    border-radius: 9999px;
+    background-color: var(--color-tyrkys);
+    box-shadow: 0 2px 6px rgba(69, 68, 63, 0.45);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Značka, pod kterou je víc akcí, je větší a nese jejich počet.
+     Bez toho by se akce na jednom místě překryly a byla by vidět jen jedna. */
+  .mapa-znacka.je-vice {
+    height: 34px;
+    width: 34px;
+    background-color: var(--color-merunka);
+    /* Na meruňkové musí být tmavý text, bílá by na ní neměla kontrast. */
+    color: var(--color-text);
+  }
+
+  .leaflet-marker-icon:focus-visible .mapa-znacka {
+    outline: 3px solid var(--color-tyrkys);
+    outline-offset: 3px;
+  }
+
+  /* --- Bublina s podrobnostmi -------------------------------------------- */
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px;
+  }
+
+  .leaflet-popup-content {
+    /* Leaflet sází bubliny drobným písmem. Publikum zahrnuje seniory,
+       tak držíme velikost těla textu z designového systému. */
+    margin: 14px 16px;
+    font-size: var(--text-telo);
+    line-height: 1.5;
+  }
+
+  .mapa-bublina-mesto {
+    display: block;
+    color: var(--color-tyrkys);
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .mapa-bublina-kraj {
+    display: block;
+    font-size: var(--text-popisek);
+  }
+
+  .mapa-bublina-seznam {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mapa-bublina-seznam > li + li {
+    margin-top: 10px;
+    border-top: 1px solid var(--color-merunka-tlumena);
+    padding-top: 10px;
+  }
+
+  .mapa-bublina-typ {
+    display: inline-block;
+    border-radius: 9999px;
+    background-color: var(--color-plocha-tyrkys);
+    padding: 1px 10px;
+    font-size: var(--text-popisek);
+  }
+
+  .mapa-bublina-nazev {
+    display: block;
+    margin-top: 4px;
+    font-weight: 600;
+  }
+
+  .mapa-bublina-napad {
+    margin: 4px 0 0;
+  }
+
+  /* Zavírací křížek Leafletu je pro netrefující se ruku maličký. */
+  .leaflet-container a.leaflet-popup-close-button {
+    height: 32px;
+    width: 32px;
+    padding: 6px 6px 0 0;
+    font-size: 1.25rem;
+  }
+
+  /* --- Ovládání a patička mapy ------------------------------------------- */
+  .leaflet-container {
+    /* Leaflet si nese vlastní písmo, tady chceme písmo webu. */
+    font-family: var(--font-sans);
+    background-color: var(--color-plocha-tyrkys);
+  }
+
+  .leaflet-control-zoom a {
+    color: var(--color-tyrkys);
+  }
+
+  .leaflet-control-attribution {
+    font-size: 0.75rem;
+  }
+</style>
+
+<script>
+  // ==========================================================================
+  // Mapka přihlášených akcí — načítání dat, vykreslení mapy a seznamu
+  // ==========================================================================
+
+  /** Jedna akce tak, jak ji vrací Edge Funkce. */
+  interface Akce {
+    mesto?: string | null;
+    kraj?: string | null;
+    typ_poradatele?: string | null;
+    /** U jednotlivců se jméno záměrně neposílá — může chybět. */
+    nazev_poradatele?: string | null;
+    /** Nemusí dorazit, pořadatel ho nemusel vyplnit. */
+    napad_na_aktivitu?: string | null;
+    lat?: number | string | null;
+    lng?: number | string | null;
+  }
+
+  /** Akce shluknuté na jedné souřadnici — jedna značka na mapě. */
+  interface Misto {
+    lat: number;
+    lng: number;
+    mesto: string;
+    kraj: string;
+    akce: Akce[];
+  }
+
+  const ADRESA_SUPABASE = import.meta.env.PUBLIC_SUPABASE_URL ?? "";
+  const VEREJNY_KLIC = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "";
+  const ADRESA_FUNKCE = `${ADRESA_SUPABASE}/functions/v1/verejne-akce`;
+
+  /**
+   * Kolik nejdéle čekáme na odpověď.
+   *
+   * Bez limitu by se při zaseknutém spojení točilo kolečko donekonečna
+   * a člověk by nevěděl, jestli má čekat, nebo je to rozbité. Po vypršení
+   * se ukáže hláška a tlačítko „Zkusit znovu".
+   */
+  const LIMIT_CEKANI_MS = 10000;
+
+  /** Výřez České republiky — jihozápadní a severovýchodní roh. */
+  const VYREZ_CR: [[number, number], [number, number]] = [
+    [48.55, 12.09],
+    [51.06, 18.86],
+  ];
+
+  const NAZVY_PORADATELU: Record<string, string> = {
+    skola: "Škola",
+    organizace: "Organizace",
+    jednotlivec: "Jednotlivec",
+  };
+
+  const prvky = {
+    plocha: document.getElementById("mapa-plocha"),
+    platno: document.getElementById("mapa-platno"),
+    stavy: document.getElementById("mapa-stavy"),
+    nacita: document.getElementById("mapa-nacita"),
+    chyba: document.getElementById("mapa-chyba"),
+    chybaText: document.getElementById("mapa-chyba-text"),
+    prazdno: document.getElementById("mapa-prazdno"),
+    znovu: document.getElementById("mapa-znovu"),
+    ovladani: document.getElementById("mapa-ovladani"),
+    seznamObal: document.getElementById("mapa-seznam-obal"),
+    seznam: document.getElementById("mapa-seznam"),
+    souhrn: document.getElementById("mapa-souhrn"),
+  };
+
+  // Když komponenta na stránce není, skript mlčky skončí.
+  if (prvky.plocha && prvky.platno && prvky.seznam) {
+    spustMapku();
+  }
+
+  function spustMapku() {
+    const chceMenePohybu = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    /** Mapa se staví jen jednou, i kdyby se data načítala opakovaně. */
+    let mapa: import("leaflet").Map | null = null;
+    let vrstvaZnacek: import("leaflet").LayerGroup | null = null;
+    let nacitaSe = false;
+
+    // --- Přepínání stavů ---------------------------------------------------
+
+    function ukazStav(stav: "nacita" | "chyba" | "prazdno" | "mapa") {
+      prvky.stavy?.toggleAttribute("hidden", stav === "mapa");
+      prvky.nacita?.toggleAttribute("hidden", stav !== "nacita");
+      prvky.chyba?.toggleAttribute("hidden", stav !== "chyba");
+      prvky.prazdno?.toggleAttribute("hidden", stav !== "prazdno");
+      prvky.platno?.classList.toggle("hidden", stav !== "mapa");
+      prvky.ovladani?.toggleAttribute("hidden", stav !== "mapa");
+    }
+
+    // --- Načtení dat -------------------------------------------------------
+
+    /**
+     * Zeptá se Edge Funkce na schválené akce.
+     *
+     * Nejdřív úplně obyčejným GETem bez hlaviček — takový dotaz nepotřebuje
+     * předlet (preflight) a projde i na funkci, která nic nevyžaduje.
+     * Teprve když funkce odpoví 401/403, zkusí se to ještě jednou
+     * s veřejným anonymním klíčem.
+     */
+    async function nactiAkce(): Promise<Akce[]> {
+      if (!ADRESA_SUPABASE) {
+        throw new Error("Adresa Supabase není nastavená.");
+      }
+
+      let odpoved = await fetch(ADRESA_FUNKCE, {
+        signal: AbortSignal.timeout(LIMIT_CEKANI_MS),
+      });
+
+      if ((odpoved.status === 401 || odpoved.status === 403) && VEREJNY_KLIC) {
+        odpoved = await fetch(ADRESA_FUNKCE, {
+          headers: {
+            apikey: VEREJNY_KLIC,
+            Authorization: `Bearer ${VEREJNY_KLIC}`,
+          },
+          signal: AbortSignal.timeout(LIMIT_CEKANI_MS),
+        });
+      }
+
+      if (!odpoved.ok) {
+        // Funkce posílá u chyby celou českou větu pro člověka. Když dorazí,
+        // ukážeme ji — ví toho o problému víc než my tady.
+        const telo = await odpoved.json().catch(() => null);
+        const vetaZeServeru =
+          telo && typeof telo === "object" && "chyba" in telo
+            ? text((telo as { chyba?: unknown }).chyba)
+            : "";
+
+        throw Object.assign(
+          new Error(vetaZeServeru || `Funkce odpověděla ${odpoved.status}.`),
+          // Jen věta ze serveru je psaná pro návštěvníka. Technický popis
+          // („Funkce odpověděla 500") se mu ukazovat nesmí.
+          { proNavstevnika: Boolean(vetaZeServeru) },
+        );
+      }
+
+      const data: unknown = await odpoved.json();
+      return vytahniSeznam(data);
+    }
+
+    /**
+     * Vytáhne pole akcí z odpovědi.
+     *
+     * Funkci píše někdo jiný, takže nespoléháme na jediný možný tvar —
+     * bereme holé pole i pole zabalené v objektu. Když je odpověď úplně
+     * jiná, je to chyba, ne prázdný seznam: prázdno a rozbito nesmíme
+     * splácat dohromady.
+     */
+    function vytahniSeznam(data: unknown): Akce[] {
+      if (Array.isArray(data)) return data as Akce[];
+
+      if (data && typeof data === "object") {
+        const obal = data as Record<string, unknown>;
+        for (const klic of ["akce", "data", "polozky", "items"]) {
+          if (Array.isArray(obal[klic])) return obal[klic] as Akce[];
+        }
+      }
+
+      throw new Error("Odpověď nemá čekaný tvar.");
+    }
+
+    // --- Drobní pomocníci --------------------------------------------------
+
+    /** Text z dat, který nikdy nevrátí „undefined" ani „null". */
+    function text(hodnota: unknown): string {
+      return typeof hodnota === "string" ? hodnota.trim() : "";
+    }
+
+    /** Číslo z dat — funkce může poslat i řetězec. */
+    function cislo(hodnota: unknown): number | null {
+      const n = typeof hodnota === "string" ? Number(hodnota) : hodnota;
+      return typeof n === "number" && Number.isFinite(n) ? n : null;
+    }
+
+    function nazevTypu(typ: string): string {
+      return NAZVY_PORADATELU[typ] ?? "";
+    }
+
+    /** „Olomoucký" → „Olomoucký kraj", ale „Praha" nechá být. */
+    function nazevKraje(kraj: string): string {
+      if (!kraj) return "";
+      return /kraj|praha/i.test(kraj) ? kraj : `${kraj} kraj`;
+    }
+
+    /** České skloňování za číslovkou: 1 / 2–4 / 5 a víc. */
+    function sklonuj(pocet: number, tvary: [string, string, string]): string {
+      if (pocet === 1) return tvary[0];
+      if (pocet >= 2 && pocet <= 4) return tvary[1];
+      return tvary[2];
+    }
+
+    // --- Shlukování akcí na jedno místo ------------------------------------
+
+    /**
+     * Akce se stejnou souřadnicí sloučí do jedné značky.
+     *
+     * Souřadnice se dohledávají podle města, takže dvě akce ve stejném městě
+     * mají souřadnici na desetinu metru stejnou a značky by ležely přesně
+     * přes sebe — vidět by byla jen ta poslední. Místo toho je jedna značka
+     * s počtem a v bublině jsou vypsané všechny akce.
+     */
+    function shlukniPodleMista(akce: Akce[]): Misto[] {
+      const mista = new Map<string, Misto>();
+
+      for (const polozka of akce) {
+        const lat = cislo(polozka.lat);
+        const lng = cislo(polozka.lng);
+
+        // Bez souřadnic se značka nakreslit nedá. V textovém seznamu
+        // ale takový záznam zůstane, aby informace nezmizela.
+        if (lat === null || lng === null) continue;
+        if (lat < 48 || lat > 52 || lng < 11 || lng > 20) continue;
+
+        const klic = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        const misto = mista.get(klic);
+
+        if (misto) {
+          misto.akce.push(polozka);
+        } else {
+          mista.set(klic, {
+            lat,
+            lng,
+            mesto: text(polozka.mesto),
+            kraj: text(polozka.kraj),
+            akce: [polozka],
+          });
+        }
+      }
+
+      return [...mista.values()];
+    }
+
+    // --- Bublina se podrobnostmi -------------------------------------------
+
+    /**
+     * Obsah bubliny se skládá z prvků, ne z řetězce HTML.
+     *
+     * Jsou to texty, které vyplnili lidé ve formuláři — kdybychom je lepili
+     * do HTML, byla by to díra na podvržený kód.
+     */
+    function bublinaProMisto(misto: Misto): HTMLElement {
+      const obal = document.createElement("div");
+
+      const mesto = document.createElement("strong");
+      mesto.className = "mapa-bublina-mesto";
+      mesto.textContent = misto.mesto || "Místo neuvedeno";
+      obal.append(mesto);
+
+      if (misto.kraj) {
+        const kraj = document.createElement("span");
+        kraj.className = "mapa-bublina-kraj";
+        kraj.textContent = nazevKraje(misto.kraj);
+        obal.append(kraj);
+      }
+
+      const seznam = document.createElement("ul");
+      seznam.className = "mapa-bublina-seznam";
+
+      for (const akce of misto.akce) {
+        const radek = document.createElement("li");
+
+        const typ = nazevTypu(text(akce.typ_poradatele));
+        if (typ) {
+          const znacka = document.createElement("span");
+          znacka.className = "mapa-bublina-typ";
+          znacka.textContent = typ;
+          radek.append(znacka);
+        }
+
+        // Jméno nemusí dorazit — u jednotlivců se záměrně neposílá.
+        // V takovém případě prostě není řádek, ne „undefined".
+        const nazev = text(akce.nazev_poradatele);
+        if (nazev) {
+          const jmeno = document.createElement("span");
+          jmeno.className = "mapa-bublina-nazev";
+          jmeno.textContent = nazev;
+          radek.append(jmeno);
+        }
+
+        const napad = text(akce.napad_na_aktivitu);
+        if (napad) {
+          const popis = document.createElement("p");
+          popis.className = "mapa-bublina-napad";
+          popis.textContent = napad;
+          radek.append(popis);
+        }
+
+        seznam.append(radek);
+      }
+
+      obal.append(seznam);
+      return obal;
+    }
+
+    // --- Vykreslení mapy ---------------------------------------------------
+
+    async function vykresliMapu(mista: Misto[]) {
+      // Leaflet i jeho styly se stahují teprve tady — tedy až když je co
+      // ukazovat a sekce je v obrazovce. Do úvodu stránky se tím nedostane
+      // ani bajt navíc.
+      const [{ default: L }, styly] = await Promise.all([
+        import("leaflet"),
+        import("leaflet/dist/leaflet.css?raw"),
+      ]);
+
+      pridejStylyLeafletu(styly.default);
+
+      // Plátno musí být viditelné DŘÍV, než se mapa postaví. Leaflet si při
+      // vzniku měří plochu, a kdyby byla skrytá (nulová), spočítal by výřez
+      // úplně mimo. Návštěvník zatím vidí vrstvu se stavem, která mapu kryje.
+      prvky.platno?.classList.remove("hidden");
+
+      if (!mapa) {
+        mapa = L.map(prvky.platno as HTMLElement, {
+          // Zoom kolečkem myši se na dlouhé stránce plete — člověk chce
+          // scrollovat a místo toho se mu přibližuje mapa.
+          scrollWheelZoom: false,
+          // Na dotykovém displeji by tažení po mapě zabránilo posunu
+          // stránky. Přehled celé ČR i tak zůstává vidět a všechno je
+          // navíc v textovém seznamu.
+          dragging: !L.Browser.mobile,
+          zoomAnimation: !chceMenePohybu,
+          fadeAnimation: !chceMenePohybu,
+          markerZoomAnimation: !chceMenePohybu,
+          minZoom: 6,
+          maxZoom: 14,
+          maxBounds: L.latLngBounds(VYREZ_CR).pad(0.35),
+          attributionControl: true,
+        });
+
+        mapa.attributionControl.setPrefix(false);
+
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution:
+            'mapové podklady © přispěvatelé <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          maxZoom: 14,
+        }).addTo(mapa);
+
+        // Popisky ovládání česky — výchozí jsou anglické.
+        const zoom = mapa.zoomControl.getContainer();
+        zoom?.querySelector(".leaflet-control-zoom-in")
+          ?.setAttribute("title", "Přiblížit");
+        zoom?.querySelector(".leaflet-control-zoom-out")
+          ?.setAttribute("title", "Oddálit");
+
+        vrstvaZnacek = L.layerGroup().addTo(mapa);
+      }
+
+      // Výřez je vždycky celá republika. Nedoostřujeme na značky — smysl
+      // sekce je „kde všude po republice", ne přiblížení na jednu ulici.
+      // Bez animace při zapnutém prefers-reduced-motion (setView, ne flyTo).
+      mapa.fitBounds(L.latLngBounds(VYREZ_CR), { animate: false });
+
+      vrstvaZnacek?.clearLayers();
+
+      for (const misto of mista) {
+        const pocet = misto.akce.length;
+        const vice = pocet > 1;
+
+        const ikona = L.divIcon({
+          className: "", // Leaflet by jinak přidal vlastní bílý čtvereček.
+          html: `<span class="mapa-znacka${vice ? " je-vice" : ""}">${
+            vice ? pocet : ""
+          }</span>`,
+          iconSize: vice ? [34, 34] : [28, 28],
+          iconAnchor: vice ? [17, 17] : [14, 14],
+          popupAnchor: [0, -16],
+        });
+
+        const popisek = vice
+          ? `${misto.mesto || "Místo"} — ${pocet} ${sklonuj(pocet, ["akce", "akce", "akcí"])}`
+          : misto.mesto || "Místo";
+
+        const znacka = L.marker([misto.lat, misto.lng], {
+          icon: ikona,
+          title: popisek,
+          keyboard: true,
+        }).bindPopup(() => bublinaProMisto(misto), {
+          maxWidth: 300,
+          // Když je na jednom místě hodně akcí, bublina se roluje.
+          // Bez toho by vylezla z mapy ven a ořízla se.
+          maxHeight: 260,
+          // Bublina u kraje mapy si mapu o pár pixelů posune, aby se vešla.
+          // Není to „přelétávání mapy" ve smyslu prefers-reduced-motion,
+          // ale doladění o kousek — bez něj by nebylo vidět, co se otevřelo.
+          autoPanPadding: [24, 24],
+        });
+
+        znacka.addTo(vrstvaZnacek as import("leaflet").LayerGroup);
+
+        // Značka je ovládací prvek — čtečka obrazovky to musí vědět.
+        const prvekZnacky = znacka.getElement();
+        prvekZnacky?.setAttribute("role", "button");
+        prvekZnacky?.setAttribute("aria-label", popisek);
+      }
+
+      ukazStav("mapa");
+
+      // Pojistka: sekce v tu chvíli mohla ještě najíždět do obrazovky.
+      // Po vykreslení si mapa rozměr přeměří a výřez nastaví znovu.
+      window.requestAnimationFrame(() => {
+        mapa?.invalidateSize();
+        mapa?.fitBounds(L.latLngBounds(VYREZ_CR), { animate: false });
+      });
+    }
+
+    /**
+     * Vloží styly Leafletu do stránky.
+     *
+     * Načítají se jako text uvnitř lazy chunku, takže do CSS celého webu
+     * nepřibude nic — stáhnou se ve stejnou chvíli jako knihovna.
+     */
+    function pridejStylyLeafletu(css: string) {
+      if (document.getElementById("mapa-styly-leaflet")) return;
+      const styl = document.createElement("style");
+      styl.id = "mapa-styly-leaflet";
+      styl.textContent = css;
+      document.head.append(styl);
+    }
+
+    // --- Textový seznam ----------------------------------------------------
+
+    /**
+     * Seznam krajů a měst ze stejných dat jako mapa.
+     *
+     * Není to doplněk pro pořádek — pro člověka se čtečkou obrazovky nebo
+     * bez jisté ruky na myši je to hlavní cesta k informaci. Proto tu jsou
+     * i akce, které nemají souřadnice a na mapě by chyběly.
+     */
+    function vykresliSeznam(akce: Akce[]) {
+      const seznam = prvky.seznam;
+      const souhrn = prvky.souhrn;
+      if (!seznam || !souhrn) return;
+
+      seznam.replaceChildren();
+
+      // kraj → město → počet akcí
+      const kraje = new Map<string, Map<string, number>>();
+
+      for (const polozka of akce) {
+        const kraj = text(polozka.kraj) || "Kraj neuveden";
+        const mesto = text(polozka.mesto) || "Místo neuvedeno";
+
+        const mesta = kraje.get(kraj) ?? new Map<string, number>();
+        mesta.set(mesto, (mesta.get(mesto) ?? 0) + 1);
+        kraje.set(kraj, mesta);
+      }
+
+      const poradiCesky = (a: string, b: string) => a.localeCompare(b, "cs");
+
+      for (const kraj of [...kraje.keys()].sort(poradiCesky)) {
+        const mesta = kraje.get(kraj)!;
+
+        const polozkaKraje = document.createElement("li");
+
+        const nadpisKraje = document.createElement("h4");
+        nadpisKraje.className = "m-0 font-semibold text-tyrkys";
+        nadpisKraje.textContent = nazevKraje(kraj);
+        polozkaKraje.append(nadpisKraje);
+
+        const seznamMest = document.createElement("ul");
+        seznamMest.className = "mt-1 list-none p-0";
+
+        for (const mesto of [...mesta.keys()].sort(poradiCesky)) {
+          const pocet = mesta.get(mesto)!;
+          const radek = document.createElement("li");
+          // Počet se píše jen tam, kde je akcí víc — u jedničky by to byl šum.
+          radek.textContent =
+            pocet > 1
+              ? `${mesto} (${pocet} ${sklonuj(pocet, ["akce", "akce", "akcí"])})`
+              : mesto;
+          seznamMest.append(radek);
+        }
+
+        polozkaKraje.append(seznamMest);
+        seznam.append(polozkaKraje);
+      }
+
+      const pocetAkci = akce.length;
+      const pocetMest = [...kraje.values()].reduce(
+        (soucet, mesta) => soucet + mesta.size,
+        0,
+      );
+
+      // Předložka „na" se nemění podle číslovky, na rozdíl od „v/ve".
+      // Proto věta zní „na 3 místech", ne „ve 3 městech“ — vyhneme se tím
+      // skloňování, které by u některých čísel vyšlo špatně.
+      souhrn.textContent =
+        `Zatím ${sklonuj(pocetAkci, ["se chystá", "se chystají", "se chystá"])} ` +
+        `${pocetAkci} ${sklonuj(pocetAkci, ["akce", "akce", "akcí"])} ` +
+        `na ${pocetMest} ${sklonuj(pocetMest, ["místě", "místech", "místech"])}.`;
+
+      prvky.seznamObal?.removeAttribute("hidden");
+    }
+
+    // --- Celý průběh -------------------------------------------------------
+
+    /** Výchozí znění chybové hlášky, ať se dá vrátit po dalším pokusu. */
+    const puvodniHlaskaChyby = prvky.chybaText?.textContent ?? "";
+
+    async function nacti() {
+      if (nacitaSe) return;
+      nacitaSe = true;
+
+      // Hláška z minulého pokusu už neplatí, ať se nemíchají dohromady.
+      if (prvky.chybaText) prvky.chybaText.textContent = puvodniHlaskaChyby;
+
+      ukazStav("nacita");
+
+      try {
+        const akce = await nactiAkce();
+
+        if (akce.length === 0) {
+          // Prázdno není chyba. Na začátku projektu je to běžný stav.
+          prvky.seznamObal?.setAttribute("hidden", "");
+          ukazStav("prazdno");
+          return;
+        }
+
+        vykresliSeznam(akce);
+        await vykresliMapu(shlukniPodleMista(akce));
+      } catch (potiz) {
+        // Nefixlujeme: raději viditelná česká hláška s možností opakování
+        // než mapa, která tváří, že se pořád načítá.
+        console.warn("Mapku se nepodařilo načíst:", potiz);
+
+        if (
+          prvky.chybaText &&
+          potiz instanceof Error &&
+          (potiz as { proNavstevnika?: boolean }).proNavstevnika
+        ) {
+          prvky.chybaText.textContent = potiz.message;
+        }
+
+        prvky.seznamObal?.setAttribute("hidden", "");
+        ukazStav("chyba");
+      } finally {
+        nacitaSe = false;
+      }
+    }
+
+    prvky.znovu?.addEventListener("click", () => void nacti());
+
+    // Spustí se, teprve až se sekce blíží do obrazovky. Do té doby se
+    // nestahuje ani knihovna, ani data.
+    if ("IntersectionObserver" in window) {
+      const pozorovatel = new IntersectionObserver(
+        (zaznamy) => {
+          if (!zaznamy.some((zaznam) => zaznam.isIntersecting)) return;
+          pozorovatel.disconnect();
+          void nacti();
+        },
+        { rootMargin: "300px 0px" },
+      );
+
+      pozorovatel.observe(prvky.plocha as HTMLElement);
+    } else {
+      void nacti();
+    }
+  }
+</script>

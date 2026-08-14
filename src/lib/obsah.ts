@@ -81,7 +81,7 @@ export const KATALOG: PolozkaObsahu[] = [
     skupina: 'Úvodní obrazovka',
     popis: 'Hlavní nadpis úplně nahoře na stránce',
     typ: 'text',
-    vychozi: 'Propojujeme generace. Vytvořte setkání, na které se nezapomíná.',
+    vychozi: 'Propojme generace. Vytvořte setkání, na které se nezapomíná.',
   },
   {
     klic: 'hero.perex',

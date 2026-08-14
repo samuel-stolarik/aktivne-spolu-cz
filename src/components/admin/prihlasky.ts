@@ -25,6 +25,19 @@ interface Prihlaska {
   variabilni_symbol: number;
   stav: string;
   faktura_cislo: string | null;
+
+  // Zveřejnění na mapce. Je to JINÁ VĚC než `stav` výš: `stav` říká, jak je
+  // na tom platba, `schvaleno` říká, jestli akci uvidí lidé na webu.
+  schvaleno: string;
+  schvalil: string | null;
+  schvaleno_kdy: string | null;
+
+  // Souřadnice města. Hledají se jednou při schválení; když se nenajdou,
+  // schválení stejně platí, akce se jen na mapce neukáže.
+  lat: number | null;
+  lng: number | null;
+  souradnice_stav: string;
+  souradnice_duvod: string | null;
 }
 
 /** Názvy stavů tak, jak je uvidí správce. V databázi jsou bez diakritiky. */
@@ -32,6 +45,20 @@ const NAZVY_STAVU: Record<string, string> = {
   nova: "Nová",
   zaplaceno: "Zaplaceno",
   zruseno: "Zrušeno",
+};
+
+/** Jak se schválení na mapku pojmenuje pro člověka. */
+const NAZVY_SCHVALENI: Record<string, string> = {
+  ceka: "Čeká na rozhodnutí",
+  schvaleno: "Zveřejněno na mapce",
+  zamitnuto: "Nezveřejňovat",
+};
+
+/** Popisky tlačítek. Sloveso na začátku, ať je jasné, co se stane. */
+const TLACITKA_SCHVALENI: Record<string, string> = {
+  schvaleno: "Schválit na mapu",
+  zamitnuto: "Zamítnout",
+  ceka: "Vrátit k rozhodnutí",
 };
 
 const NAZVY_PLATEB: Record<string, string> = {
@@ -76,12 +103,14 @@ function ceskeDatum(iso: string): string {
  */
 function vybranePrihlasky(): Prihlaska[] {
   const stav = prvek<HTMLSelectElement>("filtr-stav")?.value ?? "vse";
+  const mapa = prvek<HTMLSelectElement>("filtr-mapa")?.value ?? "vse";
   const hledane = (prvek<HTMLInputElement>("filtr-hledani")?.value ?? "")
     .trim()
     .toLocaleLowerCase("cs");
 
   return vsechnyPrihlasky.filter((p) => {
     if (stav !== "vse" && p.stav !== stav) return false;
+    if (mapa !== "vse" && p.schvaleno !== mapa) return false;
     if (!hledane) return true;
 
     const vsechnaPole = [
@@ -169,6 +198,203 @@ function bunkaSeStavem(prihlaska: Prihlaska): HTMLTableCellElement {
   return td;
 }
 
+// ---------------------------------------------------------------------------
+// SCHVÁLENÍ NA VEŘEJNOU MAPKU
+// ---------------------------------------------------------------------------
+// Pozor: tohle je něco jiného než stav platby. Rozhoduje se tu, jestli akci
+// uvidí na mapce na webu kdokoli na světě. Proto je u tlačítek napsáno
+// „na mapu", ne jen „schválit".
+
+/** Odpověď funkce na schválení i na nové hledání souřadnic. */
+interface OdpovedSchvaleni {
+  schvaleno?: string;
+  lat: number | null;
+  lng: number | null;
+  souradnice_stav: string;
+  souradnice_duvod: string | null;
+}
+
+/**
+ * Řádek se souřadnicemi.
+ *
+ * Musí být na první pohled poznat, jestli akce na mapce opravdu je. Schválená
+ * akce bez souřadnic totiž vypadá jako hotová věc, ale na mapce není —
+ * a to by se Hana jinak nedozvěděla.
+ */
+function vykresliSouradnice(
+  misto: HTMLElement,
+  prihlaska: Prihlaska,
+  znovu: () => void,
+): void {
+  misto.textContent = "";
+
+  // U nezveřejněných akcí se souřadnice neřeší, jen by pletly.
+  if (prihlaska.schvaleno !== "schvaleno") return;
+
+  const radek = document.createElement("p");
+  radek.className = "admin-souradnice mt-2";
+
+  if (prihlaska.lat !== null && prihlaska.lng !== null) {
+    radek.dataset.stav = "nalezeno";
+    radek.textContent = `Na mapce: ano, u města ${prihlaska.mesto}.`;
+    misto.append(radek);
+    return;
+  }
+
+  // Souřadnice nejsou. Akce je schválená, ale na mapce ji nikdo neuvidí —
+  // musí být napsané slovy, proč, a co s tím jde dělat.
+  radek.dataset.stav = "chybi";
+
+  const znacka = document.createElement("span");
+  znacka.setAttribute("aria-hidden", "true");
+  znacka.className = "admin-znacka";
+  znacka.textContent = "!";
+
+  const veta = document.createElement("span");
+  veta.textContent =
+    prihlaska.souradnice_duvod ??
+    "Souřadnice města zatím nejsou dohledané, takže akce na mapce není.";
+
+  const tlacitko = document.createElement("button");
+  tlacitko.type = "button";
+  tlacitko.className = "admin-znovu";
+  tlacitko.textContent = "Dohledat souřadnice";
+  tlacitko.addEventListener("click", znovu);
+
+  radek.append(znacka, veta, tlacitko);
+  misto.append(radek);
+}
+
+/** Buňka „Na mapce" — rozhodnutí, tlačítka a informace o souřadnicích. */
+function bunkaSMapou(prihlaska: Prihlaska): HTMLTableCellElement {
+  const td = document.createElement("td");
+  td.className = "px-3 py-3 align-top";
+
+  const popis = document.createElement("p");
+  popis.className = "admin-schvaleni";
+
+  const tlacitka = document.createElement("div");
+  tlacitka.className = "mt-2 flex flex-wrap gap-2";
+
+  const hlaska = document.createElement("p");
+  hlaska.className = "admin-hlaska mt-2";
+
+  const souradnice = document.createElement("div");
+
+  /** Nové hledání souřadnic u už schválené akce. */
+  const dohledej = async (): Promise<void> => {
+    const vysledek = await sHlasenim(
+      hlaska,
+      {
+        probiha: "Hledám souřadnice města v mapě OpenStreetMap…",
+        hotovo: "Hledání dokončeno.",
+      },
+      () =>
+        zavolej<OdpovedSchvaleni>("dohledej-souradnice", { id: prihlaska.id }),
+      { zopakovat: () => void dohledej() },
+    );
+
+    if (!vysledek) return;
+
+    prihlaska.lat = vysledek.lat;
+    prihlaska.lng = vysledek.lng;
+    prihlaska.souradnice_stav = vysledek.souradnice_stav;
+    prihlaska.souradnice_duvod = vysledek.souradnice_duvod;
+
+    // Hledání sice proběhlo, ale nemuselo najít. Hláška musí říct, jak to
+    // dopadlo — „hotovo" u nenalezeného města by bylo zavádějící.
+    if (vysledek.lat !== null) {
+      ukazStav(hlaska, "hotovo", `Souřadnice města ${prihlaska.mesto} jsou dohledané.`);
+      window.setTimeout(() => ukazStav(hlaska, "nic"), 4000);
+    } else {
+      ukazStav(
+        hlaska,
+        "chyba",
+        vysledek.souradnice_duvod ?? "Souřadnice se nepodařilo dohledat.",
+        { popis: "Zkusit znovu", spust: () => void dohledej() },
+      );
+    }
+
+    vykresliSouradnice(souradnice, prihlaska, () => void dohledej());
+  };
+
+  /** Uloží rozhodnutí a překreslí buňku. */
+  const rozhodni = async (nove: string): Promise<void> => {
+    const vysledek = await sHlasenim(
+      hlaska,
+      {
+        probiha:
+          nove === "schvaleno"
+            ? "Schvaluji a hledám souřadnice města…"
+            : "Ukládám rozhodnutí…",
+        hotovo: "Uloženo.",
+      },
+      () =>
+        zavolej<OdpovedSchvaleni>("schval", {
+          id: prihlaska.id,
+          rozhodnuti: nove,
+        }),
+      { zopakovat: () => void rozhodni(nove) },
+    );
+
+    if (!vysledek) return;
+
+    prihlaska.schvaleno = nove;
+    prihlaska.lat = vysledek.lat;
+    prihlaska.lng = vysledek.lng;
+    prihlaska.souradnice_stav = vysledek.souradnice_stav;
+    prihlaska.souradnice_duvod = vysledek.souradnice_duvod;
+
+    // Schválení PLATÍ i tehdy, když se souřadnice nenašly. Je ale potřeba to
+    // říct rovnou, jinak by se Hana marně divila, proč akce na mapce není.
+    if (nove === "schvaleno" && vysledek.lat === null) {
+      ukazStav(
+        hlaska,
+        "chyba",
+        `Schváleno, ale na mapce akce zatím není. ${vysledek.souradnice_duvod ?? "Souřadnice města se nepodařilo dohledat."}`,
+        { popis: "Dohledat znovu", spust: () => void dohledej() },
+      );
+    } else {
+      ukazStav(hlaska, "hotovo", `Uloženo: ${NAZVY_SCHVALENI[nove] ?? nove}.`);
+      window.setTimeout(() => ukazStav(hlaska, "nic"), 4000);
+    }
+
+    prekresli();
+  };
+
+  /** Popisek stavu a sada tlačítek podle toho, kde přihláška zrovna je. */
+  function prekresli(): void {
+    popis.dataset.stav = prihlaska.schvaleno;
+    popis.textContent =
+      NAZVY_SCHVALENI[prihlaska.schvaleno] ?? prihlaska.schvaleno;
+
+    tlacitka.textContent = "";
+
+    // Nabízejí se všechna rozhodnutí kromě toho, které zrovna platí.
+    // Díky tomu jde zamítnutí i schválení kdykoli vzít zpět.
+    for (const volba of ["schvaleno", "zamitnuto", "ceka"]) {
+      if (volba === prihlaska.schvaleno) continue;
+
+      const tlacitko = document.createElement("button");
+      tlacitko.type = "button";
+      tlacitko.className = "admin-znovu";
+      tlacitko.textContent = TLACITKA_SCHVALENI[volba];
+      tlacitko.setAttribute(
+        "aria-label",
+        `${TLACITKA_SCHVALENI[volba]} — ${prihlaska.nazev_poradatele}, ${prihlaska.mesto}`,
+      );
+      tlacitko.addEventListener("click", () => void rozhodni(volba));
+      tlacitka.append(tlacitko);
+    }
+
+    vykresliSouradnice(souradnice, prihlaska, () => void dohledej());
+  }
+
+  prekresli();
+  td.append(popis, tlacitka, hlaska, souradnice);
+  return td;
+}
+
 function vykresliTabulku(): void {
   const telo = prvek<HTMLTableSectionElement>("telo-prihlasek");
   const pocet = prvek<HTMLElement>("pocet-prihlasek");
@@ -191,12 +417,12 @@ function vykresliTabulku(): void {
   if (radky.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 10;
+    td.colSpan = 11;
     td.className = "px-3 py-8 text-center";
     td.textContent =
       vsechnyPrihlasky.length === 0
         ? "Zatím tu nic není. Jakmile se někdo přihlásí, objeví se tady."
-        : "Žádná přihláška neodpovídá zadanému hledání ani zvolenému stavu.";
+        : "Žádná přihláška neodpovídá zadanému hledání ani zvoleným filtrům.";
     tr.append(td);
     telo.append(tr);
     return;
@@ -239,6 +465,7 @@ function vykresliTabulku(): void {
       bunka(NAZVY_PLATEB[prihlaska.forma_platby] ?? prihlaska.forma_platby),
       bunka(String(prihlaska.variabilni_symbol), "whitespace-nowrap"),
       bunkaSeStavem(prihlaska),
+      bunkaSMapou(prihlaska),
     );
 
     telo.append(tr);
@@ -278,6 +505,8 @@ function sestavCsv(radky: Prihlaska[]): string {
     "Stav",
     "Číslo faktury",
     "Nápad na aktivitu",
+    "Na mapce",
+    "Souřadnice dohledané",
   ];
 
   const uvozovky = (hodnota: string | number | null): string => {
@@ -305,6 +534,8 @@ function sestavCsv(radky: Prihlaska[]): string {
         NAZVY_STAVU[p.stav] ?? p.stav,
         p.faktura_cislo,
         p.napad_na_aktivitu,
+        NAZVY_SCHVALENI[p.schvaleno] ?? p.schvaleno,
+        p.lat !== null && p.lng !== null ? "ano" : "ne",
       ]
         .map(uvozovky)
         .join(";"),
@@ -369,6 +600,7 @@ export async function nactiPrihlasky(): Promise<void> {
 /** Napojí ovladače nad tabulkou. Volá se jednou po přihlášení. */
 export function pripravPrihlasky(): void {
   prvek<HTMLSelectElement>("filtr-stav")?.addEventListener("change", vykresliTabulku);
+  prvek<HTMLSelectElement>("filtr-mapa")?.addEventListener("change", vykresliTabulku);
   prvek<HTMLInputElement>("filtr-hledani")?.addEventListener("input", vykresliTabulku);
   prvek<HTMLButtonElement>("tlacitko-nacist-prihlasky")?.addEventListener("click", () => {
     void nactiPrihlasky();

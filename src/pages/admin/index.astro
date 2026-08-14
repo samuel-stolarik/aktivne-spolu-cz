@@ -151,9 +151,12 @@ import "../../styles/global.css";
         {/* --- Přihlášky ------------------------------------------------- */}
         <section data-panel="prihlasky" class="pt-6" hidden>
           <h2 class="mt-0 text-xl">Kdo se přihlásil</h2>
-          <p class="text-popisek">
-            Nejnovější přihlášky jsou nahoře. Stav můžete kdykoli změnit
-            v posledním sloupci — uloží se sám.
+          <p class="max-w-[860px] text-popisek">
+            Nejnovější přihlášky jsou nahoře. Ve sloupci <strong>Stav</strong>
+            se eviduje platba a uloží se sama. Ve sloupci
+            <strong>Na mapce</strong> rozhodujete o něčem jiném — jestli akci
+            uvidí návštěvníci webu na veřejné mapce. Zaplacená přihláška se
+            na mapku sama nedostane a schválená akce nemusí být zaplacená.
           </p>
 
           <div class="mt-5 flex flex-wrap items-end gap-4">
@@ -164,6 +167,16 @@ import "../../styles/global.css";
                 <option value="nova">Jen nové</option>
                 <option value="zaplaceno">Jen zaplacené</option>
                 <option value="zruseno">Jen zrušené</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="admin-popisek" for="filtr-mapa">Zobrazit podle mapky</label>
+              <select id="filtr-mapa" class="admin-pole w-[220px]">
+                <option value="vse">Bez ohledu na mapku</option>
+                <option value="ceka">Jen čekající na rozhodnutí</option>
+                <option value="schvaleno">Jen zveřejněné na mapce</option>
+                <option value="zamitnuto">Jen nezveřejněné</option>
               </select>
             </div>
 
@@ -199,7 +212,8 @@ import "../../styles/global.css";
                   <th class="px-3 py-3 font-semibold">Kraj</th>
                   <th class="px-3 py-3 font-semibold">Platba</th>
                   <th class="px-3 py-3 font-semibold">Variabilní symbol</th>
-                  <th class="px-3 py-3 font-semibold">Stav</th>
+                  <th class="px-3 py-3 font-semibold">Stav platby</th>
+                  <th class="px-3 py-3 font-semibold">Na mapce</th>
                 </tr>
               </thead>
               <tbody id="telo-prihlasek"></tbody>
@@ -466,6 +480,63 @@ import "../../styles/global.css";
       }
 
       .admin-hlaska[data-stav="chyba"] .admin-znacka {
+        background-color: var(--color-chyba);
+        color: #fff;
+      }
+
+      /* --- Schválení na veřejnou mapku ------------------------------------
+         Stav se pozná ze SLOV, barva je jen doplněk. Zveřejněná akce je vidět
+         i na černobílém výtisku a člověku s poruchou barvocitu. */
+      .admin-schvaleni {
+        margin: 0;
+        font-size: var(--text-popisek);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .admin-schvaleni[data-stav="ceka"] {
+        color: var(--color-text);
+      }
+
+      .admin-schvaleni[data-stav="schvaleno"] {
+        color: var(--color-potvrzeni);
+      }
+
+      .admin-schvaleni[data-stav="zamitnuto"] {
+        color: var(--color-text);
+        opacity: 0.75;
+      }
+
+      /* Buňka „Na mapce" má tři vrstvy pod sebou (stav, tlačítka, souřadnice),
+         proto potřebuje víc místa než ostatní sloupce. */
+      .admin-schvaleni,
+      .admin-souradnice {
+        min-width: 15rem;
+      }
+
+      /* --- Informace o souřadnicích ---------------------------------------
+         Schválená akce BEZ souřadnic na mapce není. Musí to být vidět
+         na první pohled, jinak to vypadá jako hotová věc. */
+      .admin-souradnice {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+        font-size: var(--text-popisek);
+        line-height: 1.5;
+      }
+
+      .admin-souradnice[data-stav="nalezeno"] {
+        color: var(--color-potvrzeni);
+      }
+
+      .admin-souradnice[data-stav="chybi"] {
+        color: var(--color-chyba);
+        font-weight: 600;
+      }
+
+      .admin-souradnice[data-stav="chybi"] .admin-znacka {
         background-color: var(--color-chyba);
         color: #fff;
       }
