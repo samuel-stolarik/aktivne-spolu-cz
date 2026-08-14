@@ -221,5 +221,11 @@ Deno.serve(async (req) => {
   // Pět minut v mezipaměti. Schválení se dějí po jednom a ručně, takže
   // pětiminutové zpoždění nikomu nevadí, a mapka se za to načte okamžitě
   // i při náporu návštěvníků.
-  return odpoved({ akce, pocet: akce.length }, 200, 300);
+  // Bez ukládání do mezipaměti. Pětiminutová mezipaměť tu byla, ale dělala
+  // víc škody než užitku: kdo si stránku otevřel dřív, než byla schválená
+  // první akce, viděl pak dalších pět minut prázdnou mapu — i po obnovení
+  // stránky. A schválení v administraci se na mapě projevilo se zpožděním,
+  // takže to vypadalo, že schvalování nefunguje.
+  // Odpověď je malá a dotazů je málo, takže se tím nic nezdrží.
+  return odpoved({ akce, pocet: akce.length }, 200, 0);
 });
