@@ -565,92 +565,94 @@
 }
 
 /* ==========================================================================
-   Přišpendlené kroky realizace
+   Kroky realizace — spojnice kreslená scrollem
    ==========================================================================
-   Sekce se při scrollu zastaví na místě a kroky se v ní přepínají. Není to
-   zabavený scroll — stránka jede pořád stejnou rychlostí, jen je po dobu
-   průjezdu vidět tatáž sekce.
+   Všechny čtyři kroky jsou vidět naráz, aby bylo hned poznat, že jsou jen
+   čtyři. Postup ukazuje čára, která se kreslí shora dolů a vede přímo
+   středem koleček — ne ozdobná křivka vedle nich.
 
-   Celý efekt visí na třídě `pohyb-ano`. Když návštěvník pohyb zakáže nebo
-   nejede JavaScript, dráha nedostane výšku, přišpendlení se nezapne a kroky
-   se vypíšou jako obyčejný seznam pod sebou. Nic se neschová.
+   Poloha čáry je svázaná se šířkou kolečka (3.5rem), takže když se kolečko
+   zvětší, čára zůstane v jeho ose.
    ========================================================================== */
 
-.kroky-seznam > .krok + .krok {
-  margin-top: 5rem;
+#kroky-seznam > .krok + .krok {
+  margin-top: 4.5rem;
 }
 
-.pohyb-ano .kroky-draha {
-  /* Jedna obrazovka na krok, plus jedna navíc, aby byl poslední krok
-     chvíli vidět celý, než sekce odjede. */
-  height: calc((var(--pocet-kroku, 4) + 1) * 100vh);
+.spojnice-drazka,
+.spojnice-dojeta {
+  position: absolute;
+  /* Střed kolečka: polovina jeho šířky, minus polovina tloušťky čáry. */
+  left: calc(1.75rem - 2px);
+  width: 4px;
+  border-radius: 999px;
+  /* Od středu prvního kolečka po střed posledního. */
+  top: 1.75rem;
+  bottom: 1.75rem;
 }
 
-.pohyb-ano .kroky-pripnute {
-  position: sticky;
-  top: 0;
-  display: flex;
-  min-height: 100vh;
-  align-items: center;
-  padding-block: 3rem;
+.spojnice-drazka {
+  background-color: var(--color-merunka-tlumena);
+  opacity: 0.55;
 }
 
-/* Ve přišpendleném režimu leží kroky přes sebe a přepínají se. */
-.pohyb-ano .kroky-seznam {
-  display: grid;
-}
-
-.pohyb-ano .kroky-seznam > .krok {
-  grid-area: 1 / 1;
-  margin-top: 0;
-  opacity: 0;
-  transform: translate3d(0, 24px, 0);
-  transition:
-    opacity 420ms var(--krivka),
-    transform 420ms var(--krivka);
-  pointer-events: none;
-}
-
-.pohyb-ano .kroky-seznam > .krok.je-na-rade {
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
-}
-
-/* Krok, který už byl, odchází nahoru — ne dolů, odkud přišel ten další. */
-.pohyb-ano .kroky-seznam > .krok.uz-bylo {
-  transform: translate3d(0, -24px, 0);
-}
-
-.carka-kroku {
-  transition: background-color 320ms var(--krivka);
-}
-
-.carka-kroku.dojeta {
+.spojnice-dojeta {
   background-color: var(--color-merunka);
+  transform-origin: top center;
+  transform: scaleY(var(--dojeto, 0));
+  transition: transform 120ms linear;
+}
+
+/* Kolečko je do příchodu čáry tlumené, pak se rozsvítí. */
+.kolecko-kroku {
+  background-color: var(--color-merunka-tlumena);
+  color: var(--color-text);
+  transition:
+    background-color 300ms var(--krivka),
+    transform 300ms var(--krivka),
+    box-shadow 300ms var(--krivka);
+}
+
+.kolecko-kroku.dosazeno {
+  background-color: var(--color-merunka);
+  box-shadow: 0 8px 20px -8px rgba(69, 68, 63, 0.45);
+}
+
+.krok.je-na-rade .kolecko-kroku {
+  transform: scale(1.12);
+}
+
+/* Velká čísla v pozadí. Zvýrazní se to, u kterého právě jsi. */
+.cislo-pozadi {
+  font-size: clamp(6rem, 11vw, 11rem);
+  font-weight: 600;
+  line-height: 0.85;
+  color: var(--color-merunka-tlumena);
+  opacity: 0.35;
+  transition:
+    opacity 320ms var(--krivka),
+    color 320ms var(--krivka);
+  user-select: none;
+}
+
+.cislo-pozadi.je-na-rade {
+  color: var(--color-merunka);
+  opacity: 0.75;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kroky-draha {
-    height: auto !important;
-  }
-
-  .kroky-pripnute {
-    position: static !important;
-    min-height: 0 !important;
-  }
-
-  .kroky-seznam {
-    display: block !important;
-  }
-
-  .kroky-seznam > .krok {
-    opacity: 1 !important;
+  /* Čára je rovnou celá, kolečka rozsvícená. Nic se nekreslí ani neroste. */
+  .spojnice-dojeta {
     transform: none !important;
-    pointer-events: auto !important;
+    transition: none !important;
   }
 
-  .kroky-seznam > .krok + .krok {
-    margin-top: 5rem;
+  .kolecko-kroku {
+    background-color: var(--color-merunka) !important;
+    transform: none !important;
+  }
+
+  .cislo-pozadi {
+    opacity: 0.35 !important;
   }
 }

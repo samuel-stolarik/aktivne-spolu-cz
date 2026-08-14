@@ -385,74 +385,64 @@ const podpora = [
       Nejde o zabavený scroll: kolečkem se pořád posouvá stránka běžnou
       rychlostí, jen je v tu chvíli vidět pořád ta samá sekce. Kdo scrolluje
       dál, projede jí a pokračuje — nic ho nezdrží ani nevrátí zpátky. */}
-  <section id="jak-to-funguje" class="relative bg-plocha-tyrkys">
-    {/* Dráha je vysoká čtyři obrazovky — po jedné na každý krok. Výšku
-        dostane jen když je pohyb povolený; jinak se sekce chová jako
-        obyčejný seznam pod sebou. */}
-    <div class="kroky-draha" data-kroku={kroky.length}>
-      <div class="kroky-pripnute px-5">
-        <div class="mx-auto w-full max-w-obsah">
-          <div class="grid gap-10 lg:grid-cols-[280px_1fr] lg:items-center">
-            <div>
-              <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
-                4 jednoduché kroky k realizaci
-              </h2>
-              <span class="podtrzeni"></span>
+  {/* ================= JAK TO FUNGUJE =================
+      ANIMACE 1: spojnice se kreslí shora dolů podle toho, jak daleko jsi
+                 sekcí projel — vede přímo skrz kolečka kroků.
+      ANIMACE 2: kolečko kroku, ke kterému čára došla, se rozsvítí a zvětší.
+      ANIMACE 3: velká čísla v pozadí se s krokem prostřídají.
 
-              {/* Číslo je ozdoba, ne informace — pořadí kroku je vedle něj
-                  v kolečku i v textu. Proto ho čtečka obrazovky přeskočí. */}
+      Přišpendlení sem nepatří: zadavatel chce vidět všechny čtyři kroky
+      naráz, aby bylo hned poznat, že jsou jen čtyři a jsou zvládnutelné.
+      Postup se ukazuje čárou, ne přepínáním obsahu. */}
+  <section id="jak-to-funguje" class="relative overflow-hidden bg-plocha-tyrkys px-5 py-20">
+    {/* Velká čísla v pozadí. Jsou ozdoba, ne informace — pořadí kroku je
+        v kolečku vedle textu, tak je čtečka obrazovky přeskočí. */}
+    <div
+      class="cisla-v-pozadi pointer-events-none absolute top-0 right-0 hidden h-full flex-col justify-around pr-6 lg:flex"
+      aria-hidden="true"
+    >
+      {
+        kroky.map((_, i) => (
+          <span class="cislo-pozadi" data-cislo-pozadi={i + 1}>
+            {i + 1}
+          </span>
+        ))
+      }
+    </div>
+
+    <div class="relative mx-auto max-w-obsah">
+      <h2 class="text-[clamp(1.75rem,3.5vw,2.75rem)]" data-slova>
+        4 jednoduché kroky k realizaci
+      </h2>
+      <span class="podtrzeni"></span>
+
+      <ol id="kroky-seznam" class="relative m-0 mt-14 list-none p-0">
+        {/* Spojnice vede středem koleček. Šedá je celá dráha, meruňková
+            část ukazuje, kam jsi došel. */}
+        <span class="spojnice-drazka" aria-hidden="true"></span>
+        <span class="spojnice-dojeta" id="spojnice-dojeta" aria-hidden="true"></span>
+
+        {
+          kroky.map((krok, i) => (
+            <li
+              class="krok relative flex items-start gap-6 sm:gap-10"
+              data-poradi-kroku={i + 1}
+            >
               <span
-                class="cislo-kroku mt-8 hidden lg:block"
-                id="cislo-kroku"
+                class="kolecko-kroku relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-2xl font-semibold"
                 aria-hidden="true"
               >
-                1
+                {i + 1}
               </span>
 
-              {/* Ukazatel postupu — čtyři čárky, dojetá je meruňková. */}
-              <div
-                class="mt-8 flex gap-2"
-                id="postup-kroku"
-                role="status"
-                aria-live="polite"
-              >
-                {
-                  kroky.map((_, i) => (
-                    <span
-                      class="carka-kroku h-1.5 flex-1 rounded-full bg-merunka-tlumena"
-                      data-carka={i + 1}
-                    />
-                  ))
-                }
+              <div class="min-w-0 flex-1 pt-2">
+                <h3 class="text-2xl sm:text-3xl">{krok.nadpis}</h3>
+                <p class="mt-3 mb-0 max-w-[600px] text-lg">{krok.text}</p>
               </div>
-              <p class="sr-only" id="postup-slovy">Krok 1 ze {kroky.length}</p>
-            </div>
-
-            <ol class="kroky-seznam relative m-0 list-none p-0">
-              {
-                kroky.map((krok, i) => (
-                  <li
-                    class="krok flex items-start gap-6 sm:gap-10"
-                    data-poradi-kroku={i + 1}
-                  >
-                    <span
-                      class="kolecko-kroku z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-merunka text-2xl font-semibold text-text shadow-lg"
-                      aria-hidden="true"
-                    >
-                      {i + 1}
-                    </span>
-
-                    <div class="min-w-0 flex-1">
-                      <h3 class="text-2xl sm:text-3xl">{krok.nadpis}</h3>
-                      <p class="mt-3 mb-0 max-w-[600px] text-lg">{krok.text}</p>
-                    </div>
-                  </li>
-                ))
-              }
-            </ol>
-          </div>
-        </div>
-      </div>
+            </li>
+          ))
+        }
+      </ol>
     </div>
   </section>
 
@@ -1171,76 +1161,57 @@ const podpora = [
     prekresli();
 
     // ------------------------------------------------------------------
-    // JAK TO FUNGUJE, ANIMACE 1–3 — přišpendlená sekce a přepínání kroků
+    // JAK TO FUNGUJE, ANIMACE 1–3 — spojnice kreslená scrollem
     // ------------------------------------------------------------------
-    // Sekce je vysoká několik obrazovek a uvnitř je přišpendlený obsah.
-    // Podle toho, jak daleko jsme dráhou projeli, se přepne krok: text se
-    // vymění, velké číslo překlopí a ukazatel postupu dojede.
-    //
-    // Scroll se nikde nezabavuje ani nepřepočítává — stránka jede pořád
-    // svou rychlostí. Jen je po dobu průjezdu vidět stejná sekce.
-    (function pripnuteKroky() {
-      const draha = document.querySelector<HTMLElement>(".kroky-draha");
+    // Čára vede středem koleček a roste shora dolů podle toho, kde jsi.
+    // Kolečko, ke kterému došla, se rozsvítí; velké číslo v pozadí se
+    // zvýrazní. Všechny kroky přitom zůstávají vidět.
+    (function kresleniSpojnice() {
+      const seznam = document.querySelector<HTMLElement>("#kroky-seznam");
+      const dojeta = document.querySelector<HTMLElement>("#spojnice-dojeta");
       const kroky = Array.from(document.querySelectorAll<HTMLElement>(".krok"));
-      const cislo = document.querySelector<HTMLElement>("#cislo-kroku");
-      const carky = Array.from(
-        document.querySelectorAll<HTMLElement>(".carka-kroku"),
+      const cisla = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-cislo-pozadi]"),
       );
-      const slovy = document.querySelector<HTMLElement>("#postup-slovy");
-      if (!draha || kroky.length === 0) return;
+      if (!seznam || !dojeta || kroky.length === 0) return;
 
-      // Výška dráhy: jedna obrazovka na krok. Kdyby se počet kroků změnil,
-      // sekce se přizpůsobí sama.
-      draha.style.setProperty("--pocet-kroku", String(kroky.length));
+      function prekresliSpojnici() {
+        const r = seznam!.getBoundingClientRect();
 
-      let aktivni = -1;
+        // Čára dojíždí k pomyslné rysce v dolní třetině obrazovky. Kdyby
+        // byla u spodního okraje, čára by předbíhala to, co člověk čte.
+        const ryska = window.innerHeight * 0.65;
+        const podil = (ryska - r.top) / r.height;
+        const dojeto = Math.max(0, Math.min(1, podil));
+        dojeta!.style.setProperty("--dojeto", String(dojeto));
 
-      function nastav(index: number) {
-        if (index === aktivni) return;
-        aktivni = index;
+        // Kolečko se rozsvítí, jakmile ho čára minula.
+        const rysovanaY = r.top + r.height * dojeto;
+        let naRade = 0;
 
         kroky.forEach((krok, i) => {
-          krok.classList.toggle("je-na-rade", i === index);
-          krok.classList.toggle("uz-bylo", i < index);
+          const k = krok.getBoundingClientRect();
+          const stredKolecka = k.top + 28; // polovina výšky kolečka
+          const dosazeno = stredKolecka <= rysovanaY + 4;
+
+          krok.querySelector(".kolecko-kroku")?.classList.toggle(
+            "dosazeno",
+            dosazeno,
+          );
+          if (dosazeno) naRade = i;
         });
 
-        carky.forEach((carka, i) => {
-          carka.classList.toggle("dojeta", i <= index);
-        });
-
-        if (slovy) {
-          slovy.textContent = `Krok ${index + 1} z ${kroky.length}`;
-        }
-
-        if (cislo) {
-          // Překlopení: staré číslo odejde nahoru, nové přijde zdola.
-          cislo.classList.add("prekloplo");
-          window.setTimeout(() => {
-            cislo.textContent = String(index + 1);
-            cislo.classList.remove("prekloplo");
-          }, 200);
-        }
-      }
-
-      function prekresliKroky() {
-        const r = draha!.getBoundingClientRect();
-        // Kolik dráhy je za námi. Poslední obrazovka dráhy je doběh, aby
-        // byl čtvrtý krok chvíli vidět celý, než sekce odjede.
-        const ujeto = -r.top;
-        const uzitecna = r.height - window.innerHeight;
-        const podil = uzitecna > 0 ? ujeto / uzitecna : 0;
-
-        const index = Math.min(
-          kroky.length - 1,
-          Math.max(0, Math.floor(podil * kroky.length)),
+        kroky.forEach((krok, i) =>
+          krok.classList.toggle("je-na-rade", i === naRade),
         );
-        nastav(index);
+        cisla.forEach((cislo, i) =>
+          cislo.classList.toggle("je-na-rade", i === naRade),
+        );
       }
 
-      nastav(0);
-      prekresliKroky();
-      window.addEventListener("scroll", prekresliKroky, { passive: true });
-      window.addEventListener("resize", prekresliKroky, { passive: true });
+      prekresliSpojnici();
+      window.addEventListener("scroll", prekresliSpojnici, { passive: true });
+      window.addEventListener("resize", prekresliSpojnici, { passive: true });
     })();
 
     // ------------------------------------------------------------------
