@@ -253,45 +253,9 @@
 /* ==========================================================================
    8. JAK TO FUNGUJE
    ==========================================================================
-   ANIMACE 1 — svislá čára cesty se vykresluje podle toho, jak daleko je
-              návštěvník odscrollovaný. Není to smyčka: kreslí se dopředu
-              i zpět podle scrollu, takže je pořád vidět, kde v postupu je.
-   ANIMACE 2 — levý sloupec se přišpendlí a velké číslo v něm se překlápí
-              podle toho, který krok je zrovna na obrazovce.
-   ANIMACE 3 — kolečko kroku, který je právě na řadě, se lehce zvětší. */
-
-.pohyb-ano .cesta {
-  stroke-dasharray: var(--delka-cesty);
-  stroke-dashoffset: var(--delka-cesty);
-}
-
-/* Velké číslo v přišpendleném sloupci. Při změně se překlopí:
-   staré odejde nahoru, nové přijde zdola. */
-/* Pozor: `display` se tu záměrně nenastavuje. Řídí ho třídy `hidden lg:block`
-   v šabloně a pravidlo odsud by je přebilo — utility z Tailwindu jsou
-   ve vrstvě (@layer), takže prohrávají s každým pravidlem mimo ni. */
-.cislo-kroku {
-  font-size: clamp(5rem, 12vw, 9rem);
-  font-weight: 600;
-  line-height: 0.9;
-  color: var(--color-merunka);
-  transition:
-    transform 300ms var(--krivka),
-    opacity 300ms var(--krivka);
-}
-
-.cislo-kroku.prekloplo {
-  opacity: 0;
-  transform: translate3d(0, -18px, 0);
-}
-
-.kolecko-kroku {
-  transition: transform 300ms var(--krivka);
-}
-
-.krok.je-na-rade .kolecko-kroku {
-  transform: scale(1.14);
-}
+   Celá sekce je popsaná v bloku „Kroky realizace" na konci souboru. Držíme
+   ji pohromadě proto, že poloha spojnice je odvozená od šířky kolečka —
+   kdyby to bylo na dvou místech, rozejde se to při první úpravě rozměru. */
 
 /* ==========================================================================
    9. TIPY NA AKTIVITY
@@ -299,7 +263,14 @@
    ANIMACE 1 — řádka s nápady jede plynule do strany. Po najetí myší se
               zastaví, aby se dala přečíst.
    ANIMACE 2 — položky legendy naskakují po sobě zleva.
-   ANIMACE 3 — ozdobná skvrna v pozadí pomalu „dýchá". */
+   ANIMACE 3 — ozdobná skvrna v pozadí pomalu „dýchá".
+
+   K DOŘEŠENÍ: řádka se dá zastavit jedině myší. Na telefonu a z klávesnice
+   ne — chybí viditelné tlačítko „zastavit". Pro publikum, kde je hodně
+   seniorů, je jedoucí text bez možnosti zastavení nepříjemný. Přidání
+   ovládacího prvku je ale zásah do vzhledu, tak čeká na zadavatele.
+   Při vypnutém pohybu se řádka mění na obyčejný výpis (viz blok níž),
+   takže tam je obsah dostupný v klidu. */
 
 .pas {
   display: flex;
@@ -310,8 +281,11 @@
   animation: pas-jede var(--doba-pasu, 46s) linear infinite;
 }
 
-/* Zastavení na hover i na klávesnicový focus — kdo se pohybuje tabulátorem,
-   má stejnou možnost si řádku zastavit jako ten, kdo najede myší. */
+/* Zastavení najetím myší, aby se řádka dala přečíst.
+   `:focus-within` je tu jako pojistka pro případ, že by v řádce někdy byly
+   odkazy — dnes jsou v ní jen popisky, na které se nedá zaostřit.
+   POZOR: kdo nemá myš (dotyk, klávesnice), řádku zastavit neumí. Chybí
+   viditelné tlačítko „zastavit" — viz poznámka v hlavičce sekce. */
 .pas-obal:hover .pas,
 .pas-obal:focus-within .pas {
   animation-play-state: paused;
@@ -415,7 +389,15 @@
 }
 
 /* Kruh, který se rozbíhá pod špendlíky. Běží jen chvíli, ne donekonečna —
-   trvale pulzující prvek u mapy odvádí pozornost od dat na ní. */
+   trvale pulzující prvek u mapy odvádí pozornost od dat na ní.
+
+   Klidová průhlednost je nula: kruh má být vidět POUZE po dobu rozbíhání.
+   Bez toho by pod prostředním špendlíkem visel meruňkový kroužek napořád —
+   před rozběhem i po doběhu, protože animace se na konci vrací do klidu. */
+.vlna {
+  opacity: 0;
+}
+
 .pohyb-ano .vlna.je-videt {
   animation: vlna-se-rozbiha 2.4s ease-out 3;
 }
@@ -518,8 +500,7 @@
   .pismeno,
   .slovo,
   .spendlik,
-  .kruh-za-castkou,
-  .duvod {
+  .kruh-za-castkou {
     opacity: 1 !important;
     transform: none !important;
   }
@@ -532,9 +513,11 @@
   .sleduje-mys,
   .naklon,
   .magnet,
-  .cislo-kroku,
   .kolecko-kroku {
     transform: none !important;
+    /* Bez pohybu není co chystat dopředu. `will-change` si jinak drží
+       vlastní vrstvu v paměti grafické karty úplně zbytečně. */
+    will-change: auto !important;
   }
 
   /* Ilustrace je od začátku hotová, nic se nemaluje. */
@@ -543,14 +526,25 @@
     stroke-dashoffset: 0 !important;
   }
 
-  .cesta {
-    stroke-dasharray: none !important;
-    stroke-dashoffset: 0 !important;
+  /* Řádka s nápady se nikam nesune, takže by z jedenácti nápadů zůstaly
+     vidět jen ty první dva a zbytek by nešlo nijak zobrazit — obal je
+     oříznutý a nedá se v něm posouvat. Bez pohybu proto z řádky uděláme
+     obyčejný zalomený výpis a zdvojenou (kulisovou) sadu schováme. */
+  .pas-obal {
+    overflow: visible !important;
   }
 
-  /* Řádka s nápady stojí. Zůstane čitelná v základní poloze. */
   .pas {
+    width: auto !important;
+    flex-wrap: wrap;
+    max-width: var(--spacing-obsah);
+    margin-inline: auto;
+    padding-inline: 1.25rem;
     transform: none !important;
+  }
+
+  .kopie-pasu {
+    display: none !important;
   }
 
   /* Balíček karet zůstane rozevřený, jen se nikam nepřeklápí. */

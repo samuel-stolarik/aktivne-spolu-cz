@@ -242,8 +242,11 @@ const podpora = [
       </div>
     </div>
 
+    {/* `grid-cols-1` (tedy `minmax(0, 1fr)`) je tu schválně: bez něj by
+        automatický sloupec převzal pevnou šířku ilustrace (340 px) a na
+        úzkém telefonu by se nadpis i odstavec roztáhly mimo obrazovku. */}
     <div
-      class="relative z-10 mx-auto grid max-w-obsah gap-10 lg:grid-cols-[1fr_auto] lg:items-center"
+      class="relative z-10 mx-auto grid max-w-obsah grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
     >
       <div>
         <h1 class="text-[clamp(2.5rem,6vw,4.75rem)] leading-[1.05] tracking-tight">
@@ -271,7 +274,14 @@ const podpora = [
         data-paralax="-0.16"
       >
         <div class="sleduje-mys text-tyrkys" data-mys="10">
-          <Ilustrace jmeno="senior-s-kytici" sirka={340} kresliSe />
+          {/* `max-w-full` — na obrazovce užší než 340 px se ilustrace zmenší,
+              místo aby přečnívala. */}
+          <Ilustrace
+            jmeno="senior-s-kytici"
+            sirka={340}
+            kresliSe
+            trida="h-auto max-w-full"
+          />
         </div>
       </div>
     </div>
@@ -368,32 +378,16 @@ const podpora = [
   {/* ======================================================================
       JAK TO FUNGUJE
       ----------------------------------------------------------------------
-      ANIMACE 1 — Svislá čára cesty se vykresluje podle toho, jak daleko je
-                  návštěvník odscrollovaný. Ukazuje postup, ne ozdobu:
-                  když se vrátí nahoru, čára se vrátí s ním.
-      ANIMACE 2 — Levý sloupec se přišpendlí a velké číslo v něm se překlápí
-                  podle toho, který krok je zrovna na obrazovce. Staré číslo
-                  odejde nahoru, nové přijde zdola.
-      ANIMACE 3 — Kolečko kroku, který je právě na řadě, se lehce zvětší.
-      ====================================================================== */}
-  {/* ================= JAK TO FUNGUJE =================
-      ANIMACE 1: sekce se při scrollu přišpendlí a kroky se v ní přepínají —
-                 stránka jede dál, ale obsah zůstává na místě.
-      ANIMACE 2: velké číslo se překlápí a ukazatel postupu dojíždí.
-      ANIMACE 3: kolečko kroku, který je na řadě, se zvětší.
-
-      Nejde o zabavený scroll: kolečkem se pořád posouvá stránka běžnou
-      rychlostí, jen je v tu chvíli vidět pořád ta samá sekce. Kdo scrolluje
-      dál, projede jí a pokračuje — nic ho nezdrží ani nevrátí zpátky. */}
-  {/* ================= JAK TO FUNGUJE =================
-      ANIMACE 1: spojnice se kreslí shora dolů podle toho, jak daleko jsi
-                 sekcí projel — vede přímo skrz kolečka kroků.
-      ANIMACE 2: kolečko kroku, ke kterému čára došla, se rozsvítí a zvětší.
-      ANIMACE 3: velká čísla v pozadí se s krokem prostřídají.
+      ANIMACE 1 — Spojnice se kreslí shora dolů podle toho, jak daleko jsi
+                  sekcí projel. Vede přímo skrz kolečka kroků a když se
+                  vrátíš nahoru, vrátí se s tebou.
+      ANIMACE 2 — Kolečko kroku, ke kterému čára došla, se rozsvítí a zvětší.
+      ANIMACE 3 — Velká čísla v pozadí se s krokem prostřídají.
 
       Přišpendlení sem nepatří: zadavatel chce vidět všechny čtyři kroky
       naráz, aby bylo hned poznat, že jsou jen čtyři a jsou zvládnutelné.
-      Postup se ukazuje čárou, ne přepínáním obsahu. */}
+      Postup se ukazuje čárou, ne přepínáním obsahu.
+      ====================================================================== */}
   <section id="jak-to-funguje" class="relative overflow-hidden bg-plocha-tyrkys px-5 py-20">
     {/* Velká čísla v pozadí. Jsou ozdoba, ne informace — pořadí kroku je
         v kolečku vedle textu, tak je čtečka obrazovky přeskočí. */}
@@ -491,13 +485,24 @@ const podpora = [
       </ul>
     </div>
 
-    {/* Jedoucí řádka (ANIMACE 1) */}
+    {/* Jedoucí řádka (ANIMACE 1).
+        Obsah je v šabloně DVAKRÁT — jen tak může posun o polovinu působit
+        jako nekonečná smyčka. Druhá sada je ale jen kulisa: nese třídu
+        `kopie-pasu` (při vypnutém pohybu se schová, aby výpis nebyl
+        dvojitý) a `aria-hidden`, aby čtečka obrazovky nepředčítala
+        jedenáct nápadů dvakrát za sebou. */}
     <div class="pas-obal relative z-10 mt-10 overflow-hidden">
       <div class="pas gap-4" style="--doba-pasu: 46s">
         {
-          [0, 1].map(() =>
+          [0, 1].map((sada) =>
             tipyNaStridacku.map((tip) => (
-              <span class="flex items-center gap-3 rounded-full border-2 border-merunka-tlumena bg-white px-7 py-4 text-xl whitespace-nowrap">
+              <span
+                class:list={[
+                  "flex items-center gap-3 rounded-full border-2 border-merunka-tlumena bg-white px-7 py-4 text-xl whitespace-nowrap",
+                  sada === 1 && "kopie-pasu",
+                ]}
+                aria-hidden={sada === 1 ? "true" : undefined}
+              >
                 <span
                   class="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={`background-color: ${tip.barva}`}
@@ -545,7 +550,13 @@ const podpora = [
     style="background: linear-gradient(135deg, var(--color-tyrkys) 0%, #0b4d58 100%)"
   >
     <div class="relative z-10 mx-auto max-w-obsah">
-      <div class="grid gap-14 lg:grid-cols-[1fr_auto] lg:items-center">
+      {/* `grid-cols-1` (tedy `minmax(0, 1fr)`) je tu schválně: bez něj by
+          automatický sloupec převzal pevnou šířku balíčku karet (470 px)
+          a na telefonu by nadpis i oba odstavce vyjely mimo obrazovku —
+          sekce má `overflow-hidden`, takže by se text uřízl. */}
+      <div
+        class="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
+      >
         <div>
           <span
             class="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-popisek font-semibold"
@@ -722,7 +733,8 @@ const podpora = [
       ====================================================================== */}
   {/* `overflow-x-clip`: karty se odhalují bokem o 40 px a na úzké obrazovce
       by z toho byl vodorovný posuvník. `clip` schválně místo `hidden` —
-      `hidden` by ze sekce udělalo posuvnou plochu a rozbilo přišpendlení. */}
+      `hidden` by ze sekce udělalo posuvnou plochu, takže by se na ni dalo
+      omylem odscrollovat do prázdna. */}
   <section id="podpora" class="overflow-x-clip bg-pozadi px-5 py-16">
     <div class="mx-auto max-w-obsah">
       <div class="flex items-end justify-between gap-8">
@@ -914,12 +926,12 @@ const podpora = [
   //     který se odhalí, přestane sledovat — animace se proto neopakuje,
   //     když se návštěvník vrátí zpátky.
   //   * Všechno, co závisí na poloze scrollu (pruh postupu, paralaxa,
-  //     přeliv plochy, kreslení cesty), počítá JEDNA smyčka svázaná
+  //     přeliv plochy, spojnice kroků), počítá JEDNA smyčka svázaná
   //     s requestAnimationFrame. Ne každý efekt vlastní posluchač scrollu.
   //   * Reakce na myš má taky jednu smyčku a dohání kurzor se zpožděním,
   //     aby to nebylo trhané.
   //   * Hýbe se jen `transform` a `opacity`. Výjimkou je `stroke-dashoffset`
-  //     u kreslené cesty, ten jinak animovat nejde.
+  //     u obrysových ilustrací, ten jinak animovat nejde.
   //
   // VYPNUTÝ POHYB
   //   Nic z toho se nespustí. Skrývání prvků visí na třídě `pohyb-ano`, která
@@ -1022,6 +1034,25 @@ const podpora = [
         });
       };
 
+      // Znění nadpisů si opíšeme DŘÍV, než je rozsekáme. Rozsekaný nadpis
+      // je pro čtečku obrazovky hromádka samostatných `inline-block` kousků
+      // a některé ho pak hláskují po písmenech. `aria-label` na nadpisu jeho
+      // obsah přebije, takže se přečte celá věta najednou. Vizuálně se tím
+      // nemění nic.
+      // Skládáme ho z jednotlivých řádek (nadpis v úvodu má dvě) a spojujeme
+      // mezerou — `textContent` celého nadpisu by řádky slepil dohromady,
+      // protože mezi nimi ve výsledném HTML žádný mezerový uzel není.
+      const zneni = new Map<HTMLElement, string[]>();
+      document
+        .querySelectorAll<HTMLElement>("[data-pismena], [data-slova]")
+        .forEach((kus) => {
+          const nadpis = kus.closest<HTMLElement>("h1, h2, h3, h4, h5, h6");
+          if (!nadpis) return;
+          const casti = zneni.get(nadpis) ?? [];
+          casti.push((kus.textContent ?? "").replace(/\s+/g, " ").trim());
+          zneni.set(nadpis, casti);
+        });
+
       document
         .querySelectorAll<HTMLElement>("[data-pismena]")
         .forEach((prvek) => rozsekej(prvek, true));
@@ -1029,6 +1060,10 @@ const podpora = [
       document
         .querySelectorAll<HTMLElement>("[data-slova]")
         .forEach((prvek) => rozsekej(prvek, false));
+
+      zneni.forEach((casti, nadpis) =>
+        nadpis.setAttribute("aria-label", casti.join(" ")),
+      );
 
       // Odhaluje se celý nadpis naráz, kaskádu si pohlídají prodlevy v CSS.
       const nadpisy = document.querySelectorAll<HTMLElement>(
@@ -1138,28 +1173,6 @@ const podpora = [
       });
     })();
 
-    // --- JAK TO FUNGUJE, ANIMACE 1 — kreslení cesty ------------------
-    (function kresleniCesty() {
-      const cesta = document.querySelector<SVGPathElement>("#cesta");
-      const obal = document.querySelector<HTMLElement>("#cesta-obal");
-      if (!cesta || !obal) return;
-
-      const delka = cesta.getTotalLength();
-      cesta.style.setProperty("--delka-cesty", String(delka));
-
-      priScrollu.push(() => {
-        const r = obal.getBoundingClientRect();
-        // 0 = sekce přichází zdola, 1 = odchází nahoru
-        const podil = 1 - (r.bottom - window.innerHeight * 0.5) / r.height;
-        const omezeny = Math.max(0, Math.min(1, podil));
-        cesta.style.strokeDashoffset = String(delka * (1 - omezeny));
-      });
-    })();
-
-    window.addEventListener("scroll", prekresli, { passive: true });
-    window.addEventListener("resize", prekresli, { passive: true });
-    prekresli();
-
     // ------------------------------------------------------------------
     // JAK TO FUNGUJE, ANIMACE 1–3 — spojnice kreslená scrollem
     // ------------------------------------------------------------------
@@ -1209,10 +1222,14 @@ const podpora = [
         );
       }
 
-      prekresliSpojnici();
-      window.addEventListener("scroll", prekresliSpojnici, { passive: true });
-      window.addEventListener("resize", prekresliSpojnici, { passive: true });
+      priScrollu.push(prekresliSpojnici);
     })();
+
+    // Teprve teď, když jsou všechny efekty přihlášené, se smyčka pověsí na
+    // scroll a jednou se spustí, aby stránka byla srovnaná hned po načtení.
+    window.addEventListener("scroll", prekresli, { passive: true });
+    window.addEventListener("resize", prekresli, { passive: true });
+    prekresli();
 
     // ------------------------------------------------------------------
     // REGISTRACE, ANIMACE 1 a 3 — dopočítání částky a kruh za ní
