@@ -1,0 +1,79 @@
+---
+/**
+ * Tipy na aktivity — papírky z dílny.
+ *
+ * Tři kategorie aktivit jako lehce nakloněné kartičky přichycené
+ * meruňkovým špendlíkem — jako nápady rozložené na stole při plánování.
+ * Na hover/focus se papírek srovná a nadzvedne (při vypnutém pohybu
+ * zůstává v klidu). Náklon je max 1,6°, čitelnost tím netrpí.
+ *
+ * Blok „Na co myslet při přípravě" je záměrně jiný: žádná hravost,
+ * klidná plocha s ikonou štítu — je to bezpečnostní rámec, ne nápad.
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 4.
+ */
+import Ikona from "../Ikona.astro";
+
+const kategorie = [
+  {
+    ikona: "palette",
+    sklon: "f-papirek-a",
+    nadpis: "Kultura a tvořivost",
+    text: "Společný zpěv, výtvarná dílna, tvoření dekorací, společné čtení.",
+  },
+  {
+    ikona: "footprints",
+    sklon: "f-papirek-b",
+    nadpis: "Pohyb a pobyt venku",
+    text: "Nenáročná procházka, zahradní hry, mezigenerační venkovní hry, například mölkky nebo pétanque.",
+  },
+  {
+    ikona: "message-circle",
+    sklon: "f-papirek-c",
+    nadpis: "Sdílení a setkávání",
+    text: "Hraní stolních her, vyprávění příběhů, vzájemné učení (např. žáci ukáží práci s tabletem, senioři tradiční řemeslo).",
+  },
+];
+---
+
+<section id="tipy-na-aktivity" class="bg-pozadi px-5 py-20 sm:py-28">
+  <div class="mx-auto max-w-obsah">
+    <div class="f-najezd" data-poradi="0">
+      <p class="f-obor">Tipy na aktivity</p>
+      <h2 class="f-titulek mt-4">Čím se můžete inspirovat a co připravit?</h2>
+    </div>
+
+    <div class="mt-16 grid gap-8 md:grid-cols-3">
+      {
+        kategorie.map((polozka, poradi) => (
+          <div
+            class:list={["f-papirek f-najezd relative p-7 pt-9", polozka.sklon]}
+            data-poradi={poradi + 1}
+          >
+            <span class="f-spendlik" aria-hidden="true" />
+            <Ikona jmeno={polozka.ikona} velikost={32} />
+            <h3 class="mt-4 text-xl">{polozka.nadpis}</h3>
+            <p class="mt-2 mb-0">{polozka.text}</p>
+          </div>
+        ))
+      }
+    </div>
+
+    {/* Bezpečnostní rámec — klidný, bez hravosti okolních papírků. */}
+    <div
+      class="f-najezd mt-12 flex flex-col gap-5 rounded-2xl border-l-4 border-merunka bg-plocha-tyrkys p-7 sm:flex-row sm:items-start"
+      data-poradi="4"
+    >
+      <Ikona jmeno="shield-check" velikost={34} />
+      <div>
+        <h3 class="text-xl">Na co myslet při přípravě</h3>
+        <p class="mt-2 mb-0">
+          Prioritou je pohoda a bezpečnost všech účastníků. Předem si ověřte
+          očekávání seniorů, bezbariérovost prostoru, časovou náročnost
+          i případná zdravotní či pohybová omezení. Cílem je klidné a příjemné
+          mezigenerační setkání.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>

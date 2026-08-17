@@ -1,0 +1,66 @@
+---
+/**
+ * Registrace a poplatek — místo, kam celá stránka směřuje.
+ *
+ * Vlevo zdůvodnění poplatku (500 Kč vysázených velkoryse — transparentnost
+ * je tu důležitější než skromnost), vpravo odzkoušený krokový formulář.
+ * Na velké obrazovce zůstává zdůvodnění „přilepené" (sticky), takže je
+ * po ruce po celou dobu vyplňování.
+ *
+ * K formuláři dovede návštěvníka poslední kousek nitě — tady její cesta
+ * stránkou končí.
+ *
+ * FORMULÁŘ: FormularKrokovy.astro je hotový a odzkoušený naostro
+ * (validace, ARES, QR platba, Edge Funkce) — nestaví se znovu.
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 7.
+ */
+import FormularKrokovy from "../FormularKrokovy.astro";
+import Nit from "./Nit.astro";
+---
+
+<section id="registrace" class="bg-plocha-tyrkys px-5 py-20 sm:py-28">
+  <div class="mx-auto max-w-obsah">
+    <div class="f-najezd" data-poradi="0">
+      <p class="f-obor">Registrace a poplatek</p>
+      <h2 class="f-titulek mt-4">Přihlášení do projektu</h2>
+      <p class="mt-4 mb-0 max-w-[52ch] text-xl">
+        Registrační poplatek činí symbolických
+        <strong class="font-semibold whitespace-nowrap text-tyrkys">500 Kč</strong>.
+      </p>
+    </div>
+
+    <div class="mt-12 grid items-start gap-10 lg:grid-cols-[5fr_7fr]">
+      {/* Zdůvodnění poplatku — na velké obrazovce zůstává po ruce. */}
+      <div class="space-y-8 lg:sticky lg:top-28">
+        <div class="f-najezd" data-poradi="1">
+          <h3 class="text-xl">Na co je poplatek určen?</h3>
+          <p class="mt-2 mb-0">
+            Tato částka slouží k pokrytí nákladů spojených s celkovou
+            organizací a koordinací projektu, vývojem a technickým zajištěním
+            aplikace „Zásobník nápadů" a dalšími nezbytnými provozními náklady
+            na realizaci akce.
+          </p>
+        </div>
+
+        <div class="f-najezd" data-poradi="2">
+          <h3 class="text-xl">Platba a fakturace</h3>
+          <p class="mt-2 mb-0">
+            Platbu lze pohodlně provést pomocí QR kódu nebo standardním
+            bankovním převodem. Systém vám po dokončení registrace v případě
+            potřeby automaticky vystaví fakturu pro účetnictví
+            školy/organizace.
+          </p>
+        </div>
+
+        {/* Konec nitě — dovedla návštěvníka až sem. */}
+        <Nit
+          varianta="spojka"
+          trida="f-nit-scroll mx-auto hidden h-36 w-auto lg:block"
+        />
+      </div>
+
+      <FormularKrokovy />
+    </div>
+  </div>
+</section>

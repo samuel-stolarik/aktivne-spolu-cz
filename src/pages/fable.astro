@@ -1,0 +1,178 @@
+---
+/**
+ * FABLE — stránka postavená od nuly, po svém.
+ *
+ * KONCEPT „NIT"
+ * Stránkou se táhne meruňková nakreslená nit — nit mezi dvěma generacemi.
+ * Podtrhne slovo „nezapomíná" v hero, stane se páteří čtyř kroků (kreslí
+ * se podle scrollu) a končí u registračního formuláře. Obrysové ilustrace
+ * se kreslí stejným tahem, takže celá stránka mluví jazykem tahu pera.
+ *
+ * POŘADÍ SEKCÍ se od podkladů liší v jednom: mapa přihlášených akcí je
+ * zařazená PŘED registraci. Je to sociální důkaz — „jiní už do toho šli" —
+ * a ten patří těsně před rozhodnutí, ne za něj.
+ *
+ * Dramaturgie: přesvědčit (důvody + manifest) → ukázat zvládnutelnost
+ * (kroky, tipy, podpora) → co po akci zůstane (Zásobník) → kdo už jde
+ * do toho (mapa) → akce (registrace) → kontakt.
+ *
+ * TEXTY: doslova z podklady/texty.md — nepřepisují se a nezkracují.
+ * Chybějící podklady jsou označené [DOPLNIT: …] v komentářích komponent.
+ *
+ * NEPOUŽÍVÁ Layout.astro: stránka má vlastní hlavičku, vlastní rytmus
+ * najíždění a tělo potřebuje třídu .stranka-fable pro odvozené odstíny.
+ * Sdílené kusy (formulář, mapa, pořadatelé, patička, přepisy z
+ * administrace) se ale berou hotové — jsou odzkoušené naostro.
+ */
+import "../styles/global.css";
+import "../styles/fable.css";
+
+import PrepisyObsahu from "../components/admin/PrepisyObsahu.astro";
+import Paticka from "../components/Paticka.astro";
+import Mapa from "../components/Mapa.astro";
+
+import Hlavicka from "../components/fable/Hlavicka.astro";
+import Hero from "../components/fable/Hero.astro";
+import Duvody from "../components/fable/Duvody.astro";
+import Kroky from "../components/fable/Kroky.astro";
+import Tipy from "../components/fable/Tipy.astro";
+import Podpora from "../components/fable/Podpora.astro";
+import Zasobnik from "../components/fable/Zasobnik.astro";
+import Registrace from "../components/fable/Registrace.astro";
+import KeStazeni from "../components/fable/KeStazeni.astro";
+
+const titulek =
+  "Propojujeme generace — Mezinárodní den seniorů | aktivně spolu";
+const popis =
+  "Zorganizujte přátelské mezigenerační setkání ve svém okolí a oslavte " +
+  "Mezinárodní den seniorů v týdnu kolem 1. 10. Registrace pro školy, " +
+  "firemní týmy, neziskovky i jednotlivce.";
+---
+
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulek}</title>
+    <meta name="description" content={popis} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Písmo s přednačtením, ať text neposkočí po dotažení fontu. -->
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin-ext.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:title" content={titulek} />
+    <meta property="og:description" content={popis} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="cs_CZ" />
+
+    {/* Texty upravené v administraci (/admin/) se doplní i sem. */}
+    <PrepisyObsahu />
+
+    {/* Bez JavaScriptu se najíždění nikdy nespustí — obsah proto musí
+        být viditelný rovnou, jinak by stránka zůstala prázdná. */}
+    <noscript>
+      <style>
+        .f-najezd,
+        .najezd {
+          opacity: 1;
+          transform: none;
+        }
+
+        .podtrzeni {
+          transform: scaleX(1);
+        }
+      </style>
+    </noscript>
+  </head>
+
+  <body class="stranka-fable">
+    <!-- Přeskočení na obsah pro čtečky obrazovky a ovládání z klávesnice. -->
+    <a
+      href="#obsah"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded focus:bg-tyrkys focus:px-4 focus:py-2 focus:text-white"
+    >
+      Přeskočit na obsah
+    </a>
+
+    <Hlavicka />
+
+    <main id="obsah">
+      <Hero />
+      <Duvody />
+      <Kroky />
+      <Tipy />
+      <Podpora />
+      <Zasobnik />
+      <Mapa />
+      <Registrace />
+      <KeStazeni />
+    </main>
+
+    <Paticka />
+
+    <script>
+      // ======================================================================
+      // Najíždění obsahu při scrollu.
+      //
+      // Obsluhuje vlastní třídy stránky (.f-najezd, kreslení nití a ilustrací
+      // při scrollu) i třídy převzatých komponent (.najezd, .podtrzeni
+      // z formuláře, mapy a pořadatelů) — jeden pozorovatel pro všechno.
+      //
+      // Jen jednou: po odhalení prvek přestáváme sledovat, animace se
+      // neopakuje při scrollu zpět. Při prefers-reduced-motion se
+      // pozorovatel vůbec nespouští a všechno se rovnou odhalí.
+      // ======================================================================
+      const chceMenePohybu = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      const prvky = document.querySelectorAll<HTMLElement>(
+        ".f-najezd, .najezd, .podtrzeni, .f-nit-scroll, .f-kresli-scroll",
+      );
+
+      if (chceMenePohybu) {
+        prvky.forEach((prvek) => prvek.classList.add("je-videt"));
+      } else {
+        const pozorovatel = new IntersectionObserver(
+          (zaznamy) => {
+            zaznamy.forEach((zaznam) => {
+              if (!zaznam.isIntersecting) return;
+
+              const prvek = zaznam.target as HTMLElement;
+
+              // Prvky jedné sekce naskakují se zpožděním 70 ms po sobě.
+              const poradi = Number(prvek.dataset.poradi ?? 0);
+              window.setTimeout(
+                () => prvek.classList.add("je-videt"),
+                poradi * 70,
+              );
+
+              pozorovatel.unobserve(prvek);
+            });
+          },
+          {
+            // Spustí se, až je prvek kousek uvnitř obrazovky.
+            rootMargin: "0px 0px -70px 0px",
+            threshold: 0.1,
+          },
+        );
+
+        prvky.forEach((prvek) => pozorovatel.observe(prvek));
+      }
+    </script>
+  </body>
+</html>

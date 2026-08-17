@@ -1,0 +1,101 @@
+---
+/**
+ * Proč se zapojit — pět důvodů a manifest „Cíl akce".
+ *
+ * Čtyři důvody jsou vysázené jako klidný editorial ve dvou sloupcích,
+ * pátý (Certifikát a odměna) je zvýrazněný na tyrkysové ploše — je to
+ * jediný důvod, který slibuje něco hmatatelného, tak ať je vidět.
+ *
+ * „Cíl akce" není další odrážka, ale manifest: velká věta na tmavé
+ * inkoustové ploše přes celou šířku. Je to jediné místo v horní půlce
+ * stránky, kde design ztmavne — ta věta je důvod, proč projekt existuje.
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 2.
+ */
+import Ikona from "../Ikona.astro";
+
+const duvody = [
+  {
+    ikona: "heart-handshake",
+    nadpis: "Smysluplný zážitek a lidské spojení",
+    text: "Oslavíte Mezinárodní den seniorů tvořivou, lidskou a citlivou formou. Vyzkoušíte si, jak snadné a obohacující je bořit bariéry a hledat to, co různé generace spojuje.",
+  },
+  {
+    ikona: "sprout",
+    nadpis: "Hodnoty, které dávají smysl",
+    text: "Ať už zapojíte školní třídu, firemní tým nebo partu přátel, připomenete si význam mezigenerační solidarity a pomůžete rozvíjet přirozený respekt, empatii a úctu ke starším generacím.",
+  },
+  {
+    ikona: "users",
+    nadpis: "Zkušenost, která utuží tým",
+    text: "Společná příprava a realizace akce je skvělý teambuilding. Spojíte lidi pro dobrou věc — ať už jde o žáky ve třídě, kolegy v práci, členy spolku nebo přátele.",
+  },
+  {
+    ikona: "lightbulb",
+    nadpis: "Inspirace pro celou ČR",
+    text: "Vaše společné setkání nezůstane zapomenuto. Stane se inspirativní součástí celostátního Zásobníku mezigeneračních aktivit, kde usnadníte ostatním vymýšlet podobné mezigenerační akce.",
+  },
+];
+
+const odmena = {
+  ikona: "gift",
+  nadpis: "Certifikát a odměna",
+  text: "Každý zapojený jednotlivec, tým či skupina získá účastnický certifikát a bude zařazen/a do losování o poukazy na společnou večeři, sportovní nebo výtvarné pomůcky!",
+};
+---
+
+<section id="proc-se-zapojit" class="bg-pozadi">
+  <div class="mx-auto max-w-obsah px-5 pt-20 pb-16 sm:pt-28">
+    <div class="f-najezd" data-poradi="0">
+      <p class="f-obor">Proč se zapojit</p>
+      <h2 class="f-titulek mt-4 max-w-[24ch]">
+        Proč se do projektu zapojit, proč do toho jít?
+      </h2>
+    </div>
+
+    <div class="mt-12 grid gap-x-14 gap-y-10 md:grid-cols-2">
+      {
+        duvody.map((duvod, poradi) => (
+          <div class="f-najezd flex items-start gap-5" data-poradi={poradi + 1}>
+            <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--f-merunka-mlha)]">
+              <Ikona jmeno={duvod.ikona} velikost={26} />
+            </span>
+            <div>
+              <h3 class="text-xl">{duvod.nadpis}</h3>
+              <p class="mt-2 mb-0">{duvod.text}</p>
+            </div>
+          </div>
+        ))
+      }
+
+      {/* Pátý důvod přes oba sloupce — jediný, který slibuje odměnu. */}
+      <div
+        class="f-najezd f-karta-zdvih flex items-start gap-5 rounded-2xl bg-plocha-tyrkys p-7 md:col-span-2"
+        data-poradi="5"
+      >
+        <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white">
+          <Ikona jmeno={odmena.ikona} velikost={26} />
+        </span>
+        <div>
+          <h3 class="text-xl">{odmena.nadpis}</h3>
+          <p class="mt-2 mb-0">{odmena.text}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Manifest — cíl akce přes celou šířku, jediná tmavá věta horní půlky. */}
+  <div class="f-tma px-5 py-16 sm:py-20">
+    <div class="f-najezd mx-auto max-w-obsah" data-poradi="0">
+      <p class="f-obor">Cíl akce</p>
+      <p
+        class="mt-6 mb-0 max-w-[42ch] text-[clamp(1.35rem,2.4vw,1.9rem)] leading-normal font-semibold text-balance"
+      >
+        Podpora mezigenerační solidarity, vytváření přirozených vazeb mezi
+        nejmladší a nejstarší generací a oslava Mezinárodního dne seniorů
+        v duchu vzájemného respektu, lidskosti a radosti ze společně
+        stráveného času.
+      </p>
+    </div>
+  </div>
+</section>

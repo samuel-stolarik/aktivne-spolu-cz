@@ -1,0 +1,67 @@
+---
+/**
+ * Nit — podpis celé stránky /fable/.
+ *
+ * Meruňková nakreslená čára, která se stránkou táhne jako nit mezi dvěma
+ * generacemi: podtrhne slovo v hero, stane se páteří čtyř kroků a dovede
+ * návštěvníka k formuláři. Všechny podoby mají stejný tah (kulaté konce,
+ * jemné vlnění), aby stránka mluvila jedním výtvarným jazykem.
+ *
+ * TECHNIKA: každá křivka má pathLength="1", takže se dá „kreslit" přes
+ * stroke-dasharray/-offset bez měření skutečné délky. Klidový stav je
+ * VYKRESLENÁ nit (viz fable.css) — při vypnutém pohybu nebo JavaScriptu
+ * nic nechybí, jen se nekreslí před očima.
+ *
+ * KDY SE KRESLÍ, určuje třída předaná v `trida`:
+ *   f-nit-nacteni  hned po načtení stránky (hero)
+ *   f-nit-scroll   až na ni návštěvník doscrolluje (přidá se .je-videt)
+ *   f-nit-pater    podle posunu stránky (scroll-driven animace)
+ */
+interface Props {
+  /** "podtrz" = vlnka pod slovem, "spojka" = svislá vlnka mezi bloky, "pater" = dlouhá páteř kroků */
+  varianta: "podtrz" | "spojka" | "pater";
+  trida?: string;
+}
+
+const { varianta, trida = "" } = Astro.props;
+
+/** Křivky jednotlivých podob nitě. Páteř se roztahuje na výšku obsahu. */
+const podoby = {
+  podtrz: {
+    viewBox: "0 0 220 26",
+    cesta: "M5 18 C 45 6, 78 24, 112 14 C 146 5, 182 20, 215 12",
+    sirkaTahu: 5,
+  },
+  spojka: {
+    viewBox: "0 0 120 200",
+    cesta: "M60 4 C 98 52, 22 92, 60 132 C 88 162, 82 182, 58 196",
+    sirkaTahu: 4,
+  },
+  pater: {
+    viewBox: "0 0 56 800",
+    cesta:
+      "M28 0 C 40 100, 16 200, 28 300 C 40 400, 16 500, 28 600 C 38 680, 20 750, 28 800",
+    sirkaTahu: 3.5,
+  },
+} as const;
+
+const podoba = podoby[varianta];
+---
+
+<svg
+  viewBox={podoba.viewBox}
+  preserveAspectRatio={varianta === "pater" ? "none" : "xMidYMid meet"}
+  fill="none"
+  aria-hidden="true"
+  focusable="false"
+  class:list={["f-nit", trida]}
+>
+  <path
+    d={podoba.cesta}
+    pathLength="1"
+    stroke="var(--color-merunka)"
+    stroke-width={podoba.sirkaTahu}
+    stroke-linecap="round"
+    vector-effect={varianta === "pater" ? "non-scaling-stroke" : undefined}
+  />
+</svg>

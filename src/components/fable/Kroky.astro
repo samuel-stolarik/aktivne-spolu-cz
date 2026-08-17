@@ -1,0 +1,104 @@
+---
+/**
+ * Jak to funguje — čtyři kroky na niti.
+ *
+ * Tady se nit stává páteří: svisle protéká celou sekcí a na ní sedí
+ * meruňková kolečka s čísly. V prohlížečích, které umí scroll-driven
+ * animace, se nit kreslí přesně podle toho, jak návštěvník scrolluje —
+ * postup akce doslova „roste pod rukama". Jinde je nit vykreslená celá.
+ *
+ * Číslování je tu na místě: kroky jsou skutečná posloupnost, pořadí
+ * nese informaci. Obrovská „duchová" čísla za kartami dávají sekci
+ * měřítko, aniž by křičela — jsou jen obrysová.
+ *
+ * ROZVRŽENÍ: na mobilu nit vlevo a karty pod sebou, na velké obrazovce
+ * nit uprostřed a karty se střídají vlevo/vpravo.
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 3.
+ */
+import Nit from "./Nit.astro";
+
+const kroky = [
+  {
+    nadpis: "Najděte seniorské partnerské místo v okolí",
+    text: "Propojte se s místním klubem seniorů, domovem pro seniory nebo aktivními seniory ve vaší obci.",
+    poznamka: "",
+  },
+  {
+    nadpis: "Domluvte vhodnou a bezpečnou aktivitu",
+    text: "Zvolte program, který bude příjemný a zvládnutelný pro obě strany.",
+    poznamka: "(Tipy na aktivity najdete níže.)",
+  },
+  {
+    nadpis: "Zaregistrujte se na webu",
+    text: "Vyplňte krátký přihlašovací formulář a uhradíte symbolický registrační poplatek.",
+    poznamka: "",
+  },
+  {
+    nadpis: "Prožijte setkání a sdílejte radost",
+    text: "V týdnu kolem 1. 10. proběhnou vaše akce. Následně, budete-li mít chuť se podělit, vyplníte do aplikace Zásobník nápadů krátký popis a fotky z vaší akce.",
+    poznamka: "",
+  },
+];
+---
+
+<section
+  id="jak-to-funguje"
+  class="bg-[linear-gradient(180deg,var(--color-pozadi)_0%,var(--color-plocha-tyrkys)_60%,var(--color-pozadi)_100%)] px-5 py-20 sm:py-28"
+>
+  <div class="mx-auto max-w-obsah">
+    <div class="f-najezd" data-poradi="0">
+      <p class="f-obor">Jak to funguje</p>
+      <h2 class="f-titulek mt-4">4 jednoduché kroky k realizaci</h2>
+    </div>
+
+    <ol class="relative m-0 mt-16 list-none p-0">
+      {/* Páteř: nit vede přes celou výšku seznamu. Na mobilu vlevo,
+          na velkých obrazovkách středem. Kreslí se podle scrollu. */}
+      <Nit
+        varianta="pater"
+        trida="f-nit-pater pointer-events-none absolute top-0 left-7 h-full w-14 -translate-x-1/2 lg:left-1/2"
+      />
+
+      {
+        kroky.map((krok, poradi) => (
+          <li
+            class:list={[
+              "relative pb-12 pl-20 last:pb-0 lg:w-1/2 lg:pb-16",
+              poradi % 2 === 0 ? "lg:pr-16 lg:pl-0" : "lg:ml-auto lg:pl-16",
+            ]}
+          >
+            {/* Kolečko s číslem sedí přesně na niti. */}
+            <span
+              class:list={[
+                "f-krok-cislo absolute top-0 left-7 -translate-x-1/2",
+                poradi % 2 === 0
+                  ? "lg:left-full lg:-translate-x-1/2"
+                  : "lg:left-0 lg:-translate-x-1/2",
+              ]}
+              aria-hidden="true"
+            >
+              {poradi + 1}
+            </span>
+
+            {/* Obrysové číslo v pozadí dává kroku měřítko. */}
+            <span class="f-krok-duch" aria-hidden="true">
+              {poradi + 1}
+            </span>
+
+            <div
+              class="f-krok-karta f-najezd f-karta-zdvih rounded-2xl border border-merunka-tlumena bg-white p-7"
+              data-poradi={poradi + 1}
+            >
+              <h3 class="text-xl">{krok.nadpis}</h3>
+              <p class="mt-2 mb-0">
+                {krok.text}
+                {krok.poznamka && <em class="text-popisek"> {krok.poznamka}</em>}
+              </p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

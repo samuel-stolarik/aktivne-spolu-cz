@@ -1,0 +1,51 @@
+---
+/**
+ * Zásobník nápadů — druhá tmavá plocha stránky.
+ *
+ * Inkoustová plocha tu není náhodou: Zásobník je odkaz, který po akci
+ * zůstane — nejtrvalejší část celého projektu. Tmavá plocha mu dává
+ * váhu a zároveň rámuje ilustraci žáků, kteří aplikaci staví. Ilustrace
+ * se kreslí meruňkovým tahem, až na ni návštěvník doscrolluje.
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 6.
+ */
+import Ilustrace from "../Ilustrace.astro";
+---
+
+<section id="zasobnik" class="f-tma px-5 py-20 sm:py-28">
+  <div
+    class="mx-auto grid max-w-obsah items-center gap-12 lg:grid-cols-[7fr_5fr]"
+  >
+    <div>
+      <div class="f-najezd" data-poradi="0">
+        <p class="f-obor">Zásobník nápadů</p>
+        <h2 class="f-titulek mt-4">Co je to Zásobník nápadů?</h2>
+      </div>
+
+      <p class="f-najezd mt-8 mb-0 max-w-[60ch]" data-poradi="1">
+        Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí žáci
+        ZŠ Magic Hill z Říčan u Prahy.
+      </p>
+
+      <p class="f-najezd mt-5 mb-0 max-w-[60ch]" data-poradi="2">
+        Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
+        (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
+        potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne veřejně
+        přístupná databáze plná ověřené inspirace pro organizátory podobných
+        akcí z celé ČR.
+      </p>
+    </div>
+
+    {/* Žáci za notebookem — kreslí se meruňkovou nití při scrollu. */}
+    <div
+      class="f-najezd relative mx-auto w-full max-w-[400px] text-merunka-tlumena"
+      data-poradi="1"
+    >
+      <Ilustrace
+        jmeno="zaci-programuji"
+        sirka={400}
+        trida="f-kresli-scroll h-auto w-full"
+      />
+    </div>
+  </div>
+</section>
