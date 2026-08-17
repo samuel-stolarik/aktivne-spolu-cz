@@ -24,6 +24,7 @@
  * ne log pořadatelů. Jako logo organizace se použít nesmí.
  */
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import Ikona from "./Ikona.astro";
 
 interface Props {
@@ -48,11 +49,17 @@ const dodano = (hodnota: string) => !hodnota.startsWith("[DOPLNIT");
  * Kdybychom cestu napsali natvrdo dřív, než logo dorazí, měl by web na dvou
  * místech rozbitý obrázek. Takhle se do té doby tiše použije typografická
  * varianta a po nakopírování souboru se logo objeví samo.
+ *
+ * POZOR na způsob, jakým se hledá složka. Dřív tu bylo `import.meta.url`
+ * a fungovalo to ve vývojovém režimu, ale při sestavení webu se cesta
+ * počítá odjinud — soubor se nenašel a na ostrý web by šla typografická
+ * náhrada místo log. Chyba se přitom na localhostu vůbec neprojevila.
+ * `process.cwd()` je kořen projektu v obou režimech stejně.
  */
 function logoKdyzExistuje(nazev: string): string | null {
-  const slozka = new URL("../../public/obrazky/", import.meta.url);
+  const slozka = join(process.cwd(), "public", "obrazky");
   for (const pripona of ["svg", "png", "jpg", "jpeg", "webp"]) {
-    if (existsSync(new URL(`${nazev}.${pripona}`, slozka))) {
+    if (existsSync(join(slozka, `${nazev}.${pripona}`))) {
       return `/obrazky/${nazev}.${pripona}`;
     }
   }
