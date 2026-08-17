@@ -24,8 +24,10 @@ import Nit from "./Nit.astro";
     <div class="f-najezd" data-poradi="0">
       <p class="f-obor">Registrace a poplatek</p>
       <h2 class="f-titulek mt-4">Přihlášení do projektu</h2>
+      {/* Mezera před částkou je vypsaná výrazem — Astro by obyčejnou
+          mezeru na konci řádku před značkou <strong> zahodilo. */}
       <p class="mt-4 mb-0 max-w-[52ch] text-xl">
-        Registrační poplatek činí symbolických
+        Registrační poplatek činí symbolických{" "}
         <strong class="font-semibold whitespace-nowrap text-tyrkys">500 Kč</strong>.
       </p>
     </div>
