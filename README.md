@@ -16,16 +16,54 @@ se ZŠ Magic Hill.
 
 ## Co tenhle web umí
 
-- Jedna statická stránka s osmi sekcemi
+- Jedna statická stránka s devíti sekcemi
 - Dvě právní podstránky
 - Registrační formulář, který uloží přihlášku, přidělí variabilní symbol
   a pošle potvrzovací e-mail s platebními údaji a QR kódem
 - Škole a organizaci předvyplní fakturační údaje z rejstříku ARES podle IČO
   (na stisk tlačítka, nikdy samo od sebe)
+- Ptá se na datum konání akce a hlídá, že padne do období projektu
+- **Mapu přihlášených akcí**, která ukazuje jen schválená setkání
+- **Administraci** na `/admin/` — přehled přihlášek, schvalování na mapu
+  a úprava textů přímo na náhledu stránky
 - Volitelně spustí vystavení faktury (scénář v Make)
 
 Na hostingu běží **jen statické soubory**. Žádné PHP, žádný server.
 Všechno dynamické obstarává Supabase.
+
+---
+
+## Než web půjde živě
+
+Odškrtat všechno, jinak něco tiše nepojede.
+
+**Bez tohohle to spustit nejde:**
+
+- [ ] **Znění obchodních podmínek a zpracování osobních údajů.** Ve formuláři
+      lidé zaškrtávají souhlas s dokumentem, který zatím neexistuje.
+- [ ] **Přístup ke Google Workspace** pro odesílání pošty. Bez něj se přihláška
+      uloží a QR kód se zobrazí, ale **potvrzovací e-mail nikomu nepřijde**.
+      Chybí `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`
+      a odesílací adresa.
+- [ ] **Vybrat jednu verzi vzhledu** a ostatní smazat (viz níž).
+- [ ] **Smazat ukázková data z mapky** — `npm run smaz-ukazku`. Je na ní pět
+      vymyšlených akcí, které vznikly kvůli ukázce.
+
+**Mělo by být hotové, ale spuštění to nezablokuje:**
+
+- [ ] Kontaktní údaje na obě organizace (zatím se nezobrazují vůbec)
+- [ ] Dvoumístné číslo řady faktur od účetní — bez něj se nevystaví faktura
+- [ ] Oba letáky v PDF
+- [ ] DNS záznamy SPF a DKIM, jinak budou e-maily padat do spamu
+- [ ] Účty do administrace pro ty, kdo ji mají používat
+
+**Kontrola, že je opravdu hotovo:**
+
+```bash
+npm run build            # sestaví se bez chyb
+npm run kontrola-obsahu  # texty na webu sedí s administrací
+grep -rn "DOPLNIT" --include="*.astro" --include="*.ts" src/
+```
 
 ---
 
@@ -173,6 +211,26 @@ Kód: `src/lib/ares.ts` (volání z prohlížeče) a
 
 ---
 
+## Mapa přihlášených akcí
+
+Na webu je mapa, kde se ukazují místa chystaných setkání. **Objeví se na ní
+jen akce, kterou správce v administraci schválil** — přihlášení samo o sobě
+nestačí. Schválení je záměrně jiná věc než zaplacení: zaplaceno neznamená
+schváleno na mapu.
+
+Veřejně jde ven jen **město, kraj, typ pořadatele, datum a souřadnice**,
+volitelně název a nápad na aktivitu. Žádný e-mail, telefon ani kontaktní
+osoba. U typu „jednotlivec" se neposílá ani název — je to jméno člověka.
+
+Souřadnice se dohledávají **jednou při schválení** přes OpenStreetMap. Když
+je v názvu města překlep, schválení projde, ale akce se na mapě neukáže
+a správce uvidí proč a může to zkusit znovu.
+
+Data servíruje Edge Funkce `verejne-akce`. Tabulka `prihlasky` zůstává
+uzavřená — anonymní klíč do ní nevidí.
+
+---
+
 ## Fakturace přes Make
 
 Scénář a návod k importu jsou v [make/README-make.md](make/README-make.md).
@@ -218,17 +276,29 @@ Dokud se tak nestane, e-maily mohou padat do spamu.
 
 ---
 
-## Varianty vzhledu k rozhodnutí
+## Verze vzhledu k rozhodnutí
 
-Dočasně jsou k dispozici dvě varianty oddělení sekcí, obě nad úplně stejným
-obsahem:
+Vzniklo několik verzí nad **úplně stejným obsahem a stejnou databází**.
+Liší se jen vzhledem a mírou pohybu:
 
-- `/` — varianta A: velkorysý prostor, změna plochy a jemná meruňková linka
-- `/varianta-b/` — varianta B: sekce jako bílé listy s měkkým stínem
+| Adresa | Verze |
+| --- | --- |
+| `/` | uzemněná — klidná, velkorysý prostor, decentní pohyb |
+| `/varianta-b/` | jako uzemněná, ale sekce jako bílé listy se stínem |
+| `/kreativni/` | výraznější typografie, jedoucí řádka tipů, rozevírací karty |
+| `/animovana/` | v každé sekci dvě až tři animace |
+| `/fable/` | postavená od nuly kolem motivu nitě, dvě tmavé plochy |
 
-Při `npm run dev` se dole zobrazí přepínač mezi nimi. Do produkčního buildu
-se nedostane. Až padne rozhodnutí, smaže se `src/pages/varianta-b.astro`
-a `src/components/PrepinacVariant.astro`.
+K tomu `/zasobnik-navrh/` — samostatný návrh jediné sekce (Zásobník nápadů),
+ne celá stránka.
+
+Při `npm run dev` se dole zobrazí přepínač mezi verzemi. Do produkčního
+buildu se nedostane.
+
+**Až padne rozhodnutí, smažou se stránky nevybraných verzí, jejich styly
+a komponenty a `src/components/PrepinacVariant.astro`.** Nechávat je tam
+znamená udržovat pět webů místo jednoho — každá změna obsahu by se musela
+promítnout všude.
 
 ---
 
