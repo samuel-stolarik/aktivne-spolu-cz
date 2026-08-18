@@ -46,6 +46,13 @@ const kroky = [
   id="jak-to-funguje"
   class="bg-[linear-gradient(180deg,var(--color-pozadi)_0%,var(--color-plocha-tyrkys)_60%,var(--color-pozadi)_100%)] px-5 py-20 sm:py-28"
 >
+  {/* Steh přes hranici s manifestem: nit vychází z inkoustové plochy
+      na světlo — nejsilnější barevný předěl stránky si říká o prošití. */}
+  <Nit
+    varianta="predel"
+    trida="f-nit-predel relative z-10 mx-auto -mt-36 mb-2 block h-32 w-auto sm:-mt-44"
+  />
+
   <div class="mx-auto max-w-obsah">
     <div class="f-najezd" data-poradi="0">
       <p class="f-obor">Jak to funguje</p>
@@ -68,21 +75,25 @@ const kroky = [
               poradi % 2 === 0 ? "lg:pr-16 lg:pl-0" : "lg:ml-auto lg:pl-16",
             ]}
           >
-            {/* Kolečko s číslem sedí přesně na niti. */}
+            {/* Kolečko s číslem sedí přesně na niti — a přisadí se na ni
+                (.f-pop), jako uzlík utažený ve chvíli, kdy kolem projde
+                scroll. */}
             <span
               class:list={[
-                "f-krok-cislo absolute top-0 left-7 -translate-x-1/2",
+                "f-krok-cislo f-pop absolute top-0 left-7 -translate-x-1/2",
                 poradi % 2 === 0
                   ? "lg:left-full lg:-translate-x-1/2"
                   : "lg:left-0 lg:-translate-x-1/2",
               ]}
+              data-poradi={poradi + 1}
               aria-hidden="true"
             >
               {poradi + 1}
             </span>
 
-            {/* Obrysové číslo v pozadí dává kroku měřítko. */}
-            <span class="f-krok-duch" aria-hidden="true">
+            {/* Obrysové číslo v pozadí dává kroku měřítko. Drobná záporná
+                hloubka: při scrollu pluje proti směru a odlepí se od karty. */}
+            <span class="f-krok-duch f-par" style="--f-hloubka: -22" aria-hidden="true">
               {poradi + 1}
             </span>
 

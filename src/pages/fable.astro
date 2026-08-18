@@ -96,6 +96,22 @@ const popis =
         .podtrzeni {
           transform: scaleX(1);
         }
+
+        /* Papírky si bez skriptu nechávají klidový náklon (pravidlo výš
+           by jim ho vzalo) a kolečka kroků i kousky nitě v obočí sekcí
+           jsou viditelné rovnou. */
+        .f-papirek.f-najezd {
+          transform: rotate(var(--f-sklon, 0deg));
+        }
+
+        .f-pop {
+          opacity: 1;
+          scale: none;
+        }
+
+        .f-najezd:not(.je-videt) .f-obor::before {
+          transform: none;
+        }
       </style>
     </noscript>
   </head>
@@ -143,7 +159,7 @@ const popis =
       ).matches;
 
       const prvky = document.querySelectorAll<HTMLElement>(
-        ".f-najezd, .najezd, .podtrzeni, .f-nit-scroll, .f-kresli-scroll",
+        ".f-najezd, .najezd, .podtrzeni, .f-nit-scroll, .f-kresli-scroll, .f-pop",
       );
 
       if (chceMenePohybu) {
@@ -177,45 +193,129 @@ const popis =
       }
 
       // ------------------------------------------------------------------
-      // Páteř kroků v prohlížečích bez scroll-driven animací
+      // Scroll-driven efekty v prohlížečích bez scroll-driven animací
       // ------------------------------------------------------------------
-      // Chrome a Edge nit kreslí samy podle posunu stránky (viz fable.css).
-      // Safari a Firefox to zatím neumí, takže jim totéž dopočítáme tady
-      // a předáme jako `--dojeto` od 0 do 1. CSS si z toho udělá posun
-      // čárky — vlastnost je stejná, jen se k ní jde jinudy.
+      // Chrome a Edge kreslí nit a posouvají hloubkové vrstvy samy podle
+      // posunu stránky (viz fable.css). Safari a Firefox to zatím neumí,
+      // takže jim totéž dopočítáme tady a předáme jako `--dojeto` od 0
+      // do 1. CSS si z toho udělá posun čárky nebo souřadnici — vlastnost
+      // je stejná, jen se k ní jde jinudy.
       //
-      // Když je pohyb zakázaný, nic nespouštíme a nit zůstane vykreslená
-      // celá. To je správný klidový stav, ne chyba.
+      // Tři režimy podle toho, co prvek dělá:
+      //   pater   dlouhá páteř kroků — dojíždí, zatímco JEJÍ SEKCE prochází
+      //           obrazovkou; rozsah je užší než celý průchod, ať je nit
+      //           hotová dřív, než sekce odjede pryč
+      //   predel  krátký steh přes hranici sekcí — hotový, než jeho spodek
+      //           dojede do půlky obrazovky (odpovídá `cover 0–60 %`)
+      //   prubeh  hloubková vrstva (.f-par) — 0 při vjezdu zespodu, 1 při
+      //           odjezdu nahoru (odpovídá `cover 0–100 %`)
+      //
+      // Všechno počítá jeden posluchač přes requestAnimationFrame. Když je
+      // pohyb zakázaný, nespouští se nic: nit zůstane vykreslená celá
+      // a vrstvy stojí — správný klidový stav, ne chyba.
       if (
         !chceMenePohybu &&
         !CSS.supports("animation-timeline", "view()")
       ) {
+        type Rezim = "pater" | "predel" | "prubeh";
+        const polozky: { cil: Element; zdroj: Element; rezim: Rezim }[] = [];
+
         const pater = document.querySelector<SVGPathElement>(
           ".f-nit-pater path",
         );
-        const sekce = pater?.closest("section");
+        const sekcePatere = pater?.closest("section");
+        if (pater && sekcePatere) {
+          polozky.push({ cil: pater, zdroj: sekcePatere, rezim: "pater" });
+        }
 
-        if (pater && sekce) {
-          const prekresliPater = () => {
-            const r = sekce.getBoundingClientRect();
+        document
+          .querySelectorAll<SVGSVGElement>(".f-nit-predel")
+          .forEach((nit) =>
+            polozky.push({ cil: nit, zdroj: nit, rezim: "predel" }),
+          );
 
-            // Nit dojíždí, zatímco sekce prochází obrazovkou. Rozsah je
-            // schválně užší než celý průchod, ať je nit hotová dřív,
-            // než sekce odjede pryč — jinak by ji nikdo neviděl dokreslit.
-            const zacatek = window.innerHeight * 0.95;
-            const konec = -r.height * 0.25;
-            const podil = (zacatek - r.top) / (zacatek - konec);
+        document
+          .querySelectorAll<HTMLElement>(".f-par")
+          .forEach((vrstva) =>
+            polozky.push({ cil: vrstva, zdroj: vrstva, rezim: "prubeh" }),
+          );
 
-            pater.style.setProperty(
-              "--dojeto",
-              String(Math.max(0, Math.min(1, podil))),
-            );
+        if (polozky.length > 0) {
+          let naplanovano = false;
+
+          const prepocitej = () => {
+            naplanovano = false;
+            const vyska = window.innerHeight;
+
+            for (const { cil, zdroj, rezim } of polozky) {
+              const r = zdroj.getBoundingClientRect();
+              let podil: number;
+
+              if (rezim === "pater") {
+                const zacatek = vyska * 0.95;
+                const konec = -r.height * 0.25;
+                podil = (zacatek - r.top) / (zacatek - konec);
+              } else if (rezim === "predel") {
+                podil = (vyska - r.top) / (0.6 * (vyska + r.height));
+              } else {
+                podil = (vyska - r.top) / (vyska + r.height);
+              }
+
+              (cil as HTMLElement).style.setProperty(
+                "--dojeto",
+                String(Math.max(0, Math.min(1, podil))),
+              );
+            }
           };
 
-          prekresliPater();
-          window.addEventListener("scroll", prekresliPater, { passive: true });
-          window.addEventListener("resize", prekresliPater, { passive: true });
+          const naplanuj = () => {
+            if (naplanovano) return;
+            naplanovano = true;
+            window.requestAnimationFrame(prepocitej);
+          };
+
+          prepocitej();
+          window.addEventListener("scroll", naplanuj, { passive: true });
+          window.addEventListener("resize", naplanuj, { passive: true });
         }
+      }
+
+      // ------------------------------------------------------------------
+      // Šipka v hero: jakmile se návštěvník pohne, uhne nastupující niti.
+      // Při vypnutém pohybu zůstává na místě pořád.
+      // ------------------------------------------------------------------
+      if (!chceMenePohybu) {
+        const sipka = document.querySelector<HTMLElement>(".f-sipka-obal");
+
+        if (sipka) {
+          let schovana = false;
+
+          const prepniSipku = () => {
+            const ma = window.scrollY > 80;
+            if (ma === schovana) return;
+            schovana = ma;
+            sipka.classList.toggle("je-pryc", ma);
+          };
+
+          prepniSipku();
+          window.addEventListener("scroll", prepniSipku, { passive: true });
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Smyčky v hero (plování tvarů, houpání šipky) běží jen na obrazovce.
+      // Mimo ni se pozastaví — ušetřený výkon je znát hlavně na telefonu.
+      // ------------------------------------------------------------------
+      const hero = document.querySelector<HTMLElement>(".f-hero");
+
+      if (hero) {
+        const uspavac = new IntersectionObserver((zaznamy) => {
+          zaznamy.forEach((zaznam) =>
+            hero.classList.toggle("je-uspany", !zaznam.isIntersecting),
+          );
+        });
+
+        uspavac.observe(hero);
       }
     </script>
   </body>

@@ -10,11 +10,24 @@
  * TEXTY: doslova z podklady/texty.md, sekce 6.
  */
 import Ilustrace from "../Ilustrace.astro";
+import Nit from "./Nit.astro";
 ---
 
-<section id="zasobnik" class="f-tma px-5 py-20 sm:py-28">
+<section id="zasobnik" class="f-tma relative px-5 py-20 sm:py-28">
+  {/* Teplý odlesk v hloubce inkoustu — pluje pomaleji než scroll,
+      stejně jako v manifestu. Text stojí pevně. */}
+  <div class="absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div class="f-par f-tma-akcent" style="--f-hloubka: 26"></div>
+  </div>
+
+  {/* Steh přes hranici s Podporou — nit se noří do tmavé plochy. */}
+  <Nit
+    varianta="predel"
+    trida="f-nit-predel relative z-10 mx-auto -mt-34 mb-2 block h-28 w-auto sm:-mt-42"
+  />
+
   <div
-    class="mx-auto grid max-w-obsah items-center gap-12 lg:grid-cols-[7fr_5fr]"
+    class="relative mx-auto grid max-w-obsah items-center gap-12 lg:grid-cols-[7fr_5fr]"
   >
     <div>
       <div class="f-najezd" data-poradi="0">
@@ -36,16 +49,16 @@ import Ilustrace from "../Ilustrace.astro";
       </p>
     </div>
 
-    {/* Žáci za notebookem — kreslí se meruňkovou nití při scrollu. */}
-    <div
-      class="f-najezd relative mx-auto w-full max-w-[400px] text-merunka-tlumena"
-      data-poradi="1"
-    >
-      <Ilustrace
-        jmeno="zak-s-notebookem"
-        sirka={400}
-        trida="f-kresli-scroll h-auto w-full"
-      />
+    {/* Žáci za notebookem — kreslí se meruňkovou nití při scrollu.
+        Paralaxní obal je zvlášť, aby se nepral s najížděním uvnitř. */}
+    <div class="f-par relative mx-auto w-full max-w-[400px]" style="--f-hloubka: -14">
+      <div class="f-najezd text-merunka-tlumena" data-poradi="1">
+        <Ilustrace
+          jmeno="zak-s-notebookem"
+          sirka={400}
+          trida="f-kresli-scroll h-auto w-full"
+        />
+      </div>
     </div>
   </div>
 </section>

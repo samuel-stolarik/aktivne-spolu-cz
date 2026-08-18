@@ -9,6 +9,7 @@
  * TEXTY: doslova z podklady/texty.md, sekce 5.
  */
 import Ikona from "../Ikona.astro";
+import Nit from "./Nit.astro";
 
 const podpora = [
   {
@@ -30,6 +31,12 @@ const podpora = [
 ---
 
 <section id="podpora" class="f-mlha px-5 py-20 sm:py-24">
+  {/* Steh přes hranici s Tipy — nit vplouvá do meruňkové mlhy. */}
+  <Nit
+    varianta="predel"
+    trida="f-nit-predel relative z-10 mx-auto -mt-34 mb-2 block h-28 w-auto sm:-mt-38"
+  />
+
   <div class="mx-auto max-w-obsah">
     <div class="f-najezd" data-poradi="0">
       <p class="f-obor">Podpora</p>

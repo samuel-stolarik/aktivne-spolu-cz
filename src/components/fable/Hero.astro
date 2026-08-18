@@ -29,10 +29,16 @@ const skupiny = [
 ---
 
 <section id="uvod" class="f-hero px-5 pt-12 pb-8 sm:pt-16">
-  {/* Velké měkké tvary v pozadí — pomalé plování, nic přes text. */}
+  {/* Velké měkké tvary v pozadí — pomalé plování, nic přes text.
+      Každý má vlastní paralaxní obal s jinou hloubkou (--f-hloubka),
+      takže se při scrollu pozadí rozvrství a hero dostane prostor. */}
   <div class="pointer-events-none absolute inset-0" aria-hidden="true">
-    <div class="f-blob f-blob-a"></div>
-    <div class="f-blob f-blob-b"></div>
+    <div class="f-par absolute inset-0" style="--f-hloubka: 30">
+      <div class="f-blob f-blob-a"></div>
+    </div>
+    <div class="f-par absolute inset-0" style="--f-hloubka: 16">
+      <div class="f-blob f-blob-b"></div>
+    </div>
   </div>
 
   <div
@@ -78,11 +84,15 @@ const skupiny = [
         </Tlacitko>
       </div>
 
-      {/* Komu akce patří — čtyři skupiny z podkladů. */}
-      <ul class="f-vzestup m-0 mt-10 flex list-none flex-wrap gap-2 p-0" style="--z: 6">
+      {/* Komu akce patří — čtyři skupiny z podkladů. Štítky nastupují
+          po sobě jako poslední takt hero choreografie. */}
+      <ul class="m-0 mt-10 flex list-none flex-wrap gap-2 p-0">
         {
-          skupiny.map((skupina) => (
-            <li class="flex min-h-11 items-center gap-2 rounded-full border border-merunka-tlumena bg-white/80 px-4 text-popisek">
+          skupiny.map((skupina, poradi) => (
+            <li
+              class="f-vzestup flex min-h-11 items-center gap-2 rounded-full border border-merunka-tlumena bg-white/80 px-4 text-popisek"
+              style={`--z: ${6 + poradi * 0.6}`}
+            >
               <Ikona jmeno={skupina.ikona} velikost={18} />
               {skupina.popis}
             </li>
@@ -91,9 +101,11 @@ const skupiny = [
       </ul>
     </div>
 
-    {/* Dítě a senior — ilustrace se po načtení sama nakreslí,
-        jako by ji někdo maloval jedním tahem. */}
-    <div class="relative mx-auto w-full max-w-[420px]">
+    {/* Dítě a senior — ilustrace se po načtení sama nakreslí, jako by ji
+        někdo maloval jedním tahem. Celý sloupec má zápornou hloubku:
+        při scrollu stoupá o chlup rychleji než text, hero tím dostane
+        vrstvy. */}
+    <div class="f-par relative mx-auto w-full max-w-[420px]" style="--f-hloubka: -12">
       <div class="f-hero-kruh f-vzestup" style="--z: 2" aria-hidden="true"></div>
       <div class="relative px-6 pt-10 text-tyrkys">
         <Ilustrace jmeno="dvojice" sirka={420} trida="f-kresli h-auto w-full" />
@@ -101,8 +113,13 @@ const skupiny = [
     </div>
   </div>
 
-  {/* Pozvání dál — jen jemně se houpající šipka, žádný text navíc. */}
-  <div class="relative mt-8 flex justify-center text-tyrkys" aria-hidden="true">
+  {/* Pozvání dál — jen jemně se houpající šipka, žádný text navíc.
+      Jakmile se návštěvník pohne, šipka svou práci odvedla a uhne
+      nastupující niti (třídu .je-pryc přidává skript v fable.astro). */}
+  <div
+    class="f-sipka-obal relative mt-8 flex justify-center text-tyrkys"
+    aria-hidden="true"
+  >
     <Ikona jmeno="chevron-down" velikost={30} trida="f-sipka" />
   </div>
 </section>

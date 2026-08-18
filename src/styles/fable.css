@@ -122,6 +122,25 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
+/* Teplý odlesk v hloubce inkoustové plochy. Sám o sobě stojí, pohyb mu
+   dává až paralaxní obal (.f-par) — pluje pomaleji než scroll, takže
+   tmavá plocha při průchodu „dýchá" celou svou hloubkou. Průhlednost
+   drží nízko, aby bílý text nikde neklesl pod kontrast. */
+.f-tma-akcent {
+  position: absolute;
+  top: -30%;
+  right: -8%;
+  aspect-ratio: 1;
+  width: min(560px, 75%);
+  border-radius: 9999px;
+  background-image: radial-gradient(
+    closest-side,
+    rgba(240, 185, 94, 0.13),
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
 /* --------------------------------------------------------------------------
    Nit — kreslená čára (SVG s pathLength="1")
    Základní stav je VYKRESLENÁ nit. Animace ji jen „přehraje od začátku",
@@ -170,6 +189,61 @@
 @supports not (animation-timeline: view()) {
   .f-nit-pater path {
     stroke-dashoffset: calc(1 - var(--dojeto, 1));
+  }
+}
+
+/* Stehy přes předěly sekcí: krátká svislá nit, která se prošívá přes
+   hranici dvou ploch přesně tempem scrollu — stejný princip jako páteř,
+   jen v malém. Steh je hotový, než jeho spodek dojede do půlky obrazovky,
+   takže dokreslení je vždycky vidět. Klidový stav: vykreslený celý. */
+@supports (animation-timeline: view()) {
+  .f-nit-predel path {
+    animation: f-nit-tah linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 60%;
+  }
+}
+
+@supports not (animation-timeline: view()) {
+  .f-nit-predel path {
+    stroke-dashoffset: calc(1 - var(--dojeto, 1));
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Hloubka při scrollu (paralaxa)
+
+   Prvek s třídou .f-par se během průchodu obrazovkou posune svisle
+   o --f-hloubka pixelů na každou stranu od klidové polohy: kladná hodnota
+   za scrollem zaostává (je „hlouběji"), záporná ho předbíhá. Posouvají se
+   VÝHRADNĚ dekorace (tvary v pozadí, obrysová čísla, odlesky, ilustrace)
+   — text vždycky stojí.
+
+   Chrome a Edge to řeší scroll-driven animací, Safari a Firefox dostanou
+   tentýž posun ze skriptu ve fable.astro přes --dojeto (0 až 1). Když
+   neběží ani jedno, prvek prostě stojí na místě — správný klidový stav. */
+@keyframes f-hloubka-posun {
+  from {
+    transform: translateY(calc(var(--f-hloubka, 0) * -1px));
+  }
+  to {
+    transform: translateY(calc(var(--f-hloubka, 0) * 1px));
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .f-par {
+    animation: f-hloubka-posun linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+  }
+}
+
+@supports not (animation-timeline: view()) {
+  .f-par {
+    transform: translateY(
+      calc((var(--dojeto, 0.5) - 0.5) * var(--f-hloubka, 0) * 2px)
+    );
   }
 }
 
@@ -235,6 +309,34 @@
 .f-najezd.je-videt {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Kousek nitě v „obočí" sekce se přišije zleva ve chvíli, kdy hlavička
+   sekce najede — stejný tah, jakým se kreslí všechno ostatní.
+   Klidový stav (bez JavaScriptu, při vypnutém pohybu) je vykreslený. */
+.f-obor::before {
+  transform-origin: left center;
+  transition: transform 520ms cubic-bezier(0.22, 0.8, 0.32, 1) 150ms;
+}
+
+.f-najezd:not(.je-videt) .f-obor::before {
+  transform: scaleX(0);
+}
+
+/* Kolečka s čísly kroků: přisadí se na nit s drobným pružným dosednutím.
+   Používá se vlastnost `scale`, ne `transform` — nesmí přepsat posun,
+   kterým kolečko sedí na niti. */
+.f-pop {
+  opacity: 0;
+  scale: 0.4;
+  transition:
+    opacity 320ms ease-out,
+    scale 460ms cubic-bezier(0.34, 1.28, 0.64, 1);
+}
+
+.f-pop.je-videt {
+  opacity: 1;
+  scale: 1;
 }
 
 /* --------------------------------------------------------------------------
@@ -344,6 +446,24 @@
   animation: f-houpani 2.4s ease-in-out infinite;
 }
 
+/* Jakmile se návštěvník pohne, šipka svou práci odvedla — zmizí a uvolní
+   místo stehu nitě, který vede do další sekce. Návratem nahoru se vrátí. */
+.f-sipka-obal {
+  transition: opacity 320ms ease-out;
+}
+
+.f-sipka-obal.je-pryc {
+  opacity: 0;
+}
+
+/* Smyčky (plování tvarů, houpání šipky) běží jen, dokud je hero na
+   obrazovce — mimo ni se pozastaví a nespotřebovávají ani kapku výkonu.
+   Třídu přepíná skript ve fable.astro. */
+.f-hero.je-uspany .f-blob,
+.f-hero.je-uspany .f-sipka {
+  animation-play-state: paused;
+}
+
 /* --------------------------------------------------------------------------
    Papírky z dílny (Tipy na aktivity)
    Tři lehce nakloněné kartičky, jako by je někdo položil na stůl.
@@ -374,6 +494,40 @@
 
 .f-papirek:hover,
 .f-papirek:focus-within {
+  transform: rotate(0deg) translateY(-6px);
+  box-shadow:
+    0 2px 4px rgba(69, 68, 63, 0.06),
+    0 22px 44px -18px rgba(18, 112, 127, 0.35);
+}
+
+/* Položení papírku na stůl: přiletí o kus níž a víc natočený a dosedne
+   do svého klidového náklonu. Nástup řídí animace (ne přechod), takže
+   po dosednutí zůstává rychlý 220ms přechod pro hover.
+
+   Zároveň to opravuje starou drobnost: obecné pravidlo .f-najezd.je-videt
+   po najetí přepisovalo transform na translateY(0) a papírky tím přišly
+   o náklon. Tady se náklon po najetí výslovně drží. */
+@keyframes f-papirek-polozeni {
+  from {
+    opacity: 0;
+    transform: translateY(34px) rotate(calc(var(--f-sklon, 0deg) * 3.2));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--f-sklon, 0deg));
+  }
+}
+
+.f-papirek.f-najezd.je-videt {
+  opacity: 1;
+  transform: rotate(var(--f-sklon, 0deg));
+  animation: f-papirek-polozeni 680ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Hover po najetí — musí přebít pravidlo výš, jinak by se papírek
+   přestal srovnávat. */
+.f-papirek.je-videt:hover,
+.f-papirek.je-videt:focus-within {
   transform: rotate(0deg) translateY(-6px);
   box-shadow:
     0 2px 4px rgba(69, 68, 63, 0.06),
@@ -508,6 +662,53 @@
   box-shadow: var(--f-stin);
 }
 
+/* --------------------------------------------------------------------------
+   Nit pod kontaktem — mikrointerakce odkazů
+   Na hover/focus se pod e-mailem a telefonem protáhne meruňková nit.
+   Text sám se nehýbe, jede jen podtržení.
+   -------------------------------------------------------------------------- */
+.f-odkaz-nit {
+  position: relative;
+}
+
+.f-odkaz-nit::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  left: 0;
+  height: 3px;
+  border-radius: 2px;
+  background-color: var(--color-merunka);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 240ms cubic-bezier(0.22, 0.8, 0.32, 1);
+}
+
+.f-odkaz-nit:hover::after,
+.f-odkaz-nit:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* --------------------------------------------------------------------------
+   Došití — závěr cesty nitě
+   Blok se objeví, až když je přihláška odeslaná (třídu .je-dosito přidává
+   skript v Registrace.astro), a nit se v něm naposledy protáhne a uváže
+   uzlík. Do té doby prvek neexistuje — je to odměna, ne obsah.
+   Při vypnutém pohybu se objeví rovnou vykreslená celá.
+   -------------------------------------------------------------------------- */
+.f-dosito {
+  display: none;
+}
+
+.f-dosito.je-dosito {
+  display: flex;
+}
+
+.f-dosito.je-dosito path {
+  animation: f-nit-tah 1400ms cubic-bezier(0.22, 0.8, 0.32, 1) 400ms both;
+}
+
 /* ==========================================================================
    VYPNUTÍ POHYBU — povinné, publikum zahrnuje seniory
    Global.css ruší animace i přechody plošně; tady jistíme, aby po vypnutí
@@ -520,17 +721,44 @@
     transform: none !important;
   }
 
+  /* Papírky si i bez pohybu nechávají svůj klidový náklon — je to
+     výtvarný stav, ne animace. (Pravidlo výš by jim ho vzalo.) */
+  .f-papirek {
+    transform: rotate(var(--f-sklon, 0deg)) !important;
+  }
+
   .f-nit path,
   .f-kresli :is(path, circle),
   .f-kresli-scroll :is(path, circle) {
     stroke-dashoffset: 0 !important;
   }
 
+  /* Kousek nitě v obočí sekce, kolečka kroků: viditelné rovnou. */
+  .f-najezd:not(.je-videt) .f-obor::before {
+    transform: none !important;
+  }
+
+  .f-pop {
+    opacity: 1 !important;
+    scale: none !important;
+  }
+
+  /* Paralaxa stojí — dekorace drží klidovou polohu. */
+  .f-par {
+    transform: none !important;
+  }
+
+  /* Šipka v hero zůstává viditelná (skript ji při vypnutém pohybu
+     neschovává, tohle jistí i kdyby třída zbyla). */
+  .f-sipka-obal {
+    opacity: 1 !important;
+  }
+
   /* Nakloněné papírky se nesrovnávají — bez přechodu by to bylo skokové,
      tak na hover drží svůj klidový náklon. */
   .f-papirek:hover,
   .f-papirek:focus-within {
-    transform: rotate(var(--f-sklon, 0deg));
+    transform: rotate(var(--f-sklon, 0deg)) !important;
     box-shadow: var(--f-stin);
   }
 }
