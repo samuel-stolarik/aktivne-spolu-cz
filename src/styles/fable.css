@@ -153,8 +153,12 @@
 }
 
 /* Páteř kroků: kreslí se PODLE POSUNU stránky, ne podle času.
-   Umí to zatím jen část prohlížečů — ostatní vidí nit vykreslenou celou,
-   což je správný klidový stav, ne chyba. */
+
+   Chrome a Edge to zvládnou samy přes scroll-driven animaci. Safari
+   a Firefox ji zatím neumí, takže tam totéž dopočítává skript a nastavuje
+   `--dojeto` (0 až 1). Obojí končí u stejné vlastnosti, jen se k ní jde
+   jinudy — a když neběží ani jedno, nit je vykreslená celá, což je
+   správný klidový stav, ne chyba. */
 @supports (animation-timeline: view()) {
   .f-nit-pater path {
     animation: f-nit-tah linear both;
@@ -163,14 +167,26 @@
   }
 }
 
+@supports not (animation-timeline: view()) {
+  .f-nit-pater path {
+    stroke-dashoffset: calc(1 - var(--dojeto, 1));
+  }
+}
+
 /* --------------------------------------------------------------------------
    Kreslení ilustrací — stejný tah jako nit
-   Číslo 700 je delší než nejdelší tah v ilustracích (viewBox 240×200),
-   takže jedna „čárka" pokryje celý tah a klidový stav je nakreslený obrys.
+
+   Postavy mají u každého tvaru `pathLength="1"`, takže délka každého tahu
+   je pro prohlížeč rovna jedné bez ohledu na to, jak je tah dlouhý.
+   Čárka i posun se proto počítají v jedničkách.
+
+   Dřív tu bylo 700 (odhad delší než nejdelší tah ve starých postavách).
+   Po výměně kreseb to znamenalo 700 délek cesty — celý obrys se vešel
+   do první čárky a animace nedělala vůbec nic.
    -------------------------------------------------------------------------- */
 @keyframes f-tah-obrysu {
   from {
-    stroke-dashoffset: 700;
+    stroke-dashoffset: 1;
   }
   to {
     stroke-dashoffset: 0;
@@ -179,7 +195,7 @@
 
 .f-kresli :is(path, circle),
 .f-kresli-scroll :is(path, circle) {
-  stroke-dasharray: 700;
+  stroke-dasharray: 1;
   stroke-dashoffset: 0;
 }
 

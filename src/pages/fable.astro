@@ -173,6 +173,48 @@ const popis =
 
         prvky.forEach((prvek) => pozorovatel.observe(prvek));
       }
+
+      // ------------------------------------------------------------------
+      // Páteř kroků v prohlížečích bez scroll-driven animací
+      // ------------------------------------------------------------------
+      // Chrome a Edge nit kreslí samy podle posunu stránky (viz fable.css).
+      // Safari a Firefox to zatím neumí, takže jim totéž dopočítáme tady
+      // a předáme jako `--dojeto` od 0 do 1. CSS si z toho udělá posun
+      // čárky — vlastnost je stejná, jen se k ní jde jinudy.
+      //
+      // Když je pohyb zakázaný, nic nespouštíme a nit zůstane vykreslená
+      // celá. To je správný klidový stav, ne chyba.
+      if (
+        !chceMenePohybu &&
+        !CSS.supports("animation-timeline", "view()")
+      ) {
+        const pater = document.querySelector<SVGPathElement>(
+          ".f-nit-pater path",
+        );
+        const sekce = pater?.closest("section");
+
+        if (pater && sekce) {
+          const prekresliPater = () => {
+            const r = sekce.getBoundingClientRect();
+
+            // Nit dojíždí, zatímco sekce prochází obrazovkou. Rozsah je
+            // schválně užší než celý průchod, ať je nit hotová dřív,
+            // než sekce odjede pryč — jinak by ji nikdo neviděl dokreslit.
+            const zacatek = window.innerHeight * 0.95;
+            const konec = -r.height * 0.25;
+            const podil = (zacatek - r.top) / (zacatek - konec);
+
+            pater.style.setProperty(
+              "--dojeto",
+              String(Math.max(0, Math.min(1, podil))),
+            );
+          };
+
+          prekresliPater();
+          window.addEventListener("scroll", prekresliPater, { passive: true });
+          window.addEventListener("resize", prekresliPater, { passive: true });
+        }
+      }
     </script>
   </body>
 </html>

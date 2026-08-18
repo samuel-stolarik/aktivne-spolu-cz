@@ -189,10 +189,14 @@
 /* --- Vykreslování obrysových ilustrací ---------------------------------- */
 /* Postava se nakreslí, jako by ji někdo maloval. Tahy naskakují po sobě,
    ne všechny naráz — jinak by to vypadalo jako blikání.
-   Hodnota 1000 je schválně větší než nejdelší tah, aby stačila na všechny. */
+
+   Postavy mají u každého tvaru `pathLength="1"`, takže délka tahu je pro
+   prohlížeč vždycky jedna. Dřív tu bylo 1000 jako odhad „delší než nejdelší
+   tah" — po výměně kreseb to znamenalo tisíc délek cesty a animace se
+   nespustila vůbec. */
 .kresli-se :is(circle, path) {
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
 }
 
 .kresli-se.je-videt :is(circle, path) {
