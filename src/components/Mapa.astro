@@ -40,9 +40,18 @@ import Tlacitko from "./Tlacitko.astro";
 interface Props {
   /** Způsob oddělení sekcí — předává se do Sekce.astro */
   predel?: "linka" | "karta";
+  /**
+   * false = textový seznam míst se vedle mapy nezobrazí.
+   *
+   * Ze stránky ale nezmizí, jen se skryje pro oko a zůstane pro čtečky
+   * obrazovky. Mapa je obrázek — kdo ji neovládá myší nebo ji nevidí, měl
+   * by jinak smůlu a informace o tom, kde se akce chystají, by pro něj
+   * na webu vůbec nebyla.
+   */
+  seSeznamem?: boolean;
 }
 
-const { predel = "linka" } = Astro.props;
+const { predel = "linka", seSeznamem = true } = Astro.props;
 ---
 
 <Sekce id="mapa" predel={predel} linkaNahore>
@@ -140,7 +149,11 @@ const { predel = "linka" } = Astro.props;
     {/* --- Textový seznam ---------------------------------------------
         Rovnocenná cesta k téže informaci, ne poznámka pod čarou.
         Naplní ho skript z týchž dat jako mapu. */}
-    <div id="mapa-seznam-obal" hidden>
+    <div
+      id="mapa-seznam-obal"
+      class:list={[!seSeznamem && "sr-only"]}
+      hidden
+    >
       <h3 class="text-xl">Seznam míst</h3>
       <p id="mapa-souhrn" class="mt-1 mb-0"></p>
       <ul id="mapa-seznam" class="mt-4 list-none space-y-4 p-0"></ul>

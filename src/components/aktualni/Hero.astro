@@ -1,0 +1,114 @@
+---
+/**
+ * Hero — otevření stránky.
+ *
+ * Teze celé stránky v jednom pohledu: obrovský titulek, ve kterém nit
+ * podtrhne slovo „nezapomíná", vedle něj se sama nakreslí ilustrace
+ * dítěte a seniora. Emoce: tohle stojí za to udělat a je to zvládnutelné.
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 1. Titulek je rozlámaný do
+ * řádků kvůli sazbě, znění se nemění. Z dvojice navržených CTA je použité
+ * „Jdu do toho!" — má v sobě víc energie a míří i na Gen Z.
+ *
+ * POHYB: nástup po načtení řídí CSS (třída .f-vzestup + pořadí --z),
+ * takže funguje i bez JavaScriptu a při prefers-reduced-motion se vypne
+ * úplně — obsah je pak vidět okamžitě.
+ */
+import Ikona from "../Ikona.astro";
+import Tlacitko from "../Tlacitko.astro";
+import Ilustrace from "../Ilustrace.astro";
+import Nit from "./Nit.astro";
+
+/* Čtyři skupiny, pro které akce je — mikro-copy pod tlačítky z podkladů. */
+const skupiny = [
+  { ikona: "school", popis: "Školy a školky" },
+  { ikona: "briefcase", popis: "Mladé kolektivy a firmy" },
+  { ikona: "hand-heart", popis: "Neziskovky a komunity" },
+  { ikona: "sparkles", popis: "Gen Z a nadšenci" },
+];
+---
+
+<section id="uvod" class="f-hero px-5 pt-12 pb-8 sm:pt-16">
+  {/* Velké měkké tvary v pozadí — pomalé plování, nic přes text. */}
+  <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+    <div class="f-blob f-blob-a"></div>
+    <div class="f-blob f-blob-b"></div>
+  </div>
+
+  <div
+    class="relative mx-auto grid max-w-obsah items-center gap-12 lg:grid-cols-[7fr_5fr]"
+  >
+    <div>
+      <p class="f-obor f-vzestup" style="--z: 0">Mezinárodní den seniorů</p>
+
+      <h1 class="f-hero-nadpis mt-6">
+        <span class="f-hero-nadech f-vzestup" style="--z: 1">
+          Propojujeme generace.
+        </span>
+        <span class="f-vzestup block" style="--z: 2">Vytvořte setkání,</span>
+        <span class="f-vzestup block" style="--z: 3">
+          na které se
+          <span class="relative inline-block">
+            nezapomíná<Nit
+              varianta="podtrz"
+              trida="f-nit-nacteni absolute -bottom-2 left-0 w-full"
+            />
+          </span>.
+        </span>
+      </h1>
+
+      <p class="f-vzestup mt-8 max-w-[58ch]" style="--z: 4">
+        Ať už vedete školu, tvoříte mladý pracovní kolektiv, působíte
+        v neziskovce nebo chcete s přáteli udělat něco smysluplného — oslavte
+        s námi Mezinárodní den seniorů (v týdnu kolem 1. 10.). Zorganizujte
+        přátelské mezigenerační setkání ve svém okolí. A poté zanechte svou
+        stopu a staňte se součástí celostátního Zásobníku nápadů.
+      </p>
+
+      <div class="f-vzestup mt-8 flex flex-wrap items-center gap-4" style="--z: 5">
+        <Tlacitko odkaz="#registrace" trida="px-8 py-3.5 text-lg">
+          Jdu do toho!
+          <Ikona jmeno="arrow-right" velikost={22} trida="text-white" />
+        </Tlacitko>
+
+        {/* [DOPLNIT: informační leták v PDF — zatím vede na sekci Ke stažení] */}
+        <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi">
+          <Ikona jmeno="download" velikost={20} />
+          Stáhnout informační leták (PDF)
+        </Tlacitko>
+      </div>
+
+      {/* Komu akce patří — čtyři skupiny z podkladů. */}
+    </div>
+
+    {/* Dítě a senior — ilustrace se po načtení sama nakreslí,
+        jako by ji někdo maloval jedním tahem. */}
+    <div class="relative mx-auto w-full max-w-[420px]">
+      <div class="f-hero-kruh f-vzestup" style="--z: 2" aria-hidden="true"></div>
+      <div class="relative px-6 pt-10 text-tyrkys">
+        <Ilustrace jmeno="dvojice" sirka={420} trida="f-kresli h-auto w-full" />
+      </div>
+    </div>
+  </div>
+
+  {/* Pro koho to je — přes celou šířku, aby se všechny čtyři vešly vedle
+      sebe. V textovém sloupci hera se lámaly do dvou řádků po dvou. */}
+  <ul
+    class="f-vzestup relative mx-auto mt-10 flex max-w-obsah list-none flex-wrap justify-center gap-2 p-0 lg:flex-nowrap lg:justify-start"
+    style="--z: 6"
+  >
+    {
+      skupiny.map((skupina) => (
+        <li class="flex min-h-11 items-center gap-2 rounded-full border border-merunka-tlumena bg-white/80 px-4 text-popisek whitespace-nowrap">
+          <Ikona jmeno={skupina.ikona} velikost={18} />
+          {skupina.popis}
+        </li>
+      ))
+    }
+  </ul>
+
+  {/* Pozvání dál — jen jemně se houpající šipka, žádný text navíc. */}
+  <div class="relative mt-8 flex justify-center text-tyrkys" aria-hidden="true">
+    <Ikona jmeno="chevron-down" velikost={30} trida="f-sipka" />
+  </div>
+</section>

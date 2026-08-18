@@ -1,0 +1,53 @@
+---
+/**
+ * Jakou podporu získáte — tichý pás ujištění.
+ *
+ * Sekce má jediný úkol: uklidnit. Proto je vysázená jako klidný pás
+ * v meruňkové mlze, tři body vedle sebe, žádné karty s rámečky ani
+ * velká čísla. Emoce zadání: „je to zvládnutelné — a nejste na to sami."
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 5.
+ */
+import Ikona from "../Ikona.astro";
+
+const podpora = [
+  {
+    ikona: "messages-square",
+    nadpis: "Konzultace programu",
+    text: "Nejste si jistí vhodností aktivity? Rádi s vámi nápad zkonzultujeme.",
+  },
+  {
+    ikona: "compass",
+    nadpis: "Pomoc s nasměrováním",
+    text: "Pokud váháte, koho v okolí oslovit, pokusíme se vás propojit se seniorskými organizacemi.",
+  },
+  {
+    ikona: "award",
+    nadpis: "Certifikát a zařazení do losování",
+    text: "Ocenění pro žáky a možnost získat věcné odměny pro vaši třídu či skupinu.",
+  },
+];
+---
+
+<section id="podpora" class="f-mlha px-5 py-20 sm:py-24">
+  <div class="mx-auto max-w-obsah">
+    <div class="f-najezd" data-poradi="0">
+      <p class="f-obor">Podpora</p>
+      <h2 class="f-titulek mt-4">Jakou podporu od nás získáte?</h2>
+    </div>
+
+    <div class="mt-12 grid gap-10 md:grid-cols-3">
+      {
+        podpora.map((polozka, poradi) => (
+          <div class="f-najezd" data-poradi={poradi + 1}>
+            <span class="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_2px_10px_rgba(69,68,63,0.08)]">
+              <Ikona jmeno={polozka.ikona} velikost={26} />
+            </span>
+            <h3 class="mt-5 text-xl">{polozka.nadpis}</h3>
+            <p class="mt-2 mb-0">{polozka.text}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

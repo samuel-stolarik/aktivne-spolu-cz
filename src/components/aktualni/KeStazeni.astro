@@ -1,0 +1,64 @@
+---
+/**
+ * Ke stažení a kontakt — závěr stránky.
+ *
+ * Leták, kontakt „Nevíte si rady?" a pořadatelé. Kontakty na organizace
+ * i loga řeší sdílená komponenta Poradatele.astro — je to jediné místo
+ * na webu, kde jsou organizace popsané, a všechny verze ji sdílejí,
+ * aby se nerozešly.
+ *
+ * TEXTY: doslova z podklady/texty.md, sekce 8. Věty „Nevíte si rady?" /
+ * „Ozvěte se nám, rádi poradíme." jsou schválené znění z ostatních verzí,
+ * kontakt bere z jednoho místa (src/lib/kontakt.ts).
+ */
+import Ikona from "../Ikona.astro";
+import Tlacitko from "../Tlacitko.astro";
+import Poradatele from "../Poradatele.astro";
+import { EMAIL, TELEFON_ODKAZ, TELEFON_ZOBRAZIT } from "../../lib/kontakt";
+---
+
+<section id="ke-stazeni" class="bg-pozadi px-5 py-20 sm:py-28">
+  <div class="mx-auto max-w-obsah">
+    <div class="f-najezd" data-poradi="0">
+      <p class="f-obor">Ke stažení a kontakt</p>
+      <h2 class="f-titulek mt-4">Ke stažení a kontakt</h2>
+    </div>
+
+    <div class="f-najezd mt-10" data-poradi="1">
+      {/* [DOPLNIT: kompletní leták k akci v PDF — zatím bez souboru] */}
+      <Tlacitko odkaz="#ke-stazeni" varianta="vedlejsi">
+        <Ikona jmeno="file-text" velikost={20} />
+        Stáhnout kompletní leták k akci v PDF (pro pořadatele)
+      </Tlacitko>
+    </div>
+
+    {/* Jeden univerzální kontakt na celý projekt. */}
+    <div
+      class="f-najezd mt-10 flex flex-wrap items-center gap-x-10 gap-y-4 rounded-2xl border-l-4 border-merunka bg-plocha-tyrkys p-7"
+      data-poradi="2"
+    >
+      <div>
+        <h3 class="text-xl">Nevíte si rady?</h3>
+        <p class="mt-1 mb-0">Ozvěte se nám, rádi poradíme.</p>
+      </div>
+
+      <a
+        href={`mailto:${EMAIL}`}
+        class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+      >
+        <Ikona jmeno="mail" velikost={22} />
+        {EMAIL}
+      </a>
+
+      <a
+        href={`tel:${TELEFON_ODKAZ}`}
+        class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+      >
+        <Ikona jmeno="phone" velikost={22} />
+        {TELEFON_ZOBRAZIT}
+      </a>
+    </div>
+
+    <Poradatele poradi={3} />
+  </div>
+</section>

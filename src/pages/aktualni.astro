@@ -25,22 +25,22 @@
  * administrace) se ale berou hotové — jsou odzkoušené naostro.
  */
 import "../styles/global.css";
-import "../styles/fable.css";
+import "../styles/aktualni.css";
 
 import PrepisyObsahu from "../components/admin/PrepisyObsahu.astro";
 import Paticka from "../components/Paticka.astro";
 import PrepinacVariant from "../components/PrepinacVariant.astro";
 import Mapa from "../components/Mapa.astro";
 
-import Hlavicka from "../components/fable/Hlavicka.astro";
-import Hero from "../components/fable/Hero.astro";
-import Duvody from "../components/fable/Duvody.astro";
-import Kroky from "../components/fable/Kroky.astro";
-import Tipy from "../components/fable/Tipy.astro";
-import Podpora from "../components/fable/Podpora.astro";
-import Zasobnik from "../components/fable/Zasobnik.astro";
-import Registrace from "../components/fable/Registrace.astro";
-import KeStazeni from "../components/fable/KeStazeni.astro";
+import Hlavicka from "../components/aktualni/Hlavicka.astro";
+import Hero from "../components/aktualni/Hero.astro";
+import Duvody from "../components/aktualni/Duvody.astro";
+import Kroky from "../components/aktualni/Kroky.astro";
+import Tipy from "../components/aktualni/Tipy.astro";
+import Podpora from "../components/aktualni/Podpora.astro";
+import Zasobnik from "../components/aktualni/Zasobnik.astro";
+import Registrace from "../components/aktualni/Registrace.astro";
+import KeStazeni from "../components/aktualni/KeStazeni.astro";
 
 const titulek =
   "Propojujeme generace — Mezinárodní den seniorů | aktivně spolu";
@@ -108,7 +108,7 @@ const popis =
     >
       Přeskočit na obsah
     </a>
-    <PrepinacVariant aktivni="fable" />
+    <PrepinacVariant aktivni="aktualni" />
 
     <Hlavicka />
 
@@ -119,7 +119,7 @@ const popis =
       <Tipy />
       <Podpora />
       <Zasobnik />
-      <Mapa />
+      <Mapa seSeznamem={false} />
       <Registrace />
       <KeStazeni />
     </main>

@@ -1,0 +1,102 @@
+---
+/**
+ * Hlavička stránky /fable/.
+ *
+ * Nad hero sedí průsvitně na gradientu, po odscrollování dostane hranu
+ * a stín (třída .je-plna, přidává skript níž). Odkazy se na mobilu
+ * nesbalují pod hamburger — jedou vodorovně a posouvají se prstem.
+ * Pro seniory je viditelný odkaz spolehlivější než skryté menu.
+ *
+ * Klikací plochy drží nejméně 44 px na výšku (min-h-11).
+ */
+import Tlacitko from "../Tlacitko.astro";
+
+const odkazy = [
+  { cil: "#proc-se-zapojit", popis: "Proč se zapojit" },
+  { cil: "#jak-to-funguje", popis: "Jak to funguje" },
+  { cil: "#tipy-na-aktivity", popis: "Tipy na aktivity" },
+  { cil: "#zasobnik", popis: "Zásobník nápadů" },
+  { cil: "#mapa", popis: "Mapa akcí" },
+  { cil: "#ke-stazeni", popis: "Kontakt" },
+];
+---
+
+<header class="f-hlavicka" id="f-hlavicka">
+  <div class="mx-auto flex max-w-obsah items-center gap-4 px-5 py-3">
+    <a href="#obsah" class="shrink-0" aria-label="Mezigeneračně aktivně spolu">
+      <img
+        src="/obrazky/logo.png"
+        alt="Mezigeneračně aktivně spolu"
+        width="170"
+        height="50"
+        class="h-auto w-[150px] sm:w-[170px]"
+      />
+    </a>
+
+    <nav
+      class="f-hlavicka-odkazy -mx-2 flex min-w-0 flex-1 gap-1 overflow-x-auto px-2"
+      aria-label="Sekce stránky"
+    >
+      {
+        odkazy.map((odkaz) => (
+          <a
+            href={odkaz.cil}
+            data-kotva={odkaz.cil}
+            class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys"
+          >
+            {odkaz.popis}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="hidden shrink-0 lg:block">
+      <Tlacitko odkaz="#registrace" trida="px-5 py-2">Chci se zapojit</Tlacitko>
+    </div>
+  </div>
+</header>
+
+<script>
+  // --- Hrana lišty po odscrollování ---------------------------------------
+  // Nad hero je lišta průsvitná bez hrany, po pár pixelech scrollu dostane
+  // linku a stín, aby se oddělila od obsahu, přes který jede.
+  const hlavicka = document.getElementById("f-hlavicka");
+
+  function prepniHranu() {
+    hlavicka?.classList.toggle("je-plna", window.scrollY > 12);
+  }
+
+  prepniHranu();
+  window.addEventListener("scroll", prepniHranu, { passive: true });
+
+  // --- Zvýraznění sekce, ve které návštěvník právě je ---------------------
+  const odkazy = document.querySelectorAll<HTMLAnchorElement>(
+    ".f-hlavicka-odkazy [data-kotva]",
+  );
+  const sekce = Array.from(odkazy)
+    .map((odkaz) => document.querySelector<HTMLElement>(odkaz.dataset.kotva!))
+    .filter((prvek): prvek is HTMLElement => prvek !== null);
+
+  if (sekce.length > 0) {
+    const pozorovatel = new IntersectionObserver(
+      (zaznamy) => {
+        zaznamy.forEach((zaznam) => {
+          if (!zaznam.isIntersecting) return;
+
+          const id = `#${zaznam.target.id}`;
+          odkazy.forEach((odkaz) => {
+            if (odkaz.dataset.kotva === id) {
+              odkaz.setAttribute("aria-current", "true");
+            } else {
+              odkaz.removeAttribute("aria-current");
+            }
+          });
+        });
+      },
+      // Sekce se počítá jako aktivní, když je v horní třetině obrazovky.
+      { rootMargin: "-20% 0px -70% 0px" },
+    );
+
+    sekce.forEach((prvek) => pozorovatel.observe(prvek));
+  }
+</script>
