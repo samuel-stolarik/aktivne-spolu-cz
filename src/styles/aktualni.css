@@ -180,7 +180,16 @@
    správný klidový stav, ne chyba. */
 @supports (animation-timeline: view()) {
   .f-nit-pater path {
-    animation: f-nit-tah linear both;
+    /* POZOR: schválně dlouhý zápis, ne zkratka `animation: ...`.
+       Minifikace zkratku slepí dohromady s `animation-timeline` do tvaru
+       `animation: linear both f-nit-tah view()`, což je neplatné a prohlížeč
+       celé pravidlo zahodí. Výsledek: ve vývojovém režimu se nit kreslila,
+       v sestaveném webu vůbec — a nikdo to dlouho nepoznal, protože
+       Safari a Firefox mezitím jely po záložní cestě přes skript. */
+    animation-name: f-nit-tah;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-duration: auto;
     animation-timeline: view();
     animation-range: cover 5% cover 75%;
   }
