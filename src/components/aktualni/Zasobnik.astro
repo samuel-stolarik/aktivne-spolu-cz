@@ -111,18 +111,14 @@ const karty = [
           class="f-najezd f-zas-postava text-merunka-tlumena"
           data-poradi="1"
         >
-          {/* Žáci u počítače — kreslená scéna od zadavatele. Nahradila
-              obrysovou postavu; karty se proto nerozevírají od dlaně, ale
-              od okraje scény, jako by vypadávaly z obrazovky. Vzhledem
-              k tomu, že aplikaci staví právě oni, dává to i větší smysl. */}
-          <img
-            src="/obrazky/kresba-zaci-u-pocitace.webp"
-            alt="Dva žáci u počítače programují"
-            width="640"
-            height="350"
-            class="f-vzestup h-auto w-full"
-            loading="lazy"
-          />
+          {/* Zpátky obrysový žák, od jehož dlaně se rozevírá vějíř karet.
+
+              Byla tu chvíli kreslená scéna dětí u počítače, ale nesedělo to
+              ze dvou důvodů: kresba je vedená jinou rukou než scéna v úvodu
+              (geometrická ikona proti volné kresbě) a karty se od rastru
+              nedaly rozevřít z dlaně, jen od okraje obrázku — čímž se rozpadla
+              přesně ta scéna, kvůli které se to dělalo. */}
+          <Ilustrace jmeno="zak" sirka={290} trida="f-kresli-scroll h-auto w-full" />
         </div>
 
         {/* Vějíř karet. DOM jde odzadu dopředu, což na počítači odpovídá
