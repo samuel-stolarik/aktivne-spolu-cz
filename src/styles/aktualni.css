@@ -1003,3 +1003,278 @@
     z-index: 6;
   }
 }
+
+/* ==========================================================================
+   OTOČNÉ KARTIČKY — Proč se zapojit
+   (nová pravidla patří na konec souboru, ať se nepobijí s tím, co už tu je)
+
+   Pět odstavců naráz byla na jednu obrazovku zeď textu. Kartička proto
+   v klidu ukazuje jen nadpis a text má na odvrácené straně.
+
+   JAK SE SEM NAPOJUJE VYPNUTÝ POHYB
+   Tahle stránka nemá třídu `pohyb-ano` jako animovaná verze — pohyb se tu
+   vypíná pravidly `@media (prefers-reduced-motion: reduce)` (níž v tomhle
+   souboru a plošně v global.css) a skript v aktualni.astro se ptá přes
+   matchMedia. Otáčení se ptá stejně: zapíná ho třída `f-otacky-ano`, kterou
+   na <body> přidává krátký skript v Duvody.astro, a jen tehdy, když jede
+   JavaScript A návštěvník nemá zakázaný pohyb. Bez ní je kartička obyčejná
+   karta aktuální verze — bílý papír s meruňkově tlumeným rámečkem, uvnitř
+   nadpis a pod ním text, přesně jako karty kroků.
+
+   ČTYŘI VĚCI, KTERÉ SE NESMÍ ROZBÍT:
+
+   1. TEXT MUSÍ BÝT VŽDYCKY K PŘEČTENÍ. Zadní strana se ani v otáčecím
+      režimu neschovává `display: none` ani `visibility: hidden`, jen se
+      odvrací (`backface-visibility`) — pro čtečku obrazovky je pořád na
+      svém místě a přečte se.
+
+   2. NEJDE TO JEN MYŠÍ. Nadpis je zároveň `<button>` (Tab + Enter/mezerník),
+      klepnutí obsluhuje posluchač na celé kartičce. Najetí myší je zvlášť,
+      a jen tam, kde myš opravdu je — `@media (hover: hover)`.
+
+   3. VÝŠKA SE OTOČENÍM NESMÍ ZMĚNIT. Obě strany leží v JEDNÉ buňce mřížky,
+      takže výška kartičky je vždycky ta větší z obou. Nikde se nic neměří
+      v JavaScriptu a obsah pod sekcí se při otáčení nehne ani o pixel.
+
+   4. RÁMEČEK ZAOSTŘENÍ JE NA CELÉ KARTIČCE, ne na tlačítku — na tlačítku
+      by se po otočení odvrátil a kdo chodí tabulátorem, přestal by vidět,
+      kde je.
+   ========================================================================== */
+
+/* BEZ JAVASCRIPTU MUSÍ BÝT KARTIČKY VIDĚT.
+   Odhalování při scrollu (.f-najezd) drží obsah průhledný, dokud ho
+   pozorovatel neodhalí — a bez JavaScriptu se pozorovatel nespustí. Stránka
+   na to má pojistku v <noscript> v aktualni.astro, jenže ta se v sestaveném
+   webu vypisuje DŘÍV než odkaz na tenhle soubor, takže ji `.f-najezd`
+   přebije. Týká se to celé stránky, ne jen kartiček; oprava patří do
+   aktualni.astro (přesunout <noscript> za styly), ten si ale nevlastníme.
+   Kartičky se proto jistí samy: dokud na <body> není třída, kterou přidává
+   skript v Duvody.astro, jsou vidět rovnou. */
+body:not(.f-skript-jede) .f-otocka {
+  opacity: 1;
+  transform: none;
+}
+
+/* Klidový vzhled = vzhled BEZ otáčení. Papír aktuální verze: bílá plocha,
+   meruňkově tlumený rámeček, stejné zaoblení i odsazení jako karta kroku.
+   Se zapnutým otáčením ho nese každá strana zvlášť (pravidlo níž) — jinak
+   by při otáčení zůstala bílá plocha stát a otáčel by se jen text v ní. */
+.f-otocka,
+.f-otacky-ano .f-otocka .f-strana {
+  border: 1px solid var(--color-merunka-tlumena);
+  border-radius: 1rem;
+  background-color: #fff;
+  padding: 1.75rem;
+}
+
+/* Pátý důvod stojí na tyrkysové ploše — jediný, který slibuje něco
+   hmatatelného, tak ať je vidět. Šířku přes oba sloupce řeší značky. */
+.f-otocka-odmena,
+.f-otacky-ano .f-otocka-odmena .f-strana {
+  border-color: transparent;
+  background-color: var(--color-plocha-tyrkys);
+}
+
+/* Se zapnutým otáčením je vnější rámeček jen průhledná schránka. Drží
+   perspektivu, výšku a rámeček zaostření; vidět není. */
+.f-otacky-ano .f-otocka {
+  position: relative;
+  border-color: transparent;
+  background-color: transparent;
+  padding: 0;
+  perspective: 1400px;
+  cursor: pointer;
+}
+
+.f-otocka-vnitrek {
+  height: 100%;
+}
+
+/* Otáčená vrstva. `grid` s oběma stranami v téže buňce drží stejnou výšku
+   v obou stavech (bod 3 výše). Křivka i doba jsou stejné jako u zvedání
+   karet na stránce, jen delší — otočení je větší pohyb. */
+.f-otacky-ano .f-otocka-vnitrek {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 560ms cubic-bezier(0.22, 0.8, 0.32, 1);
+}
+
+.f-otacky-ano .f-strana {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  /* Ikona nahoře, nadpis uprostřed, šipka dole — kartička je vysoká podle
+     delšího z obou textů, tak ať ta výška není prázdná. */
+  justify-content: space-between;
+  gap: 1rem;
+  /* Odvrácená strana se nekreslí. Schválně takhle, ne `display: none`
+     ani `visibility: hidden` — viz bod 1 výše. Předpona je kvůli starším
+     Safari; bez ní by se obě strany překrývaly. */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Označit myší jde jen text, který je zrovna vidět (pravidla níž). Bez
+     toho by se při tažení přes kartičku dostal do výběru i text z odvrácené
+     strany, který na obrazovce vůbec není. */
+  user-select: none;
+}
+
+.f-otacky-ano .f-strana-rub {
+  transform: rotateY(180deg);
+}
+
+/* Otočeno: buď připnuté klepnutím / Enterem, nebo dokud je nad kartičkou
+   myš. Když je připnutá a myš na ni najede, obě pravidla říkají totéž,
+   takže se kartička nezačne vracet. */
+.f-otacky-ano .f-otocka.je-otocena .f-otocka-vnitrek {
+  transform: rotateY(180deg);
+}
+
+/* Otáčená kartička se v půli cesty promítne o kousek širší než její místo
+   v mřížce. Bez tohohle by ji sousední kartička překryla. */
+.f-otacky-ano .f-otocka.je-otocena {
+  z-index: 2;
+}
+
+/* Vytažená kartička dostane měkký stín stránky — papír se zvedl od plochy. */
+.f-otacky-ano .f-otocka.je-otocena .f-strana {
+  box-shadow: var(--f-stin);
+}
+
+/* Otočená kartička ukazuje text — ten se dá označit a zkopírovat. */
+.f-otacky-ano .f-otocka.je-otocena .f-strana-rub {
+  user-select: text;
+}
+
+/* Najetí myší jen tam, kde myš opravdu je. Na dotykovém displeji umí
+   `:hover` po klepnutí „uvíznout" a kartička by pak zůstala otočená
+   z obou důvodů naráz. */
+@media (hover: hover) and (pointer: fine) {
+  .f-otacky-ano .f-otocka:hover .f-otocka-vnitrek {
+    transform: rotateY(180deg);
+  }
+
+  .f-otacky-ano .f-otocka:hover {
+    z-index: 2;
+  }
+
+  .f-otacky-ano .f-otocka:hover .f-strana {
+    box-shadow: var(--f-stin);
+  }
+
+  .f-otacky-ano .f-otocka:hover .f-strana-rub {
+    user-select: text;
+  }
+}
+
+/* Kolečko s ikonou — stejné jako jinde v aktuální verzi (56 px, meruňková
+   mlha). Na tyrkysové ploše odměny musí být bílé, jinak by splynulo. */
+.f-otocka-ikona {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Bez tohohle by se kolečko roztáhlo přes celou šířku kartičky. */
+  align-self: flex-start;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 9999px;
+  background-color: var(--f-merunka-mlha);
+}
+
+.f-otocka-odmena .f-otocka-ikona {
+  background-color: #fff;
+}
+
+/* Nadpis vypadá pořád jako nadpis — velikost, barvu i řez si tlačítko
+   dědí z <h3>. */
+.f-otocka-nadpis {
+  margin: 1rem 0 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.f-otacky-ano .f-otocka-nadpis {
+  /* Odstup dělá `gap` na straně kartičky. */
+  margin: 0;
+  /* V klidu je nadpis jediné, co na kartičce je — smí si vzít víc místa. */
+  font-size: 1.375rem;
+}
+
+.f-otocka-prepinac {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  /* Bez otáčení je to jen nadpis, tak ani nemá vypadat klikatelně. */
+  cursor: inherit;
+}
+
+.f-otocka p {
+  margin: 0.75rem 0 0;
+}
+
+.f-otacky-ano .f-otocka p {
+  margin: 0;
+}
+
+/* Šipka — viditelné znamení, že kartička něco skrývá. Bez otáčení není
+   co skrývat, tak tam vůbec není. */
+.f-otocka-sipka {
+  display: none;
+}
+
+.f-otacky-ano .f-otocka-sipka {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background-color: var(--color-plocha-tyrkys);
+}
+
+.f-otacky-ano .f-otocka-odmena .f-otocka-sipka {
+  background-color: #fff;
+}
+
+/* Rámeček zaostření se kreslí na CELÉ kartičce, ne na tlačítku (bod 4). */
+.f-otacky-ano .f-otocka-prepinac:focus-visible {
+  outline: none;
+}
+
+.f-otacky-ano .f-otocka:has(.f-otocka-prepinac:focus-visible) {
+  outline: 3px solid var(--color-tyrkys);
+  outline-offset: 3px;
+}
+
+/* Odměna leží přes oba sloupce, takže je na počítači skoro tak široká jako
+   celý obsah. Ve stojatém sloupci by na ní zbývalo prázdné pole, a otáčení
+   tak široké plochy by kolem osy „vylétlo" na diváka. Proto vodorovné
+   uspořádání (ikona, nadpis, šipka u pravého okraje) a mnohem hlubší
+   perspektiva — otočení je pak klidné převrácení listu, ne švih. */
+@media (min-width: 48rem) {
+  .f-otacky-ano .f-otocka-odmena {
+    perspective: 3600px;
+  }
+
+  .f-otacky-ano .f-otocka-odmena .f-strana {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1.25rem;
+  }
+
+  .f-otacky-ano .f-otocka-odmena .f-otocka-ikona,
+  .f-otacky-ano .f-otocka-odmena .f-otocka-sipka {
+    align-self: center;
+  }
+
+  .f-otacky-ano .f-otocka-odmena .f-otocka-sipka {
+    margin-left: auto;
+  }
+}
