@@ -232,7 +232,10 @@
    ANIMACE 2 — plocha sekce se během průjezdu přelije z krémové do tyrkysové
               a zase zpět. Nemíchá se barva pozadí (to by prohlížeč musel
               překreslovat), ale prolíná se překryvná vrstva přes `opacity`.
-   ANIMACE 3 — karta se naklání za kurzorem. */
+   ANIMACE 3 — pět kartiček s důvody se otáčí: v klidu je vidět jen nadpis,
+              po najetí myší / klepnutí / stisku Enteru se kartička otočí
+              a ukáže text. Dlaždice „Cíl akce" se neotáčí, ta se místo toho
+              naklání za kurzorem. */
 
 .prelivova-plocha {
   position: absolute;
@@ -243,11 +246,205 @@
   pointer-events: none;
 }
 
-/* Naklánění karty za kurzorem. Náklon je 5 stupňů — víc už působí lacině
-   a text na kartě se hůř čte. */
+/* Naklánění dlaždice „Cíl akce" za kurzorem. Náklon je 5 stupňů — víc už
+   působí lacině a text na dlaždici se hůř čte. */
 .naklon {
   transition: transform 220ms ease-out;
   will-change: transform;
+}
+
+/* --------------------------------------------------------------------------
+   OTOČNÉ KARTIČKY
+   --------------------------------------------------------------------------
+   Šest odstavců naráz byla na jednu obrazovku zeď textu. Kartička proto
+   v klidu ukazuje jen nadpis a text je na odvrácené straně.
+
+   ČTYŘI VĚCI, KTERÉ SE NESMÍ ROZBÍT:
+
+   1. TEXT MUSÍ BÝT VŽDYCKY K PŘEČTENÍ.
+      Otáčení zapíná až třída `.pohyb-ano` — tedy jen tehdy, když jede
+      JavaScript A návštěvník nemá zakázaný pohyb. Jinak je kartička
+      obyčejný rámeček s nadpisem a textem pod sebou, přesně jako předtím.
+      Zadní strana se ani v otáčecím režimu neschovává `display: none`
+      ani `visibility: hidden`, jen se odvrací (`backface-visibility`) —
+      pro čtečku obrazovky je pořád na svém místě a přečte se.
+
+   2. NEJDE TO JEN MYŠÍ.
+      Nadpis je zároveň `<button>`, takže Tab + Enter/mezerník otáčí bez
+      jediného řádku navíc. Klepnutí prstem obsluhuje posluchač na celé
+      kartičce (na dotyku žádné „najetí myší" neexistuje). Najetí myší je
+      zvlášť, a jen tam, kde myš opravdu je — `@media (hover: hover)`.
+
+   3. VÝŠKA SE OTOČENÍM NESMÍ ZMĚNIT.
+      Obě strany leží v JEDNÉ buňce mřížky, takže výška kartičky je vždycky
+      ta větší z obou. Texty jsou různě dlouhé, ale tohle si prohlížeč
+      spočítá sám — nikde se nic neměří v JavaScriptu a stránka pod sekcí
+      se při otáčení nehne ani o pixel.
+
+   4. KLIKACÍ PLOCHA JE CELÁ KARTIČKA.
+      Naměřeno na telefonu 390 px: 350 × 265 px, na nejužší obrazovce
+      320 px: 280 × 296 px. Požadovaných 44 × 44 px je splněno s velkou
+      rezervou a netrefit se nedá. */
+
+/* Vzhled kartičky. Bez pohybu ho nese celý rámeček, s pohybem každá strana
+   zvlášť — jinak by při otáčení zůstala bílá plocha stát na místě a otáčel
+   by se jen text v ní. */
+.otocna-karta,
+.pohyb-ano .otocna-karta .strana {
+  border: 1px solid var(--color-merunka-tlumena);
+  border-radius: 1rem;
+  background-color: #fff;
+  padding: 1.75rem;
+}
+
+/* Se zapnutým otáčením je vnější rámeček jen průhledná schránka. Drží
+   perspektivu, výšku a rámeček zaostření; vidět není. */
+.pohyb-ano .otocna-karta {
+  position: relative;
+  border-color: transparent;
+  background-color: transparent;
+  padding: 0;
+  perspective: 1200px;
+  cursor: pointer;
+}
+
+.karta-vnitrek {
+  height: 100%;
+}
+
+/* Otáčená vrstva. `grid` s oběma stranami v téže buňce drží stejnou výšku
+   v obou stavech (bod 3 výše). */
+.pohyb-ano .karta-vnitrek {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 560ms var(--krivka);
+}
+
+.pohyb-ano .strana {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  /* Ikona nahoře, nadpis uprostřed, šipka dole — kartička je vysoká podle
+     delšího z obou textů, tak ať ta výška není prázdná. */
+  justify-content: space-between;
+  gap: 1rem;
+  /* Odvrácená strana se nekreslí. Schválně takhle, ne `display: none`
+     ani `visibility: hidden` — viz bod 1 výše.
+     Předpona je kvůli starším Safari; bez ní by se tam obě strany
+     překrývaly. */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Označit myší jde jen text, který je zrovna vidět (pravidla níž).
+     Bez toho by se při tažení přes kartičku dostal do výběru i text
+     z odvrácené strany, který na obrazovce vůbec není. */
+  user-select: none;
+}
+
+.pohyb-ano .strana-zadni {
+  transform: rotateY(180deg);
+}
+
+/* Otočeno: buď připnuté klepnutím / Enterem, nebo dokud je nad kartičkou
+   myš. Když je připnutá a myš na ni najede, obě pravidla říkají totéž,
+   takže se kartička nezačne vracet. */
+.pohyb-ano .otocna-karta.je-otocena .karta-vnitrek {
+  transform: rotateY(180deg);
+}
+
+.pohyb-ano .otocna-karta.je-otocena {
+  z-index: 2;
+}
+
+/* Otočená kartička ukazuje text — ten se dá označit a zkopírovat. */
+.pohyb-ano .otocna-karta.je-otocena .strana-zadni {
+  user-select: text;
+}
+
+/* Najetí myší jen tam, kde myš opravdu je. Na dotykovém displeji umí
+   `:hover` po klepnutí „uvíznout" a kartička by pak zůstala otočená
+   z obou důvodů naráz. */
+@media (hover: hover) and (pointer: fine) {
+  .pohyb-ano .otocna-karta:hover .karta-vnitrek {
+    transform: rotateY(180deg);
+  }
+
+  /* Otáčená kartička se v půli cesty promítne o kousek širší než její
+     místo v mřížce. Bez tohohle by ji sousední kartička překryla. */
+  .pohyb-ano .otocna-karta:hover {
+    z-index: 2;
+  }
+
+  .pohyb-ano .otocna-karta:hover .strana-zadni {
+    user-select: text;
+  }
+}
+
+/* Nadpis vypadá pořád jako nadpis — velikost, barvu i řez si tlačítko
+   dědí z <h3>. */
+.nadpis-karty {
+  margin: 1rem 0 0;
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.pohyb-ano .nadpis-karty {
+  /* Odstup dělá `gap` na straně kartičky. */
+  margin: 0;
+  /* V klidu je nadpis jediné, co na kartičce je — smí si vzít víc místa. */
+  font-size: 1.375rem;
+}
+
+.prepinac-karty {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  /* Bez otáčení je to jen nadpis, tak ani nemá vypadat klikatelně. */
+  cursor: inherit;
+}
+
+.otocna-karta p {
+  margin: 0.75rem 0 0;
+}
+
+.pohyb-ano .otocna-karta p {
+  margin: 0;
+}
+
+/* Šipka — viditelné znamení, že kartička něco skrývá. Bez otáčení není
+   co skrývat, tak tam vůbec není. */
+.sipka-karty {
+  display: none;
+}
+
+.pohyb-ano .sipka-karty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Bez tohohle by se kruh roztáhl přes celou šířku kartičky. */
+  align-self: flex-start;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background-color: var(--color-plocha-tyrkys);
+}
+
+/* Rámeček zaostření se kreslí na CELÉ kartičce, ne na tlačítku. Tlačítko
+   je na přední straně, a jakmile je kartička otočená, byl by rámeček
+   odvrácený — tedy neviditelný, a kdo chodí tabulátorem, přestal by
+   vidět, kde je. */
+.pohyb-ano .prepinac-karty:focus-visible {
+  outline: none;
+}
+
+.pohyb-ano .otocna-karta:has(.prepinac-karty:focus-visible) {
+  outline: 3px solid var(--color-tyrkys);
+  outline-offset: 3px;
 }
 
 /* ==========================================================================
@@ -545,6 +742,13 @@
 
   .kopie-pasu {
     display: none !important;
+  }
+
+  /* Kartičky v sekci „Proč se zapojit" se neotáčejí. Nadpis i text jsou
+     vidět naráz, tak jak stránka vypadala předtím — text se nesmí schovat
+     za pohyb, který si návštěvník zakázal. */
+  .karta-vnitrek {
+    transform: none !important;
   }
 
   /* Balíček karet zůstane rozevřený, jen se nikam nepřeklápí. */

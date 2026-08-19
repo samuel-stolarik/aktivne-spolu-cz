@@ -331,8 +331,20 @@ const podpora = [
       ANIMACE 2 — Plocha sekce se během průjezdu přelije z krémové do
                   tyrkysové a zase zpět. Neplete se barva pozadí (to by
                   prohlížeč překresloval), prolíná se překryvná vrstva.
-      ANIMACE 3 — Karta se naklání za kurzorem, aby bylo poznat, na které
-                  člověk zrovna je.
+      ANIMACE 3 — Pět kartiček s důvody se otáčí. V klidu je vidět jen
+                  nadpis, po najetí myší / klepnutí prstem / stisku Enteru
+                  se kartička otočí a ukáže text. Šest odstavců naráz byla
+                  na jednu obrazovku zeď textu.
+
+      OTÁČENÍ SE NESMÍ STÁT JEDINOU CESTOU K TEXTU
+      Zapíná ho až třída `pohyb-ano`, kterou přidává skript na začátku
+      stránky. Bez JavaScriptu i při zakázaném pohybu tedy žádné otáčení
+      není a kartička je obyčejný rámeček, ve kterém je nadpis i text pod
+      sebou — přesně jak stránka vypadala předtím. Zadní strana se navíc
+      ani v otáčecím režimu neschovává `display: none` ani `visibility`,
+      jen se odvrací, takže text pořád čte i čtečka obrazovky.
+
+      DLAŽDICE „CÍL AKCE" SE NEOTÁČÍ — VIZ KOMENTÁŘ U NÍ NÍŽE.
       ====================================================================== */}
   <section id="proc-se-zapojit" class="relative overflow-hidden bg-pozadi px-5 py-16">
     <div class="prelivova-plocha" id="preliv-proc" aria-hidden="true"></div>
@@ -347,15 +359,63 @@ const podpora = [
         {
           duvody.map((duvod, i) => (
             <div data-odhal="zdola" style={`--prodleva: ${i * 80}ms`}>
-              <article class="naklon h-full rounded-2xl border border-merunka-tlumena bg-white p-7">
-                <Ikona jmeno={duvod.ikona} velikost={36} />
-                <h3 class="mt-4 text-xl">{duvod.nadpis}</h3>
-                <p class="mt-3 mb-0">{duvod.text}</p>
+              <article class="otocna-karta h-full">
+                <div class="karta-vnitrek">
+                  {/* Přední strana — v klidu je vidět jen tahle. */}
+                  <div class="strana strana-predni">
+                    <Ikona jmeno={duvod.ikona} velikost={36} />
+
+                    {/* Nadpis JE ovladač.
+                        Zůstává v <h3>, takže se jím dá pořád listovat čtečkou
+                        obrazovky, a zároveň je to opravdové <button>: Tab,
+                        Enter i mezerník na něm fungují samy od sebe a klepnutí
+                        prstem taky, nic se nedoprogramovává.
+
+                        `tabindex="-1"` je tu pro případ, že by JavaScript
+                        neběžel — pak se nic neotáčí a tlačítko by bylo prázdná
+                        zastávka v pořadí tabulátoru. Skript ho odebere teprve
+                        ve chvíli, kdy otáčení opravdu zapne. */}
+                    <h3 class="nadpis-karty">
+                      <button
+                        type="button"
+                        class="prepinac-karty"
+                        tabindex="-1"
+                        aria-controls={`duvod-${i + 1}-text`}
+                      >
+                        {duvod.nadpis}
+                      </button>
+                    </h3>
+
+                    <span class="sipka-karty" aria-hidden="true">
+                      <Ikona jmeno="chevron-down" velikost={20} />
+                    </span>
+                  </div>
+
+                  {/* Zadní strana. Schválně se neschovává `display: none`
+                      ani `visibility: hidden`, jen se odvrací — text tak
+                      zůstává ve stromu pro čtečku obrazovky a přečte se
+                      i tomu, kdo kartičkou otočit nemůže. */}
+                  <div class="strana strana-zadni" id={`duvod-${i + 1}-text`}>
+                    <p>{duvod.text}</p>
+
+                    <span class="sipka-karty" aria-hidden="true">
+                      <Ikona jmeno="chevron-up" velikost={20} />
+                    </span>
+                  </div>
+                </div>
               </article>
             </div>
           ))
         }
 
+        {/* „Cíl akce" se schválně NEOTÁČÍ.
+            Není to šestý důvod, ale shrnutí celé sekce — a nadpis „Cíl akce"
+            sám o sobě neříká vůbec nic, takže by za otočením nečekala odměna,
+            jen prázdná dlaždice. Kdyby se otáčelo všech šest, zbyla by na
+            obrazovce samá hesla a jediná souvislá věta v sekci by zmizela.
+            Že se chová jinak, je vidět na první pohled: jako jediná stojí na
+            tmavé ploše, nemá šipku a nemá kurzor ruky. Místo otáčení si drží
+            náklon za kurzorem, který dřív měly všechny karty. */}
         <div data-odhal="zdola" style={`--prodleva: ${duvody.length * 80}ms`}>
           <article
             class="naklon flex h-full flex-col justify-center rounded-2xl p-7 text-white"
@@ -951,12 +1011,28 @@ const podpora = [
       .forEach((prvek) => prvek.classList.add("je-videt"));
   }
 
+  /**
+   * Vrátí otočné kartičky do stavu „nic se neotáčí" — z nadpisu je zase
+   * jen nadpis. Používá se, když si návštěvník zakáže pohyb až za běhu:
+   * bez otáčení by tlačítko bylo prázdná zastávka v pořadí tabulátoru
+   * a hlásilo by rozbalený/sbalený stav, který nikde není vidět.
+   */
+  function vypniOtaceniKarticek() {
+    document.querySelectorAll<HTMLElement>(".otocna-karta").forEach((karta) => {
+      karta.classList.remove("je-otocena");
+      const prepinac = karta.querySelector<HTMLElement>(".prepinac-karty");
+      prepinac?.setAttribute("tabindex", "-1");
+      prepinac?.removeAttribute("aria-expanded");
+    });
+  }
+
   // Když si návštěvník pohyb vypne až za běhu (třeba v nastavení systému),
   // třídu sundáme a obsah necháme viditelný. Nová animace se už nespustí.
   dotazNaPohyb.addEventListener("change", (u) => {
     if (!u.matches) return;
     document.documentElement.classList.remove("pohyb-ano");
     odhalVsechno();
+    vypniOtaceniKarticek();
   });
 
   if (dotazNaPohyb.matches) {
@@ -1084,6 +1160,44 @@ const podpora = [
       );
 
       nadpisy.forEach((n) => pozorovatelNadpisu.observe(n));
+    })();
+
+    // ------------------------------------------------------------------
+    // PROČ SE ZAPOJIT, ANIMACE 3 — otočné kartičky
+    // ------------------------------------------------------------------
+    // Otáčení samo obstarává CSS. Tady se jen zapne (dokud sem kód nedojde,
+    // je kartička obyčejný rámeček s nadpisem i textem pod sebou) a přidá
+    // se připnutí klepnutím, aby kartička šla otevřít i bez myši.
+    (function otocneKarticky() {
+      document.querySelectorAll<HTMLElement>(".otocna-karta").forEach((karta) => {
+        const prepinac = karta.querySelector<HTMLElement>(".prepinac-karty");
+        if (!prepinac) return;
+
+        // Teprve teď je z nadpisu opravdový ovladač. Do HTML se tohle
+        // nepíše schválně: bez JavaScriptu se nic neotáčí, takže by to bylo
+        // tlačítko, které nic nedělá, a hlášený stav, který nikde není vidět.
+        prepinac.removeAttribute("tabindex");
+        prepinac.setAttribute("aria-expanded", "false");
+
+        // Stačí JEDEN posluchač na celé kartičce:
+        //   * Enter i mezerník na tlačítku vyvolají `click`, který sem
+        //     probublá — klávesnice je tím hotová.
+        //   * Klepnutí prstem po otočení dopadne na zadní stranu, kde už
+        //     žádné tlačítko není. Kdyby posluchač visel jen na tlačítku,
+        //     nešlo by kartičku na telefonu zavřít.
+        karta.addEventListener("click", () => {
+          // Návštěvník si mezitím mohl zakázat pohyb. Pak se neotáčí nic.
+          if (!document.documentElement.classList.contains("pohyb-ano")) return;
+
+          // Když si někdo označuje text, aby si ho zkopíroval, nepřeklopíme
+          // mu kartičku pod rukama.
+          const vyber = window.getSelection();
+          if (vyber && !vyber.isCollapsed) return;
+
+          const otevreno = karta.classList.toggle("je-otocena");
+          prepinac.setAttribute("aria-expanded", String(otevreno));
+        });
+      });
     })();
 
     // ------------------------------------------------------------------
@@ -1329,7 +1443,9 @@ const podpora = [
       }
     })();
 
-    // --- PROČ SE ZAPOJIT, ANIMACE 3 — náklon karty za kurzorem -------
+    // --- PROČ SE ZAPOJIT — náklon dlaždice „Cíl akce" za kurzorem ----
+    // Zbylých pět kartiček se místo naklánění otáčí (viz výš); náklon by
+    // se s otáčením pral o tutéž `transform`.
     (function naklonKaret() {
       document.querySelectorAll<HTMLElement>(".naklon").forEach((karta) => {
         karta.addEventListener(
