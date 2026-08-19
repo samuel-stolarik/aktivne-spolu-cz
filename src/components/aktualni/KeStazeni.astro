@@ -42,9 +42,10 @@ import { EMAIL, TELEFON_ODKAZ, TELEFON_ZOBRAZIT } from "../../lib/kontakt";
         <p class="mt-1 mb-0">Ozvěte se nám, rádi poradíme.</p>
       </div>
 
+      {/* Nit se pod kontaktem protáhne na hover — text sám se nehýbe. */}
       <a
         href={`mailto:${EMAIL}`}
-        class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+        class="f-odkaz-nit flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
       >
         <Ikona jmeno="mail" velikost={22} />
         {EMAIL}
@@ -52,7 +53,7 @@ import { EMAIL, TELEFON_ODKAZ, TELEFON_ZOBRAZIT } from "../../lib/kontakt";
 
       <a
         href={`tel:${TELEFON_ODKAZ}`}
-        class="flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
+        class="f-odkaz-nit flex min-h-11 items-center gap-3 font-semibold text-tyrkys no-underline"
       >
         <Ikona jmeno="phone" velikost={22} />
         {TELEFON_ZOBRAZIT}

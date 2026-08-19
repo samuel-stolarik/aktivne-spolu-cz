@@ -20,6 +20,12 @@ import Nit from "./Nit.astro";
 ---
 
 <section id="registrace" class="bg-plocha-tyrkys px-5 py-20 sm:py-28">
+  {/* Steh přes hranici s mapou — poslední předěl na cestě nitě. */}
+  <Nit
+    varianta="predel"
+    trida="f-nit-predel relative z-10 mx-auto -mt-34 mb-2 block h-28 w-auto sm:-mt-42"
+  />
+
   <div class="mx-auto max-w-obsah">
     <div class="f-najezd" data-poradi="0">
       <p class="f-obor">Registrace a poplatek</p>
@@ -62,7 +68,40 @@ import Nit from "./Nit.astro";
         />
       </div>
 
-      <FormularKrokovy />
+      <div class="min-w-0">
+        <FormularKrokovy />
+
+        {/* Došití. Jakmile formulář zmizí a objeví se poděkování, nit se
+            pod ním naposledy protáhne a uváže uzlík — cesta, která začala
+            podtržením v hero, je sešitá. Prvek je čistě dekorační
+            a do odeslání neexistuje (hlídá ho skript níž). */}
+        <div class="f-dosito mt-8 justify-center text-merunka" aria-hidden="true">
+          <Nit varianta="dosito" trida="h-10 w-auto" />
+        </div>
+      </div>
     </div>
   </div>
 </section>
+
+<script>
+  // Došití nitě po odeslání formuláře. Formulář je sdílená odzkoušená
+  // komponenta, do které se nesahá — poznáme to tedy zvenku: poděkování
+  // (#dekovani-k) při úspěchu ztratí třídu `hidden`. Při vypnutém pohybu
+  // se nit objeví rovnou celá (animaci ruší globální pravidlo), objevení
+  // samotné ale patří k obsahu, ne k pohybu — proto se nevypíná.
+  const dekovani = document.getElementById("dekovani-k");
+  const dosito = document.querySelector<HTMLElement>(".f-dosito");
+
+  if (dekovani && dosito) {
+    const pozorovatel = new MutationObserver(() => {
+      if (dekovani.classList.contains("hidden")) return;
+      dosito.classList.add("je-dosito");
+      pozorovatel.disconnect();
+    });
+
+    pozorovatel.observe(dekovani, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  }
+</script>

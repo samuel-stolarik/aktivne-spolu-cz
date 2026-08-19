@@ -16,10 +16,15 @@
  *   f-nit-nacteni  hned po načtení stránky (hero)
  *   f-nit-scroll   až na ni návštěvník doscrolluje (přidá se .je-videt)
  *   f-nit-pater    podle posunu stránky (scroll-driven animace)
+ *   f-nit-predel   krátký steh přes hranici dvou sekcí — také podle posunu
  */
 interface Props {
-  /** "podtrz" = vlnka pod slovem, "spojka" = svislá vlnka mezi bloky, "pater" = dlouhá páteř kroků */
-  varianta: "podtrz" | "spojka" | "pater";
+  /**
+   * "podtrz" = vlnka pod slovem, "spojka" = svislá vlnka mezi bloky,
+   * "pater" = dlouhá páteř kroků, "predel" = steh přes hranici sekcí,
+   * "dosito" = závěrečný uzlík po odeslání formuláře
+   */
+  varianta: "podtrz" | "spojka" | "pater" | "predel" | "dosito";
   trida?: string;
 }
 
@@ -42,6 +47,22 @@ const podoby = {
     cesta:
       "M28 0 C 40 100, 16 200, 28 300 C 40 400, 16 500, 28 600 C 38 680, 20 750, 28 800",
     sirkaTahu: 3.5,
+  },
+  /* Steh přes hranici sekcí — svislá vlnka, která „prošije" předěl.
+     Kreslí se podle posunu stránky, jako by nit protékala z plochy
+     do plochy. */
+  predel: {
+    viewBox: "0 0 60 140",
+    cesta: "M30 4 C 48 30, 12 54, 30 80 C 44 100, 18 118, 30 136",
+    sirkaTahu: 4,
+  },
+  /* Došití — vodorovná vlnka zakončená uzlíkem. Objeví se jedinkrát:
+     po odeslání registračního formuláře, kdy je cesta nitě u konce. */
+  dosito: {
+    viewBox: "0 0 260 44",
+    cesta:
+      "M6 26 C 42 12, 76 36, 110 24 C 138 14, 160 30, 184 24 C 204 19, 228 8, 234 22 C 238 33, 220 36, 216 26 C 213 18, 226 14, 240 17",
+    sirkaTahu: 4,
   },
 } as const;
 

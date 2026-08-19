@@ -13,6 +13,7 @@
  * TEXTY: doslova z podklady/texty.md, sekce 2.
  */
 import Ikona from "../Ikona.astro";
+import Nit from "./Nit.astro";
 
 const duvody = [
   {
@@ -45,6 +46,13 @@ const odmena = {
 ---
 
 <section id="proc-se-zapojit" class="bg-pozadi">
+  {/* Steh přes hranici s hero: nit pokračuje tam, kam ukázala šipka,
+      a prošívá se přes předěl přesně tempem scrollu. */}
+  <Nit
+    varianta="predel"
+    trida="f-nit-predel relative z-10 mx-auto -mt-6 -mb-10 block h-28 w-auto"
+  />
+
   <div class="mx-auto max-w-obsah px-5 pt-20 pb-16 sm:pt-28">
     <div class="f-najezd" data-poradi="0">
       <p class="f-obor">Proč se zapojit</p>
@@ -84,9 +92,14 @@ const odmena = {
     </div>
   </div>
 
-  {/* Manifest — cíl akce přes celou šířku, jediná tmavá věta horní půlky. */}
-  <div class="f-tma px-5 py-16 sm:py-20">
-    <div class="f-najezd mx-auto max-w-obsah" data-poradi="0">
+  {/* Manifest — cíl akce přes celou šířku, jediná tmavá věta horní půlky.
+      Teplý odlesk v pozadí pluje pomaleji než scroll, takže tmavá plocha
+      žije celou svou hloubkou, zatímco text stojí pevně. */}
+  <div class="f-tma relative px-5 py-16 sm:py-20">
+    <div class="absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div class="f-par f-tma-akcent" style="--f-hloubka: 26"></div>
+    </div>
+    <div class="f-najezd relative mx-auto max-w-obsah" data-poradi="0">
       <p class="f-obor">Cíl akce</p>
       <p
         class="mt-6 mb-0 max-w-[42ch] text-[clamp(1.35rem,2.4vw,1.9rem)] leading-normal font-semibold text-balance"
