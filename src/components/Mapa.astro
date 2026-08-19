@@ -64,8 +64,13 @@ const { predel = "linka", seSeznamem = true } = Astro.props;
     jak přihlášky procházejí schválením.
   </p>
 
+  {/* Když se seznam nezobrazuje, nesmí po něm zůstat prázdný sloupec —
+      mřížka by mu pořád držela 320 px a vedle mapy by zela díra. */}
   <div
-    class="najezd mt-10 grid gap-8 lg:grid-cols-[1fr_320px] lg:items-start"
+    class:list={[
+      "najezd mt-10 grid gap-8 lg:items-start",
+      seSeznamem && "lg:grid-cols-[1fr_320px]",
+    ]}
     data-poradi="2"
   >
     {/* --- Vizuální část ---------------------------------------------- */}
