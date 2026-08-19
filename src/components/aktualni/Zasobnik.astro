@@ -4,13 +4,62 @@
  *
  * Inkoustová plocha tu není náhodou: Zásobník je odkaz, který po akci
  * zůstane — nejtrvalejší část celého projektu. Tmavá plocha mu dává
- * váhu a zároveň rámuje ilustraci žáků, kteří aplikaci staví. Ilustrace
- * se kreslí meruňkovým tahem, až na ni návštěvník doscrolluje.
+ * váhu a zároveň rámuje scénu se žákem, který aplikaci staví.
  *
- * TEXTY: doslova z podklady/texty.md, sekce 6.
+ * SCÉNA „ŽÁK DRŽÍ KARTY": dřív tu vedle sebe stály dva nápady, které
+ * spolu nemluvily — obrysová postava a samostatné karty. Teď je to
+ * jedna scéna: žák drží v ruce vějíř tří karet, jak budou vypadat
+ * záznamy v Zásobníku. Ruku mu nedokreslujeme — karty držené směrem
+ * k divákovi ruku přirozeně zakrývají, takže držení vzniká překryvem
+ * a natočením, ne zásahem do kresby (ta má jednotný tah a nesmí se
+ * kazit). Vějíř se rozevírá od jeho dlaně vzhůru k textu sekce, který
+ * popisuje přesně ta pole, co jsou na kartách vidět.
+ *
+ * PŘÍSTUPNOST KARET: zadní karty vykukují jen hlavičkou, proto se každá
+ * dá vytáhnout dopředu třemi cestami — myší (hover), klávesnicí (Tab,
+ * karty mají tabindex a :focus je zvedne) a dotykem (klepnutí kartě dá
+ * fokus, jistí to skript níž kvůli Safari). Na mobilu se vějíř rozloží
+ * do sloupce, kde je každá karta čitelná celá bez jakékoli interakce.
+ * Při zakázaném pohybu se nic neanimuje, jen se stavy mění okamžitě.
+ *
+ * TEXTY: odstavce doslova z podklady/texty.md, sekce 6. Obsah karet je
+ * ukázkový, ale pravdivý: názvy aktivit jsou z Tipů na aktivity
+ * (podklady, sekce 4) a řádky odpovídají tomu, na co se po akci ptá
+ * formulář — pro koho byla akce vhodná, náročnost, pomůcky.
  */
 import Ilustrace from "../Ilustrace.astro";
 import Nit from "./Nit.astro";
+
+// Tři karty = tři kategorie aktivit z podkladů. Barva puntíku drží
+// kategorii stejně jako jinde na webu; červená se smí objevit výhradně
+// jako puntík u „Pohyb a pobyt venku" — štítek sám zůstává neutrální.
+// Pořadí v poli = odzadu dopředu (první karta je v scéně nejhlouběji).
+const karty = [
+  {
+    kategorie: "Sdílení a setkávání",
+    barva: "var(--color-potvrzeni)",
+    nazev: "Vyprávění příběhů",
+    vhodne: "všechny generace",
+    narocnost: "nenáročné",
+    pomucky: "židle a klidný prostor",
+  },
+  {
+    kategorie: "Pohyb a pobyt venku",
+    barva: "var(--color-tlacitko)",
+    nazev: "Zahradní hry",
+    vhodne: "aktivnější senioři a děti",
+    narocnost: "střední",
+    pomucky: "mölkky, pétanque",
+  },
+  {
+    kategorie: "Kultura a tvořivost",
+    barva: "var(--color-merunka)",
+    nazev: "Výtvarná dílna",
+    vhodne: "děti i senioři",
+    narocnost: "nenáročné",
+    pomucky: "papír, pastelky, nůžky",
+  },
+];
 ---
 
 <section id="zasobnik" class="f-tma relative px-5 py-20 sm:py-28">
@@ -49,16 +98,79 @@ import Nit from "./Nit.astro";
       </p>
     </div>
 
-    {/* Žáci za notebookem — kreslí se meruňkovou nití při scrollu.
-        Paralaxní obal je zvlášť, aby se nepral s najížděním uvnitř. */}
-    <div class="f-par relative mx-auto w-full max-w-[400px]" style="--f-hloubka: -14">
-      <div class="f-najezd text-merunka-tlumena" data-poradi="1">
-        <Ilustrace
-          jmeno="zak-s-notebookem"
-          sirka={400}
-          trida="f-kresli-scroll h-auto w-full"
-        />
+    {/* Scéna: žák drží vějíř karet. Paralaxní obal je zvlášť, aby se
+        nepral s najížděním a hover-transformacemi uvnitř. Postava se
+        kreslí meruňkovou nití při scrollu, karty se „rozdají" po jedné
+        (stejný stagger jako zbytek stránky, řídí data-poradi). */}
+    <div
+      class="f-par relative mx-auto w-full max-w-[430px]"
+      style="--f-hloubka: -14"
+    >
+      <div class="f-zas-scena">
+        <div
+          class="f-najezd f-zas-postava text-merunka-tlumena"
+          data-poradi="1"
+        >
+          <Ilustrace jmeno="zak" sirka={290} trida="f-kresli-scroll h-auto w-full" />
+        </div>
+
+        {/* Vějíř karet. DOM jde odzadu dopředu, což na počítači odpovídá
+            čtení shora dolů — Tab tedy prochází karty v pořadí, v jakém
+            je návštěvník vidí. */}
+        <ul class="f-zas-ruka" role="list" aria-label="Ukázkové záznamy Zásobníku">
+          {
+            karty.map((karta, i) => (
+              <li class="f-najezd f-zas-obal" data-poradi={String(4 - i)}>
+                <div class="f-zas-karta" tabindex="0">
+                  <p class="f-zas-stitek">
+                    <span
+                      class="f-zas-puntik"
+                      style={`background-color: ${karta.barva}`}
+                      aria-hidden="true"
+                    />
+                    {karta.kategorie}
+                  </p>
+                  <h3 class="f-zas-nazev">{karta.nazev}</h3>
+                  <dl class="f-zas-radky">
+                    <div>
+                      <dt>Vhodné pro:</dt>
+                      <dd>{karta.vhodne}</dd>
+                    </div>
+                    <div>
+                      <dt>Náročnost:</dt>
+                      <dd>{karta.narocnost}</dd>
+                    </div>
+                    <div>
+                      <dt>Pomůcky:</dt>
+                      <dd>{karta.pomucky}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
       </div>
+
+      {/* Poctivé označení: karty jsou ukázka formátu, ne živá data. */}
+      <p class="f-najezd f-zas-popisek" data-poradi="4">
+        Ukázka, jak budou záznamy v Zásobníku vypadat.
+      </p>
     </div>
   </div>
 </section>
+
+<script>
+  // Dotyk a klik: karta si vezme fokus, aby se vytáhla před ostatní
+  // i v prohlížečích, které fokus po klepnutí samy nedávají (Safari).
+  // Esc kartu zase pustí. Hover ani Tab skript nepotřebují — ty řeší
+  // čisté CSS, tohle je jen pojistka třetí cesty.
+  document
+    .querySelectorAll<HTMLElement>(".f-zas-karta")
+    .forEach((karta) => {
+      karta.addEventListener("click", () => karta.focus());
+      karta.addEventListener("keydown", (udalost) => {
+        if (udalost.key === "Escape") karta.blur();
+      });
+    });
+</script>
