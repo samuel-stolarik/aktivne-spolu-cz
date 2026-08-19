@@ -111,7 +111,18 @@ const karty = [
           class="f-najezd f-zas-postava text-merunka-tlumena"
           data-poradi="1"
         >
-          <Ilustrace jmeno="zak" sirka={290} trida="f-kresli-scroll h-auto w-full" />
+          {/* Žáci u počítače — kreslená scéna od zadavatele. Nahradila
+              obrysovou postavu; karty se proto nerozevírají od dlaně, ale
+              od okraje scény, jako by vypadávaly z obrazovky. Vzhledem
+              k tomu, že aplikaci staví právě oni, dává to i větší smysl. */}
+          <img
+            src="/obrazky/kresba-zaci-u-pocitace.webp"
+            alt="Dva žáci u počítače programují"
+            width="640"
+            height="350"
+            class="f-vzestup h-auto w-full"
+            loading="lazy"
+          />
         </div>
 
         {/* Vějíř karet. DOM jde odzadu dopředu, což na počítači odpovídá

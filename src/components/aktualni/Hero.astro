@@ -93,7 +93,19 @@ const skupiny = [
     <div class="f-par relative mx-auto w-full max-w-[420px]" style="--f-hloubka: -12">
       <div class="f-hero-kruh f-vzestup" style="--z: 2" aria-hidden="true"></div>
       <div class="relative px-6 pt-10 text-tyrkys">
-        <Ilustrace jmeno="seniorka" sirka={420} trida="f-kresli h-auto w-full" />
+        {/* Kreslená scéna od zadavatele. Je to rastr, ne obrys, takže se
+            nedá „kreslit tahem" jako předchozí postavy ani obarvovat —
+            místo toho jemně nastoupí. Pozadí má odbarvené na průhledné,
+            takže sedí na jakoukoli plochu. */}
+        <img
+          src="/obrazky/kresba-babicka-s-detmi.webp"
+          alt="Seniorka si povídá s dětmi u stolu"
+          width="720"
+          height="393"
+          class="f-vzestup h-auto w-full"
+          style="--z: 3"
+          fetchpriority="high"
+        />
       </div>
     </div>
   </div>
