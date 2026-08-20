@@ -84,17 +84,23 @@ const popis =
     <PrepisyObsahu />
 
     {/* Bez JavaScriptu se najíždění nikdy nespustí — obsah proto musí
-        být viditelný rovnou, jinak by stránka zůstala prázdná. */}
+        být viditelný rovnou, jinak by stránka zůstala prázdná.
+
+        `!important` tu není z lenosti. Astro si odkazy na styly vkládá až za
+        celý obsah <head>, takže tenhle blok skončí PŘED nimi a při shodné
+        síle selektoru by ho `.f-najezd { opacity: 0 }` z aktualni.css
+        přebilo — stránka by bez JavaScriptu zůstala prázdná i s touhle
+        pojistkou. Pořadí v souboru s tím nic neudělá, sílu ano. */}
     <noscript>
       <style>
         .f-najezd,
         .najezd {
-          opacity: 1;
-          transform: none;
+          opacity: 1 !important;
+          transform: none !important;
         }
 
         .podtrzeni {
-          transform: scaleX(1);
+          transform: scaleX(1) !important;
         }
       </style>
     </noscript>
