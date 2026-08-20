@@ -474,90 +474,6 @@
 }
 
 /* --------------------------------------------------------------------------
-   Papírky z dílny (Tipy na aktivity)
-   Tři lehce nakloněné kartičky, jako by je někdo položil na stůl.
-   Na hover/focus se srovnají a nadzvednou. Text zůstává vodorovný dost
-   na to, aby se pohodlně četl (náklon max 1,6°).
-   -------------------------------------------------------------------------- */
-.f-papirek {
-  border-radius: 1rem;
-  background-color: #fff;
-  box-shadow: var(--f-stin);
-  transform: rotate(var(--f-sklon, 0deg));
-  transition:
-    transform 220ms cubic-bezier(0.22, 0.8, 0.32, 1),
-    box-shadow 220ms ease-out;
-}
-
-.f-papirek-a {
-  --f-sklon: -1.6deg;
-}
-
-.f-papirek-b {
-  --f-sklon: 1.1deg;
-}
-
-.f-papirek-c {
-  --f-sklon: -0.7deg;
-}
-
-.f-papirek:hover,
-.f-papirek:focus-within {
-  transform: rotate(0deg) translateY(-6px);
-  box-shadow:
-    0 2px 4px rgba(69, 68, 63, 0.06),
-    0 22px 44px -18px rgba(18, 112, 127, 0.35);
-}
-
-/* Položení papírku na stůl: přiletí o kus níž a víc natočený a dosedne
-   do svého klidového náklonu. Nástup řídí animace (ne přechod), takže
-   po dosednutí zůstává rychlý 220ms přechod pro hover.
-
-   Zároveň to opravuje starou drobnost: obecné pravidlo .f-najezd.je-videt
-   po najetí přepisovalo transform na translateY(0) a papírky tím přišly
-   o náklon. Tady se náklon po najetí výslovně drží. */
-@keyframes f-papirek-polozeni {
-  from {
-    opacity: 0;
-    transform: translateY(34px) rotate(calc(var(--f-sklon, 0deg) * 3.2));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) rotate(var(--f-sklon, 0deg));
-  }
-}
-
-.f-papirek.f-najezd.je-videt {
-  opacity: 1;
-  transform: rotate(var(--f-sklon, 0deg));
-  animation: f-papirek-polozeni 680ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-
-/* Hover po najetí — musí přebít pravidlo výš, jinak by se papírek
-   přestal srovnávat. */
-.f-papirek.je-videt:hover,
-.f-papirek.je-videt:focus-within {
-  transform: rotate(0deg) translateY(-6px);
-  box-shadow:
-    0 2px 4px rgba(69, 68, 63, 0.06),
-    0 22px 44px -18px rgba(18, 112, 127, 0.35);
-}
-
-/* „Špendlík", kterým je papírek přichycený. */
-.f-spendlik {
-  position: absolute;
-  top: -11px;
-  left: 50%;
-  width: 22px;
-  height: 22px;
-  border: 3px solid #fff;
-  border-radius: 9999px;
-  background-color: var(--color-merunka);
-  box-shadow: 0 2px 6px rgba(69, 68, 63, 0.25);
-  transform: translateX(-50%);
-}
-
-/* --------------------------------------------------------------------------
    Kroky — časová osa s nití
    -------------------------------------------------------------------------- */
 
@@ -730,12 +646,6 @@
     transform: none !important;
   }
 
-  /* Papírky si i bez pohybu nechávají svůj klidový náklon — je to
-     výtvarný stav, ne animace. (Pravidlo výš by jim ho vzalo.) */
-  .f-papirek {
-    transform: rotate(var(--f-sklon, 0deg)) !important;
-  }
-
   .f-nit path,
   .f-kresli :is(path, circle),
   .f-kresli-scroll :is(path, circle) {
@@ -762,14 +672,6 @@
   .f-sipka-obal {
     opacity: 1 !important;
   }
-
-  /* Nakloněné papírky se nesrovnávají — bez přechodu by to bylo skokové,
-     tak na hover drží svůj klidový náklon. */
-  .f-papirek:hover,
-  .f-papirek:focus-within {
-    transform: rotate(var(--f-sklon, 0deg)) !important;
-    box-shadow: var(--f-stin);
-  }
 }
 
 /* ==========================================================================
@@ -794,3 +696,73 @@
 /* Výchozí uspořádání (mobil a tablet): postava nahoře, karty pod ní
    ve sloupci. První karta se vysune přes spodek postavy, aby scéna
    držela pohromadě i bez vějíře. */
+
+/* ==========================================================================
+   Jedoucí řádka nápadů (Tipy na aktivity)
+   ==========================================================================
+   Nahradila tři statické kartičky — zadavatel chtěl aktivity v řádce jako
+   ve starších návrzích. Puntík drží kategorii, legenda nad řádkou říká,
+   která barva je která.
+   ========================================================================== */
+
+.f-pas-obal {
+  position: relative;
+}
+
+.f-pas {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  padding-inline: 1.25rem;
+  animation: f-pas-jede 46s linear infinite;
+}
+
+/* Zastavení najetím myší, aby se řádka dala přečíst.
+   POZOR: kdo nemá myš, řádku zastavit neumí — chybí viditelné tlačítko
+   „zastavit". Je to zásah do vzhledu, tak čeká na rozhodnutí zadavatele.
+   Při vypnutém pohybu je obsah dostupný v klidu, viz blok níž. */
+.f-pas-obal:hover .f-pas,
+.f-pas-obal:focus-within .f-pas {
+  animation-play-state: paused;
+}
+
+.f-pas-tip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 999px;
+  border: 2px solid var(--color-merunka-tlumena);
+  background-color: #fff;
+  padding: 0.9rem 1.75rem;
+  font-size: 1.25rem;
+  white-space: nowrap;
+}
+
+@keyframes f-pas-jede {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    /* Obsah je v šabloně dvakrát, posun o polovinu je proto bezešvý. */
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* Vypnutý pohyb: z řádky se stane obyčejný zalomený výpis.
+   Kdyby se jen zastavila, zůstaly by vidět dvě položky z jedenácti —
+   obal má skrytý přesah a nedá se v něm posouvat, takže by byl zbytek
+   obsahu nedostupný. Druhá sada se schová, aby výpis nebyl dvojitý. */
+@media (prefers-reduced-motion: reduce) {
+  .f-pas {
+    width: auto;
+    flex-wrap: wrap;
+    animation: none;
+    transform: none;
+    max-width: var(--spacing-obsah, 1080px);
+    margin-inline: auto;
+  }
+
+  .f-pas-kopie {
+    display: none;
+  }
+}

@@ -17,23 +17,46 @@ import Ikona from "../Ikona.astro";
 const kategorie = [
   {
     ikona: "palette",
-    sklon: "f-papirek-a",
     nadpis: "Kultura a tvořivost",
+    barva: "var(--color-merunka)",
     text: "Společný zpěv, výtvarná dílna, tvoření dekorací, společné čtení.",
+    polozky: [
+      "Společný zpěv",
+      "Výtvarná dílna",
+      "Tvoření dekorací",
+      "Společné čtení",
+    ],
   },
   {
     ikona: "footprints",
-    sklon: "f-papirek-b",
     nadpis: "Pohyb a pobyt venku",
+    barva: "var(--color-tlacitko)",
     text: "Nenáročná procházka, zahradní hry, mezigenerační venkovní hry, například mölkky nebo pétanque.",
+    polozky: ["Nenáročná procházka", "Zahradní hry", "Mölkky", "Pétanque"],
   },
   {
     ikona: "message-circle",
-    sklon: "f-papirek-c",
     nadpis: "Sdílení a setkávání",
+    barva: "var(--color-potvrzeni)",
     text: "Hraní stolních her, vyprávění příběhů, vzájemné učení (např. žáci ukáží práci s tabletem, senioři tradiční řemeslo).",
+    polozky: ["Hraní stolních her", "Vyprávění příběhů", "Vzájemné učení"],
   },
 ];
+
+// Aktivity na střídačku, ne po kategoriích za sebou. Popořadě by na řádce
+// byly čtyři meruňkové, pak čtyři červené a pak tři zelené a vypadalo by to
+// jako tři slepené seznamy. Takhle se barvy střídají, ale puntík pořád drží
+// svoji kategorii.
+const naStridacku = (() => {
+  const ven: { nazev: string; barva: string }[] = [];
+  const nejdelsi = Math.max(...kategorie.map((k) => k.polozky.length));
+  for (let i = 0; i < nejdelsi; i++) {
+    for (const k of kategorie) {
+      if (k.polozky[i]) ven.push({ nazev: k.polozky[i], barva: k.barva });
+    }
+  }
+  return ven;
+})();
 ---
 
 <section id="tipy-na-aktivity" class="bg-pozadi px-5 py-20 sm:py-28">
@@ -43,22 +66,51 @@ const kategorie = [
       <h2 class="f-titulek mt-4">Čím se můžete inspirovat a co připravit?</h2>
     </div>
 
-    <div class="mt-16 grid gap-8 md:grid-cols-3">
+    {/* Legenda — bez ní je barva puntíku jen ozdoba, ze které nikdo
+        nepozná, co znamená. */}
+    <ul class="f-najezd mt-8 flex list-none flex-wrap gap-x-8 gap-y-2 p-0" data-poradi="1">
       {
-        kategorie.map((polozka, poradi) => (
-          <div
-            class:list={["f-papirek f-najezd relative p-7 pt-9", polozka.sklon]}
-            data-poradi={poradi + 1}
-          >
-            <span class="f-spendlik" aria-hidden="true" />
-            <Ikona jmeno={polozka.ikona} velikost={32} />
-            <h3 class="mt-4 text-xl">{polozka.nadpis}</h3>
-            <p class="mt-2 mb-0">{polozka.text}</p>
-          </div>
+        kategorie.map((k) => (
+          <li class="flex items-center gap-2.5">
+            <span
+              class="h-3 w-3 shrink-0 rounded-full"
+              style={`background-color: ${k.barva}`}
+              aria-hidden="true"
+            />
+            <span class="font-semibold">{k.nadpis}</span>
+          </li>
         ))
       }
-    </div>
+    </ul>
+  </div>
 
+  {/* Jedoucí řádka nápadů. Obsah je v šabloně DVAKRÁT — jen tak působí
+      posun o polovinu jako nekonečná smyčka. Druhá sada je pouhá kulisa:
+      má aria-hidden, aby čtečka nepředčítala jedenáct nápadů dvakrát,
+      a při vypnutém pohybu se schová, aby výpis nebyl dvojitý. */}
+  <div class="f-pas-obal mt-10 overflow-hidden">
+    <div class="f-pas">
+      {
+        [0, 1].map((sada) =>
+          naStridacku.map((tip) => (
+            <span
+              class:list={["f-pas-tip", sada === 1 && "f-pas-kopie"]}
+              aria-hidden={sada === 1 ? "true" : undefined}
+            >
+              <span
+                class="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={`background-color: ${tip.barva}`}
+                aria-hidden="true"
+              />
+              {tip.nazev}
+            </span>
+          )),
+        )
+      }
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-obsah">
     {/* Bezpečnostní rámec — klidný, bez hravosti okolních papírků. */}
     <div
       class="f-najezd mt-12 flex flex-col gap-5 rounded-2xl border-l-4 border-merunka bg-plocha-tyrkys p-7 sm:flex-row sm:items-start"
