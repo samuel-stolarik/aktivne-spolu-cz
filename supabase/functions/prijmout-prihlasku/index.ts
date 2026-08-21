@@ -19,6 +19,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { sestavSpayd } from '../_shared/spayd.ts';
 import { vytvorQrPng } from '../_shared/qr.ts';
+import { vytvorFakturuPdf } from '../_shared/faktura.ts';
 import { nactiNastaveniGmailu, odesliEmail } from '../_shared/gmail.ts';
 
 // ---------------------------------------------------------------------------
@@ -687,6 +688,7 @@ async function posliPotvrzeni(
   vs: number,
   qrUrl: string | null,
   splatnostCesky: string,
+  faktura: HotovaFaktura | null,
 ): Promise<boolean> {
   const nastaveni = nactiNastaveniGmailu();
   if (!nastaveni) {
@@ -712,12 +714,145 @@ async function posliPotvrzeni(
       predmet: `Přihláška přijata — variabilní symbol ${vs}`,
       text: textEmailu(p, vs, u, qrUrl),
       html: htmlEmailu(p, vs, u, qrUrl),
+      // Faktura jde rovnou v příloze. Dřív ji posílal Make zvlášť, takže
+      // člověku chodily dva e-maily o jedné věci.
+      prilohy: faktura
+        ? [{ nazev: faktura.soubor, typ: 'application/pdf', data: faktura.pdf }]
+        : [],
     });
     console.log(`Potvrzení odesláno, VS ${vs}, zpráva ${id}.`);
     return true;
   } catch (e) {
     console.error(`Potvrzení se nepovedlo odeslat, VS ${vs}. Přihláška je uložená.`, e);
     return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FAKTURA
+// ---------------------------------------------------------------------------
+
+/** Bucket, kam se ukládají hotové faktury. Na rozdíl od QR je NEveřejný. */
+const BUCKET_FAKTURY = 'faktury';
+
+/** Jak dlouho platí odkaz na fakturu. Deset let — doklad má přežít archivaci. */
+const PLATNOST_ODKAZU_S = 315_360_000;
+
+interface HotovaFaktura {
+  cislo: string;
+  soubor: string;
+  pdf: Uint8Array;
+  odkaz: string | null;
+}
+
+/**
+ * Vystaví fakturu: vezme číslo z databáze, složí PDF, uloží ho a vrátí.
+ *
+ * FAKTURA SE VYSTAVUJE JEN NA PŘEVOD. Kdo platí QR kódem, dostává rovnou
+ * platební údaje a fakturu nechce; dobrovolný příspěvek jednotlivce je dar,
+ * na který se faktura nevystavuje vůbec.
+ *
+ * ČÍSLO SI NEVYMÝŠLÍME. Dává ho databázová funkce ve tvaru RR/SS/<VS>, takže
+ * na faktuře i na platbě je vidět stejné číslo. Funkce nic neposouvá — pro
+ * stejný variabilní symbol vrátí vždycky totéž, takže opakované volání
+ * nespálí číslo navíc.
+ *
+ * `null` NENÍ důvod přihlášku zamítnout. Přihláška je v tu chvíli uložená
+ * a člověk má platební údaje v e-mailu; chybějící faktura se dá dovystavit.
+ */
+async function vystavFakturu(
+  // deno-lint-ignore no-explicit-any
+  klient: any,
+  p: Prihlaska,
+  vs: number,
+  datumVystaveni: string,
+  datumSplatnosti: string,
+): Promise<HotovaFaktura | null> {
+  if (p.forma_platby !== 'prevod') return null;
+
+  const rada = (Deno.env.get('FAKTURY_CISLO_RADY') ?? '').trim();
+  if (!rada) {
+    console.warn(
+      `Faktura přeskočena: chybí FAKTURY_CISLO_RADY. Přihláška VS ${vs} je uložená.`,
+    );
+    return null;
+  }
+
+  try {
+    const { data: cislo, error } = await klient.rpc('cislo_faktury_pro_vs', {
+      rok: Number(new Date().getFullYear()),
+      rada,
+      variabilni_symbol: vs,
+    });
+    if (error || !cislo) throw error ?? new Error('Databáze nevrátila číslo faktury.');
+
+    const iban = Deno.env.get('IBAN_UCTU') ?? null;
+
+    const pdf = vytvorFakturuPdf({
+      cisloFaktury: cislo,
+      variabilniSymbol: vs,
+      datumVystaveni,
+      datumSplatnosti,
+      castkaKc: p.castka_kc,
+
+      dodavatelNazev: Deno.env.get('DODAVATEL_NAZEV') ?? 'Právě teď! o.p.s.',
+      dodavatelAdresa: Deno.env.get('DODAVATEL_ADRESA') ?? '',
+      dodavatelMesto: Deno.env.get('DODAVATEL_MESTO') ?? '',
+      dodavatelIc: Deno.env.get('DODAVATEL_IC') ?? '29154901',
+      dodavatelEmail: Deno.env.get('DODAVATEL_EMAIL') ?? '',
+      dodavatelWeb: Deno.env.get('DODAVATEL_WEB') ?? 'www.pravetedops.cz',
+
+      // Fakturační údaje se berou z toho, co člověk vyplnil ve formuláři.
+      // Když název nevyplnil, použije se jméno kontaktní osoby — prázdný
+      // odběratel by z dokladu udělal zmetek.
+      odberatelNazev: p.fakt_nazev || p.kontaktni_osoba,
+      odberatelAdresa: p.fakt_adresa ?? '',
+      odberatelIc: p.fakt_ic,
+      odberatelDic: p.fakt_dic,
+
+      cisloUctu: Deno.env.get('CISLO_UCTU') ?? iban ?? '',
+      iban,
+      swift: Deno.env.get('SWIFT_UCTU') ?? null,
+      zpravaProPrijemce: Deno.env.get('ZPRAVA_PLATBY') ?? 'AKTIVNE SPOLU',
+
+      polozkaNazev:
+        Deno.env.get('FAKTURA_POLOZKA') ??
+        'Registrační poplatek – Mezinárodní den seniorů, projekt Aktivně spolu',
+      vetaNeplatceDph:
+        Deno.env.get('FAKTURA_VETA_DPH') ??
+        'Právě teď! o.p.s. není plátcem DPH a nemá přiděleno DIČ. ' +
+          'Fakturovaná částka je konečná, daň se neuplatňuje.',
+    });
+
+    const soubor = `faktura-${String(cislo).replace(/\//g, '-')}.pdf`;
+    const cesta = `${new Date().getFullYear()}/${soubor}`;
+
+    const { error: chybaUlozeni } = await klient.storage
+      .from(BUCKET_FAKTURY)
+      .upload(cesta, pdf, { contentType: 'application/pdf', upsert: true });
+    if (chybaUlozeni) throw chybaUlozeni;
+
+    // Bucket je neveřejný, takže odkaz musí být podepsaný.
+    const { data: podepsany } = await klient.storage
+      .from(BUCKET_FAKTURY)
+      .createSignedUrl(cesta, PLATNOST_ODKAZU_S);
+
+    const odkaz = podepsany?.signedUrl ?? null;
+
+    // Teprve zápisem je faktura vystavená. Dokud je sloupec prázdný, dá se
+    // dovystavit — databáze si navíc hlídá, že číslo končí variabilním
+    // symbolem téhle přihlášky.
+    const { error: chybaZapisu } = await klient
+      .from('prihlasky')
+      .update({ faktura_cislo: cislo, faktura_url: odkaz })
+      .eq('variabilni_symbol', vs);
+    if (chybaZapisu) console.error(`Číslo faktury se nepovedlo zapsat, VS ${vs}.`, chybaZapisu);
+
+    console.log(`Faktura ${cislo} vystavena, VS ${vs}.`);
+    return { cislo, soubor, pdf, odkaz };
+  } catch (e) {
+    console.error(`Fakturu se nepovedlo vystavit, VS ${vs}. Přihláška je uložená.`, e);
+    return null;
   }
 }
 
@@ -841,7 +976,23 @@ Deno.serve(async (req) => {
     data.castka_kc,
     data.typ_poradatele === 'jednotlivec',
   );
-  const emailOdeslan = await posliPotvrzeni(data, variabilniSymbol, qrUrl, splatnost.cesky);
+  // Pořadí je důležité: faktura musí být hotová dřív, než odejde e-mail —
+  // jinak by neměla co přiložit a člověku by dorazila zvlášť později.
+  const faktura = await vystavFakturu(
+    klient,
+    data,
+    variabilniSymbol,
+    datumCesky(new Date().toISOString().slice(0, 10)),
+    splatnost.cesky,
+  );
+
+  const emailOdeslan = await posliPotvrzeni(
+    data,
+    variabilniSymbol,
+    qrUrl,
+    splatnost.cesky,
+    faktura,
+  );
 
   await ozviSeDoFakturace({
     id: ulozeno.id,
@@ -852,6 +1003,8 @@ Deno.serve(async (req) => {
     qr_url: qrUrl,
     spayd,
     email_odeslan: emailOdeslan,
+    faktura_cislo: faktura?.cislo ?? null,
+    faktura_url: faktura?.odkaz ?? null,
   });
 
   return odpoved(req, {

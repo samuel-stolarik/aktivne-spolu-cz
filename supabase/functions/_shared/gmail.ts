@@ -107,6 +107,16 @@ export interface Email {
   html?: string | null;
   /** Adresa pro odpověď, když je jiná než odesílatel. */
   odpovedetNa?: string | null;
+  /** Soubory k připojení. Prázdné pole i `undefined` znamenají „bez příloh". */
+  prilohy?: Priloha[];
+}
+
+export interface Priloha {
+  /** Název, pod kterým se soubor příjemci uloží. */
+  nazev: string;
+  /** Typ obsahu, například `application/pdf`. */
+  typ: string;
+  data: Uint8Array;
 }
 
 /**
@@ -128,36 +138,69 @@ function sestavZpravu(n: NastaveniGmailu, e: Email): string {
   // po cestě polámaly a v e-mailu by zůstaly rozsekané znaky.
   const telo = (obsah: string) => naBase64(new TextEncoder().encode(obsah));
 
+  // Obsah zprávy bez hlaviček. Když jsou dvě verze textu, zabalí se do
+  // `multipart/alternative` a poštovní program si vybere, kterou ukáže.
+  const obsah: string[] = e.html
+    ? [
+        `Content-Type: multipart/alternative; boundary="${hranice}"`,
+        '',
+        `--${hranice}`,
+        'Content-Type: text/plain; charset="UTF-8"',
+        'Content-Transfer-Encoding: base64',
+        '',
+        telo(e.text),
+        '',
+        `--${hranice}`,
+        'Content-Type: text/html; charset="UTF-8"',
+        'Content-Transfer-Encoding: base64',
+        '',
+        telo(e.html),
+        '',
+        `--${hranice}--`,
+      ]
+    : [
+        'Content-Type: text/plain; charset="UTF-8"',
+        'Content-Transfer-Encoding: base64',
+        '',
+        telo(e.text),
+      ];
+
+  const prilohy = e.prilohy ?? [];
   let radky: string[];
 
-  if (e.html) {
-    // Dvě verze téhož: nejdřív text, pak HTML. Poštovní program si vybere.
-    radky = [
-      ...hlavicky,
-      `Content-Type: multipart/alternative; boundary="${hranice}"`,
-      '',
-      `--${hranice}`,
-      'Content-Type: text/plain; charset="UTF-8"',
-      'Content-Transfer-Encoding: base64',
-      '',
-      telo(e.text),
-      '',
-      `--${hranice}`,
-      'Content-Type: text/html; charset="UTF-8"',
-      'Content-Transfer-Encoding: base64',
-      '',
-      telo(e.html),
-      '',
-      `--${hranice}--`,
-    ];
+  if (prilohy.length === 0) {
+    radky = [...hlavicky, ...obsah];
   } else {
+    // S přílohou musí přibýt ještě jeden obal: `multipart/mixed`, uvnitř
+    // kterého je jako první díl celý dosavadní obsah a za ním soubory.
+    // Vnější a vnitřní hranice se NESMÍ jmenovat stejně — jinak by vnitřní
+    // ukončení rozseklo i vnější obal a příloha by se ztratila.
+    const vnejsi = `obal_${crypto.randomUUID().replace(/-/g, '')}`;
+
     radky = [
       ...hlavicky,
-      'Content-Type: text/plain; charset="UTF-8"',
-      'Content-Transfer-Encoding: base64',
+      `Content-Type: multipart/mixed; boundary="${vnejsi}"`,
       '',
-      telo(e.text),
+      `--${vnejsi}`,
+      ...obsah,
+      '',
     ];
+
+    for (const priloha of prilohy) {
+      radky.push(
+        `--${vnejsi}`,
+        `Content-Type: ${priloha.typ}; name="${priloha.nazev}"`,
+        `Content-Disposition: attachment; filename="${priloha.nazev}"`,
+        'Content-Transfer-Encoding: base64',
+        '',
+        // Base64 přílohy se láme po 76 znacích. Norma to vyžaduje a některé
+        // poštovní servery jeden nekonečný řádek odmítnou.
+        naBase64(priloha.data).replace(/(.{76})/g, '$1\r\n'),
+        '',
+      );
+    }
+
+    radky.push(`--${vnejsi}--`);
   }
 
   const surova = new TextEncoder().encode(radky.join('\r\n'));
