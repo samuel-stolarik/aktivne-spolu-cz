@@ -534,6 +534,21 @@ function e(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Jeden řádek dvousloupcové tabulky v e-mailu.
+ *
+ * Styl se píše ke každé buňce zvlášť, ne jednou do hlavičky — poštovní
+ * programy odkazovaný styl zahazují. Proto ta funkce: aby se ten dlouhý
+ * zápis neopakoval u každého řádku ručně.
+ */
+function radekUdaje(popisek: string, hodnota: string, posledni = false): string {
+  const ram = posledni ? '' : 'border-bottom:1px solid #f7dcae;';
+  return `<tr>` +
+    `<td style="padding:10px 0;${ram}font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">${e(popisek)}</td>` +
+    `<td style="padding:10px 0;${ram}font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(hodnota)}</td>` +
+    `</tr>`;
+}
+
 /** Čitelné názvy typů pořadatele do shrnutí v e-mailu. */
 const TYP_TEXT: Record<string, string> = {
   skola: 'Škola nebo školka',
@@ -602,7 +617,12 @@ function textEmailu(
     radky.push(
       '',
       'Nic platit nemusíte — přihláška je hotová.',
-      'Kdybyste nás přece jen chtěli podpořit, ozvěte se a rádi pošleme údaje.',
+      'Kdybyste nás ale chtěli podpořit, tady jsou údaje:',
+      '',
+      `  Číslo účtu:         ${u.cisloUctu}`,
+      `  Variabilní symbol:  ${vs}`,
+      `  Zpráva pro příjemce: ${zpravaProBanku(p, vs)}`,
+      '  Částka:             kolik uznáte za vhodné',
     );
   } else {
     const jeDobrovolny = p.typ_poradatele === 'jednotlivec';
@@ -684,9 +704,17 @@ function htmlEmailu(
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
                    style="background-color:#edf7f9;border-radius:12px;">
               <tr>
-                <td style="padding:20px 22px;font-size:15px;line-height:1.6;color:#45443f;">
-                  <strong>Nic platit nemusíte.</strong> Přihláška je hotová a počítáme s vámi.
-                  Kdybyste nás přece jen chtěli podpořit, stačí se ozvat — rádi pošleme údaje.
+                <td style="padding:20px 22px;">
+                  <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#45443f;">
+                    <strong>Nic platit nemusíte.</strong> Přihláška je hotová a počítáme s vámi.
+                    Kdybyste nás ale chtěli podpořit, tady jsou údaje:
+                  </p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    ${radekUdaje('Číslo účtu', u.cisloUctu)}
+                    ${radekUdaje('Variabilní symbol', String(vs))}
+                    ${radekUdaje('Zpráva pro příjemce', zpravaProBanku(p, vs))}
+                    ${radekUdaje('Částka', 'kolik uznáte za vhodné', true)}
+                  </table>
                 </td>
               </tr>
             </table>
