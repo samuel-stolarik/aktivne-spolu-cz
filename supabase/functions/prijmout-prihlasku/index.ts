@@ -1175,12 +1175,26 @@ Deno.serve(async (req) => {
   // Bere se výhradně z databázové sekvence. Kdyby se počítal tady (třeba
   // „poslední + 1" nebo z času), dvě přihlášky odeslané ve stejnou vteřinu
   // by dostaly stejné číslo a platby by se nedaly rozeznat.
-  // Variabilní symbol i číslo faktury vzniknou z JEDNOHO pořadového čísla,
+  // Variabilní symbol i číslo dokladu vzniknou z JEDNOHO pořadového čísla,
   // takže se nemůžou rozejít: 26/03/001 a 2603001. Volá se to jednou —
   // každé další volání by spotřebovalo číslo navíc.
-  const rada = (Deno.env.get('FAKTURY_CISLO_RADY') ?? '').trim();
+  //
+  // DVĚ ODDĚLENÉ ŘADY. Registrační poplatek je úhrada služby a vystavuje se
+  // na něj faktura; dobrovolný příspěvek jednotlivce je dar a do stejné řady
+  // dokladů nepatří. Každá řada má vlastní počítadlo, takže obě začínají
+  // od 001 a neovlivňují se.
+  const jePrispevek = data.typ_poradatele === 'jednotlivec';
+  const rada = (
+    jePrispevek
+      ? Deno.env.get('PRISPEVKY_CISLO_RADY') ?? ''
+      : Deno.env.get('FAKTURY_CISLO_RADY') ?? ''
+  ).trim();
+
   if (!rada) {
-    console.error('Chybí FAKTURY_CISLO_RADY — bez řady nejde přidělit číslo.');
+    console.error(
+      `Chybí ${jePrispevek ? 'PRISPEVKY_CISLO_RADY' : 'FAKTURY_CISLO_RADY'} — ` +
+        'bez řady nejde přidělit číslo.',
+    );
     return odpoved(req, {
       ok: false,
       chyba: 'Přihlášku teď nejde přijmout. Zkuste to prosím za chvíli, nebo nám napište.',
@@ -1188,7 +1202,11 @@ Deno.serve(async (req) => {
   }
 
   const { data: cisloData, error: vsChyba } = await klient
-    .rpc('pridel_cislo', { rok: Number(new Date().getFullYear()), rada })
+    .rpc('pridel_cislo', {
+      rok: Number(new Date().getFullYear()),
+      rada,
+      prispevek: jePrispevek,
+    })
     .single();
 
   if (vsChyba || !cisloData?.variabilni_symbol) {

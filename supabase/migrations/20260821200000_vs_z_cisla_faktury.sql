@@ -96,6 +96,15 @@ alter table public.prihlasky
 alter table public.prihlasky
   drop constraint if exists faktura_cislo_odpovida_vs;
 
+-- NOT VALID schválně: podmínka platí pro všechny NOVÉ a měněné řádky, ale
+-- existující se nekontrolují. V databázi jsou zkušební přihlášky z dnešního
+-- ladění, které mají čísla podle starého pravidla (26/03/001 se symbolem
+-- 100023) — bez tohohle by migrace neprošla a musela by se kvůli ní mazat
+-- data, což je horší než je nechat dožít.
+--
+-- Až se zkušební přihlášky před spuštěním smažou, dá se podmínka dotáhnout
+-- na plnou platnost:
+--   alter table public.prihlasky validate constraint faktura_cislo_odpovida_vs;
 alter table public.prihlasky
   add constraint faktura_cislo_odpovida_vs check (
     faktura_cislo is null
@@ -103,7 +112,7 @@ alter table public.prihlasky
       faktura_cislo ~ '^[0-9]{2}/[0-9]{2}/[0-9]{3,}$'
       and replace(faktura_cislo, '/', '') = variabilni_symbol::text
     )
-  );
+  ) not valid;
 
 -- ---------------------------------------------------------------------------
 -- 4. Stará funkce pryč
