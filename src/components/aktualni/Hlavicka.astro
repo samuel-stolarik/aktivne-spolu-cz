@@ -1,11 +1,25 @@
 ---
 /**
- * Hlavička stránky /fable/.
+ * Hlavička stránky.
  *
  * Nad hero sedí průsvitně na gradientu, po odscrollování dostane hranu
- * a stín (třída .je-plna, přidává skript níž). Odkazy se na mobilu
- * nesbalují pod hamburger — jedou vodorovně a posouvají se prstem.
- * Pro seniory je viditelný odkaz spolehlivější než skryté menu.
+ * a stín (třída .je-plna, přidává skript níž).
+ *
+ * MENU NA TELEFONU se sbaluje pod tři čárky. Dřív tu odkazy jely vodorovně
+ * a posouvaly se prstem — schválně, protože viditelný odkaz je spolehlivější
+ * než schovaný. Zadavatel chce tři čárky, tak jsou tady; posuvná řádka odkazů
+ * je totiž na dotyku poloviční ovladač, protože není nijak vidět, že se s ní
+ * dá hýbat, a poslední dva odkazy tak nikdo nenajde.
+ *
+ * BEZ JAVASCRIPTU MUSÍ ZŮSTAT ODKAZY DOSTUPNÉ. Sbalení proto zapíná až
+ * třída `f-menu-ano`, kterou na <body> přidává skript. Dokud tam není,
+ * chová se hlavička přesně jako dřív — odkazy jsou vidět a dají se posouvat.
+ * Kdyby se sbalovalo rovnou z šablony, znamenal by nespuštěný skript menu,
+ * které nejde otevřít, a stránku bez jediné navigace.
+ *
+ * ČERVENÉ TLAČÍTKO SE POD ČÁRKY NESCHOVÁVÁ ÚPLNĚ: je první položkou
+ * v otevřeném menu a hned pod hlavičkou na něj stejně kouká velké tlačítko
+ * v úvodní obrazovce.
  *
  * Klikací plochy drží nejméně 44 px na výšku (min-h-11).
  */
@@ -33,8 +47,25 @@ const odkazy = [
       />
     </a>
 
+    {/* Tři čárky. V šabloně je tlačítko schované atributem `hidden` a odkrývá
+        ho až skript — bez něj by to bylo tlačítko, které nic neotevře. */}
+    <button
+      type="button"
+      id="f-menu-tlacitko"
+      class="f-menu-tlacitko"
+      aria-controls="f-menu"
+      aria-expanded="false"
+      hidden
+    >
+      <span class="f-menu-carky" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+      <span class="sr-only">Menu</span>
+    </button>
+
     <nav
-      class="f-hlavicka-odkazy -mx-2 flex min-w-0 flex-1 gap-1 overflow-x-auto px-2"
+      id="f-menu"
+      class="f-menu f-hlavicka-odkazy -mx-2 flex min-w-0 flex-1 gap-1 overflow-x-auto px-2"
       aria-label="Sekce stránky"
     >
       {
@@ -48,6 +79,14 @@ const odkazy = [
           </a>
         ))
       }
+
+      {/* Tlačítko v otevřeném menu. Nad lg ho CSS skryje — tam stojí
+          samostatně vpravo v liště (níž). */}
+      <div class="f-menu-cta">
+        <Tlacitko odkaz="#registrace" trida="w-full justify-center px-5 py-3">
+          Chci se zapojit
+        </Tlacitko>
+      </div>
     </nav>
 
     <div class="hidden shrink-0 lg:block">
@@ -57,6 +96,61 @@ const odkazy = [
 </header>
 
 <script>
+  // --- Menu pod třemi čárkami ---------------------------------------------
+  // Sbalování zapíná až tenhle skript. Dokud třída na <body> není, jsou
+  // odkazy vidět tak jako dřív — nespuštěný skript tedy neznamená stránku
+  // bez navigace, jen menu, které se nesbaluje.
+  const tlacitkoMenu = document.getElementById("f-menu-tlacitko");
+  const menu = document.getElementById("f-menu");
+  const naDotyk = window.matchMedia("(max-width: 63.999rem)");
+
+  if (tlacitkoMenu && menu) {
+    document.body.classList.add("f-menu-ano");
+    tlacitkoMenu.removeAttribute("hidden");
+
+    function otevriZavri(otevrit: boolean) {
+      menu!.classList.toggle("je-otevrene", otevrit);
+      tlacitkoMenu!.setAttribute("aria-expanded", String(otevrit));
+    }
+
+    function zavri(vratitFokus = false) {
+      if (tlacitkoMenu!.getAttribute("aria-expanded") !== "true") return;
+      otevriZavri(false);
+      // Fokus se vrací na tlačítko jen když menu zavřela klávesnice.
+      // Po klepnutí na odkaz by ho to naopak odtrhlo od místa, kam se
+      // stránka právě posunula.
+      if (vratitFokus) tlacitkoMenu!.focus();
+    }
+
+    tlacitkoMenu.addEventListener("click", () => {
+      otevriZavri(tlacitkoMenu.getAttribute("aria-expanded") !== "true");
+    });
+
+    // Klepnutí na odkaz menu zavře — jinak by zůstalo viset přes sekci,
+    // na kterou stránka právě odscrollovala.
+    menu.querySelectorAll("a").forEach((odkaz) => {
+      odkaz.addEventListener("click", () => zavri());
+    });
+
+    document.addEventListener("keydown", (udalost) => {
+      if (udalost.key === "Escape") zavri(true);
+    });
+
+    // Klepnutí mimo hlavičku menu zavře. Bez toho se na telefonu zavírá
+    // jedině znovu tlačítkem, což nikdo nezkusí.
+    document.addEventListener("click", (udalost) => {
+      const cil = udalost.target as Node;
+      if (!menu.contains(cil) && !tlacitkoMenu.contains(cil)) zavri();
+    });
+
+    // Při zvětšení okna nad lg se z menu zase stane vodorovná lišta.
+    // Kdyby zůstal příznak „otevřeno", tlačítko by po zmenšení hlásilo
+    // rozbalený stav, který nikde není vidět.
+    naDotyk.addEventListener("change", (udalost) => {
+      if (!udalost.matches) otevriZavri(false);
+    });
+  }
+
   // --- Hrana lišty po odscrollování ---------------------------------------
   // Nad hero je lišta průsvitná bez hrany, po pár pixelech scrollu dostane
   // linku a stín, aby se oddělila od obsahu, přes který jede.

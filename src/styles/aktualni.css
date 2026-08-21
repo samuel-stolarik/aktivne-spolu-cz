@@ -1337,3 +1337,170 @@ body:not(.f-skript-jede) .f-otocka {
     transform: rotate(0deg) translate(-26px, -6px) scale(1.03);
   }
 }
+
+/* ==========================================================================
+   MENU POD TŘEMI ČÁRKAMI
+   (nová pravidla patří na konec souboru, ať se nepobijí s tím, co už tu je)
+
+   Sbalování zapíná až třída `f-menu-ano` na <body>, kterou přidává skript
+   v Hlavicka.astro. Bez ní vypadá hlavička jako dřív — odkazy v řádce.
+   Je to schválně: kdyby se sbalovalo rovnou ze šablony, znamenal by
+   nespuštěný skript menu, které nejde otevřít, a stránku bez navigace.
+   ========================================================================== */
+
+/* Tlačítko se nad lg neukazuje nikdy — tam je na odkazy místo v liště. */
+.f-menu-tlacitko {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin-left: auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.75rem;
+  background-color: transparent;
+  color: var(--color-tyrkys);
+  cursor: pointer;
+}
+
+.f-menu-tlacitko:hover {
+  background-color: var(--color-plocha-tyrkys);
+}
+
+/* Samotné tři čárky. Prostřední při otevření zmizí, krajní se zkříží. */
+.f-menu-carky {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 22px;
+  height: 16px;
+}
+
+.f-menu-carky > span {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background-color: currentColor;
+  transition:
+    transform 240ms cubic-bezier(0.22, 0.8, 0.32, 1),
+    opacity 160ms ease-out;
+}
+
+[aria-expanded="true"] .f-menu-carky > span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+[aria-expanded="true"] .f-menu-carky > span:nth-child(2) {
+  opacity: 0;
+}
+
+[aria-expanded="true"] .f-menu-carky > span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Červené tlačítko uvnitř menu se nad lg neukazuje — tam stojí samostatně
+   vpravo v liště. */
+.f-menu-cta {
+  display: none;
+}
+
+@media (max-width: 63.999rem) {
+  .f-menu-ano .f-menu-tlacitko {
+    display: inline-flex;
+  }
+
+  /* Panel visí pod lištou přes celou šířku. `position: absolute` je proti
+     hlavičce, která je `sticky` — panel s ní tedy jede a nezůstane viset
+     na místě, kde lišta byla při otevření. */
+  .f-menu-ano .f-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: none;
+    flex: none;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0.75rem 1.25rem 1.25rem;
+    overflow: visible;
+    border-bottom: 1px solid var(--color-merunka-tlumena);
+    background-color: var(--color-pozadi);
+    box-shadow: 0 16px 32px -20px rgba(69, 68, 63, 0.45);
+  }
+
+  .f-menu-ano .f-menu.je-otevrene {
+    display: flex;
+  }
+
+  /* Odkazy v panelu jsou přes celou šířku, ne pilulky vedle sebe. */
+  .f-menu-ano .f-menu > a {
+    width: 100%;
+    padding-inline: 0.75rem;
+    font-size: 1.0625rem;
+  }
+
+  .f-menu-ano .f-menu-cta {
+    display: block;
+    margin-top: 0.75rem;
+  }
+}
+
+/* ==========================================================================
+   VĚJÍŘ KARET — rozevřený z jednoho bodu, ne poskládaný do schodů
+
+   Předchozí verze karty odsazovala po 90 px dolů a doprava. Vypadalo to
+   jako tři papíry položené na sobě na stole, ne jako karty držené v ruce.
+   Teď se všechny tři točí kolem JEDNOHO bodu pod nimi — tím vznikne vějíř,
+   jaký drží člověk v dlani.
+
+   Krajní karty se skloní o 15°, prostřední stojí rovně. Víc už ne: text na
+   nakloněné kartě se čte hůř a při 20° a víc začne z vějíře čouhat roh přes
+   okraj sloupce.
+   ========================================================================== */
+@media (min-width: 64rem) {
+  .f-zas-ruka {
+    height: 26rem;
+    /* Prostor pod spodní hranou karet, kde leží pomyslný bod otáčení. */
+    padding-bottom: 2rem;
+  }
+
+  .f-zas-obal {
+    /* Všechny tři leží na sobě — rozdíl dělá jen úhel. */
+    top: 1.5rem;
+    left: 50%;
+    margin-left: -115px;
+    /* Bod otáčení hluboko pod kartou. Čím dál, tím mírnější oblouk;
+       320 % výšky drží karty pohromadě u dolní hrany a rozevírá je nahoře,
+       přesně jako když se drží v ruce. */
+    transform-origin: 50% 320%;
+  }
+
+  .f-zas-obal:nth-child(1) {
+    --f-zas-uhel: -15deg;
+    z-index: 1;
+  }
+
+  .f-zas-obal:nth-child(2) {
+    --f-zas-uhel: 0deg;
+    z-index: 2;
+  }
+
+  .f-zas-obal:nth-child(3) {
+    --f-zas-uhel: 15deg;
+    z-index: 3;
+  }
+
+  /* Vytažení karty z vějíře: srovná se, povyjede nahoru a povyroste.
+     Nahoru, ne do strany — z vějíře se karta vytahuje směrem od dlaně.
+     Posun je mírný, aby z karty nesklouzl ukazatel myši; kdyby ujela dál,
+     karta by zapadla zpátky, hned se zas vytáhla a blikalo by to. */
+  .f-zas-obal:hover,
+  .f-zas-obal:focus-within {
+    z-index: 6;
+    transform: rotate(0deg) translateY(-22px) scale(1.04);
+  }
+}
