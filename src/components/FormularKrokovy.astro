@@ -616,38 +616,36 @@ const poleTridy =
       {/* Rekapitulace je u krokového formuláře nutná: člověk už nevidí,
           co vyplnil o šest obrazovek dřív. Každý řádek jde opravit
           a po opravě se vrátí zpátky sem. */}
-      <div class="krok" data-krok="souhrn" hidden>
-        <h4 class="otazka">Zkontrolujte a odešlete</h4>
-        <p class="mt-2 mb-4 text-popisek">
-          Tohle nám odejde. Cokoli se dá ještě opravit.
-        </p>
+    </div>
 
-        <div id="krokovy-prehled" class="mb-6"></div>
-
-        <div>
-          <label class="flex min-h-11 cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              name="souhlas_gdpr"
-              value="ano"
-              class="mt-1 h-5 w-5 accent-[#12707F]"
-            />
-            <span>
-              Souhlasím se zpracováním osobních údajů. Podrobnosti najdete
-              v dokumentu
-              <a
-                href="/zpracovani-osobnich-udaju/"
-                class="text-tyrkys underline"
-                target="_blank"
-                rel="noopener"
-              >
-                Zpracování osobních údajů
-              </a>.
-            </span>
-          </label>
-          <p class="chyba" data-chyba-pro="souhlas_gdpr"></p>
-        </div>
-      </div>
+    {/* Souhlas se zpracováním údajů.
+        NENÍ to samostatný krok — zadavatel rekapitulaci „Zkontrolujte
+        a odešlete" zrušil. Sedí proto rovnou nad tlačítky a ukazuje se
+        až na posledním kroku, tedy těsně před odesláním. Který krok je
+        poslední, se liší: u převodu fakturační údaje, jinak forma platby.
+        Proto se to nedá napsat do konkrétního kroku a řídí to skript. */}
+    <div id="krokovy-souhlas" class="mt-6" hidden>
+      <label class="flex min-h-11 cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          name="souhlas_gdpr"
+          value="ano"
+          class="mt-1 h-5 w-5 accent-[#12707F]"
+        />
+        <span>
+          Souhlasím se zpracováním osobních údajů. Podrobnosti najdete
+          v dokumentu
+          <a
+            href="/zpracovani-osobnich-udaju/"
+            class="text-tyrkys underline"
+            target="_blank"
+            rel="noopener"
+          >
+            Zpracování osobních údajů
+          </a>.
+        </span>
+      </label>
+      <p class="chyba" data-chyba-pro="souhlas_gdpr"></p>
     </div>
 
     {/* --- Ovládání ------------------------------------------------------
@@ -855,8 +853,6 @@ const poleTridy =
     document.querySelector<HTMLButtonElement>("#krokovy-dalsi");
   const tlacitkoOdeslat =
     document.querySelector<HTMLButtonElement>("#krokovy-odeslat");
-  const prehled = document.querySelector<HTMLElement>("#krokovy-prehled");
-
   if (
     obal &&
     formular &&
@@ -864,8 +860,7 @@ const poleTridy =
     dekovani &&
     tlacitkoZpet &&
     tlacitkoDalsi &&
-    tlacitkoOdeslat &&
-    prehled
+    tlacitkoOdeslat
   ) {
     const adresaFunkce = `${import.meta.env.PUBLIC_SUPABASE_URL}/functions/v1/prijmout-prihlasku`;
     const verejnyKlic = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -1178,20 +1173,10 @@ const poleTridy =
         souhrn: ["fakt_nazev", "fakt_adresa", "fakt_ic", "fakt_dic"],
         jeVidet: jePrevod,
       },
-      {
-        klic: "souhrn",
-        nazev: "Souhlas a odeslání",
-        pole: ["souhlas_gdpr"],
-        souhrn: [],
-        jeVidet: () => true,
-      },
     ];
 
     /** Index v poli KROKY, ne pořadí na obrazovce. */
     let aktualni = 0;
-
-    /** Nastaveno, když se uživatel proklikl na krok z rekapitulace. */
-    let navratNaPrehled = false;
 
     function sekceKroku(klic: string): HTMLElement | null {
       return formular!.querySelector<HTMLElement>(`[data-krok="${klic}"]`);
@@ -1272,14 +1257,18 @@ const poleTridy =
       tlacitkoDalsi!.hidden = jePosledni();
       tlacitkoOdeslat!.hidden = !jePosledni();
 
+      // Souhlas se ukazuje jen na posledním kroku, těsně nad tlačítkem
+      // Odeslat. Na dřívějších krocích by se odsouhlasovalo něco, co
+      // člověk ještě nedovyplnil.
+      const souhlas = formular!.querySelector<HTMLElement>("#krokovy-souhlas");
+      if (souhlas) souhlas.hidden = !jePosledni();
+
       const popisek = tlacitkoDalsi!.querySelector<HTMLElement>(
         "[data-popisek-dalsi]",
       );
       if (!popisek) return;
 
-      if (navratNaPrehled) {
-        popisek.textContent = "Uložit a zpět na přehled";
-      } else if (krok.klic === "napad" && !hodnota("napad_na_aktivitu")) {
+      if (krok.klic === "napad" && !hodnota("napad_na_aktivitu")) {
         // Že se otázka dá přeskočit, musí být vidět i na tlačítku.
         popisek.textContent = "Přeskočit a pokračovat";
       } else {
@@ -1306,7 +1295,6 @@ const poleTridy =
         prenesIco();
       }
 
-      if (cil.klic === "souhrn") sestavPrehled();
 
       prekresliPostup();
       prekresliOvladani();
@@ -1356,19 +1344,6 @@ const poleTridy =
     function dalsiKrok() {
       if (!zkontrolujKrok(KROKY[aktualni])) return;
 
-      // Návrat z opravy vyvolané z rekapitulace. Skočit rovnou na přehled
-      // jde jen tehdy, když mezitím nezůstal nedodělaný jiný krok.
-      if (navratNaPrehled) {
-        const chybejici = prvniNeplatnyKrok();
-        if (chybejici) {
-          jdiNaKrok(KROKY.indexOf(chybejici));
-          return;
-        }
-        navratNaPrehled = false;
-        jdiNaKrok(KROKY.length - 1);
-        return;
-      }
-
       const videt = viditelneKroky();
       const dalsi = videt[videt.indexOf(KROKY[aktualni]) + 1];
       if (dalsi) jdiNaKrok(KROKY.indexOf(dalsi));
@@ -1377,7 +1352,6 @@ const poleTridy =
     function predchoziKrok() {
       // Zpět nikdy nevaliduje. Vyplněné hodnoty zůstávají v polích,
       // takže se návratem nic neztratí.
-      navratNaPrehled = false;
       const videt = viditelneKroky();
       const predchozi = videt[videt.indexOf(KROKY[aktualni]) - 1];
       if (predchozi) jdiNaKrok(KROKY.indexOf(predchozi));
@@ -1411,116 +1385,6 @@ const poleTridy =
     // dřív. Bez přehledu by odesílal naslepo.
     // ==================================================================
 
-    const nazvyPoli: Record<string, string> = {
-      typ_poradatele: "Kdo se hlásí",
-      ico: "IČO",
-      nazev_poradatele: "Název pořadatele",
-      kontaktni_osoba: "Kontaktní osoba",
-      email: "E-mail",
-      telefon: "Telefon",
-      mesto: "Město",
-      kraj: "Kraj",
-      datum_akce: "Datum konání akce",
-      napad_na_aktivitu: "Nápad na aktivitu",
-      forma_platby: "Forma platby",
-      castka_kc: "Výše příspěvku",
-      fakt_nazev: "Název na faktuře",
-      fakt_adresa: "Fakturační adresa",
-      fakt_ic: "IČ",
-      fakt_dic: "DIČ",
-    };
-
-    /** Uložené hodnoty jsou strojové, v přehledu musí být čitelné česky. */
-    /**
-     * Volby z rádiových tlačítek se ukládají strojově ("skola", "prevod"),
-     * v přehledu ale musí být čitelné česky. Překlad je schválně vázaný
-     * na konkrétní pole — jinak by se město „Škola" přeložilo taky.
-     */
-    const citelneHodnoty: Record<string, Record<string, string>> = {
-      typ_poradatele: {
-        skola: "Škola",
-        organizace: "Organizace",
-        jednotlivec: "Jednotlivec",
-      },
-      forma_platby: {
-        qr: "QR kód",
-        prevod: "Převod na účet s vystavením faktury",
-        neprispivam: "Bez příspěvku",
-      },
-    };
-
-    /**
-     * Hodnoty, které se nedají přeložit tabulkou, protože je jich nekonečně
-     * mnoho. Datum se ukládá strojově (2026-10-01), v rekapitulaci ale musí
-     * být česky — jinak by člověk kontroloval údaj, který takhle nezadával.
-     */
-    const upravaHodnot: Record<string, (zapsano: string) => string> = {
-      castka_kc: (zapsano) => `${Number(zapsano).toLocaleString("cs-CZ")} Kč`,
-      datum_akce: ceskyDatum,
-    };
-
-    function sestavPrehled() {
-      prehled!.replaceChildren();
-
-      for (const krok of viditelneKroky()) {
-        for (const pole of krok.souhrn) {
-          const zapsano = hodnota(pole);
-          // Prázdné nepovinné pole se nevypisuje. Řádek s pomlčkou
-          // by jen budil dojem, že něco chybí.
-          if (!zapsano) continue;
-
-          // Výše příspěvku má v rekapitulaci co dělat jen tehdy, když se na
-          // ni formulář ptal. Seznam má vždycky nějakou hodnotu vybranou,
-          // takže bez téhle podmínky by u školy svítilo „Výše příspěvku
-          // 500 Kč" jako by si ji volila.
-          if (
-            pole === "castka_kc" &&
-            !(jeJednotlivec() && hodnota("forma_platby") === "qr")
-          ) {
-            continue;
-          }
-
-          const radek = document.createElement("div");
-          radek.className =
-            "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-merunka-tlumena py-3";
-
-          const text = document.createElement("div");
-          text.className = "min-w-0";
-
-          const popisek = document.createElement("span");
-          popisek.className = "block text-popisek";
-          popisek.textContent = nazvyPoli[pole] ?? pole;
-
-          const vypis = document.createElement("span");
-          vypis.className = "block font-semibold break-words";
-          vypis.textContent =
-            citelneHodnoty[pole]?.[zapsano] ??
-            upravaHodnot[pole]?.(zapsano) ??
-            zapsano;
-
-          text.append(popisek, vypis);
-
-          const uprav = document.createElement("button");
-          uprav.type = "button";
-          uprav.className =
-            "min-h-11 shrink-0 cursor-pointer border-0 bg-transparent px-2 font-semibold text-tyrkys underline";
-          uprav.textContent = "Upravit";
-          // Samotné „Upravit" by ve čtečce obrazovky nedávalo smysl —
-          // po sobě jdoucích tlačítek je tu deset.
-          uprav.setAttribute(
-            "aria-label",
-            `Upravit: ${nazvyPoli[pole] ?? pole}`,
-          );
-          uprav.addEventListener("click", () => {
-            navratNaPrehled = true;
-            jdiNaKrok(KROKY.indexOf(krok));
-          });
-
-          radek.append(text, uprav);
-          prehled!.append(radek);
-        }
-      }
-    }
 
     // ==================================================================
     // IČO a načtení z rejstříku ARES
@@ -1761,6 +1625,17 @@ const poleTridy =
 
       smazChyby();
 
+      // Souhlas se zpracováním údajů. Nepatří k žádnému kroku (rekapitulace
+      // se zrušila), takže ho průchod kroky nezachytí a musí se zkontrolovat
+      // tady. Bez něj by přihlášku odmítl až server a člověk by viděl
+      // obecnou chybu místo hlášky u zaškrtávacího pole.
+      const chybaSouhlasu = kontroly.souhlas_gdpr();
+      if (chybaSouhlasu) {
+        ukazChybu("souhlas_gdpr", chybaSouhlasu);
+        ukazSouhrn("Přihlášku se nepodařilo odeslat. " + chybaSouhlasu);
+        return;
+      }
+
       // Poslední kontrola přes všechny viditelné kroky. Kdyby se sem někdo
       // dostal s nedodělaným krokem, formulář ho na něj vrátí.
       // Skutečná validace stejně probíhá znovu v Edge Funkci.
@@ -1770,7 +1645,6 @@ const poleTridy =
         // přechod na krok chybový souhrn schovává.
         const jinyKrok = KROKY.indexOf(chybejici) !== aktualni;
 
-        navratNaPrehled = true;
         jdiNaKrok(KROKY.indexOf(chybejici));
         zkontrolujKrok(chybejici);
         ukazSouhrn(
