@@ -135,7 +135,11 @@ const karty = [
       <ul class="f-zas-ruka" role="list" aria-label="Ukázkové záznamy Zásobníku">
         {
           karty.map((karta, i) => (
-            <li class="f-najezd f-zas-obal" data-poradi={String(4 - i)}>
+            <li
+              class="f-najezd f-zas-obal"
+              data-poradi={String(4 - i)}
+              style={`--poradi: ${i}; --prodleva: ${i * 110}ms`}
+            >
               <div class="f-zas-karta" tabindex="0">
                 <p class="f-zas-stitek">
                   <span
