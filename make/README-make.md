@@ -90,7 +90,7 @@ webhook z Edge Function
 | 5 | Sestavení faktury | Převezme datum splatnosti z webhooku, složí název souboru a odběratele. |
 | 6 | Google Docs — šablona (*Create a Document from a Template*) | Vyplní Google dokument s fakturou. |
 | 7 | Google Docs — PDF (*Download a Document*) | Vyexportuje ho jako PDF. |
-| 8 | Gmail (*Send an email*) | Pošle fakturu přihlašujícímu, kopii účetní. |
+| 8 | Gmail (*Send an email*) | Pošle přihlašujícímu shrnutí registrace a platební údaje, fakturu v příloze. Kopie účetní. Viz „Jak vypadá e-mail" níž. |
 | 9 | Supabase Storage | Uloží PDF do neveřejného bucketu `faktury`. |
 | 10 | Supabase Storage | Vyrobí podepsaný odkaz na to PDF. |
 | 11 | Supabase — zápis | Zapíše `faktura_cislo` a `faktura_url` k přihlášce. |
@@ -219,6 +219,41 @@ porušit ani při úpravě šablony:
 - ✅ **Je tam věta o neplátcovství:** *„Právě teď! o.p.s. není plátcem DPH a nemá přiděleno DIČ.
   Fakturovaná částka je konečná, daň se neuplatňuje."*
 - ✅ DIČ **odběratele** se na fakturu opíše, když ho vyplnil, ale nic se z něj nepočítá.
+
+---
+
+## Jak vypadá e-mail
+
+Modul 8 neposílá holý odstavec s číslem účtu. Přihlašující dostane:
+
+1. **shrnutí registrace** — kdo se hlásí, název, kontaktní osoba, e-mail, telefon,
+   město a kraj, datum akce,
+2. **platební údaje** — částka, účet, variabilní symbol, zpráva pro příjemce,
+   splatnost, k tomu IBAN a SWIFT pro platbu ze zahraničí,
+3. **fakturu v příloze** jako PDF,
+4. **co bude dál** — po akci přijde formulář do Zásobníku nápadů.
+
+### Tři věci, které se v tom e-mailu nesmí „uklidit"
+
+**Je to poskládané z tabulek a styly jsou psané přímo u prvků.** Vypadá to jako
+kód z roku 2005 a je to schválně: Outlook sází poštu přes Word, neumí flex ani
+grid a odkazovaný styl (`<style>` v hlavičce) zahazuje. Tabulka a atribut
+`style` jsou jediné, co vysází stejně ve všech schránkách. Kdo to přepíše na
+moderní CSS, rozbije to jen v Outlooku — a nikde jinde si toho nevšimne.
+
+**Barvy si e-mail nese vlastní a nepřepíná se do tmavého motivu.** Schránky
+s tmavým režimem si barvy různě přebarvují; pevné hodnoty jsou pojistka, aby
+nikde nevznikl tmavý text na tmavém podkladu.
+
+**Na začátku těla je skrytý řádek.** Není to omyl ani zbytek po ladění — je to
+text, který schránka ukáže ve výpisu pošty vedle předmětu. Bez něj si tam vezme
+první větu i s pozdravem („Dobrý den, Jano Nováková…"), což o e-mailu neřekne nic.
+
+### Datum akce nemusí být vyplněné
+
+V přihlášce je nepovinné. Modul 5 proto počítá `datum_akce_text` přes `if()`:
+když datum chybí, napíše se „zatím neurčeno". Bez té podmínky by v e-mailu
+zůstal prázdný řádek nebo slovo „null".
 
 ---
 
