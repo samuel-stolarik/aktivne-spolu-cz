@@ -199,46 +199,40 @@
             },
             {
               "id": 5,
-              "module": "microsoft-email:createAndSendAMessage",
-              "version": 2,
+              "module": "email:ActionSendEmail",
+              "version": 7,
               "parameters": {
-                "__IMTCONN__": null
+                "account": null,
+                "saveAfterSent": false
               },
               "mapper": {
-                "toRecipients": [
-                  {
-                    "address": "{{2.data.prijemce}}",
-                    "name": "{{2.data.prijemce_jmeno}}"
-                  }
+                "to": [
+                  "{{2.data.prijemce}}"
                 ],
                 "subject": "{{2.data.predmet}}",
-                "content": "{{2.data.telo_html}}",
                 "contentType": "html",
-                "replyTo": [
-                  {
-                    "address": "{{2.data.odpovedet_na}}"
-                  }
-                ],
+                "html": "{{2.data.telo_html}}",
+                "replyTo": "{{2.data.odpovedet_na}}",
                 "attachments": [
                   {
-                    "filename": "{{2.data.priloha_nazev}}",
+                    "fileName": "{{2.data.priloha_nazev}}",
                     "data": "{{4.data}}"
                   }
                 ]
               },
               "metadata": {
-                "notes": "Příloha se bere z modulu 4. Maximální velikost jednoho souboru jsou 3 MB; faktura má desítky kilobajtů.",
+                "notes": "Obyčejný e-mail přes SMTP, ne přes Outlook aplikaci. Připojení se zakládá údaji poštovní schránky (server, port, jméno, heslo) — u Microsoftu 365 je to smtp.office365.com, port 587. POZOR: Microsoft má u nových účtů přihlašování přes SMTP ve výchozím stavu vypnuté a musí ho povolit správce; když se připojení nedaří založit, je to skoro vždycky tohle, ne špatné heslo.\n\nPŘÍJEMCE SE BERE ŽIVĚ ZE SUPABASE: pole To je namapované na {{2.data.prijemce}}, tedy na adresu z databáze. Nevypisuje se ručně a nikde není natvrdo. Když se v nabídce polí nedá vybrat, je to jen tím, že Make ještě nezná tvar odpovědi z modulu 2 — stačí jednou spustit Run once a pole se začnou nabízet. Do té doby se dá mapování napsat rovnou do políčka a funguje stejně.",
                 "restore": {
                   "parameters": {
-                    "__IMTCONN__": {
-                      "label": "Outlook / Microsoft 365 (po importu připojit znovu)"
+                    "account": {
+                      "label": "E-mail (SMTP) – po importu připojit znovu"
                     }
                   }
                 },
                 "designer": {
                   "x": 1200,
                   "y": 0,
-                  "name": "5. Outlook – odeslání s fakturou"
+                  "name": "5. E-mail – odeslání s fakturou"
                 }
               }
             },
@@ -301,40 +295,34 @@
           "flow": [
             {
               "id": 7,
-              "module": "microsoft-email:createAndSendAMessage",
-              "version": 2,
+              "module": "email:ActionSendEmail",
+              "version": 7,
               "parameters": {
-                "__IMTCONN__": null
+                "account": null,
+                "saveAfterSent": false
               },
               "mapper": {
-                "toRecipients": [
-                  {
-                    "address": "{{2.data.prijemce}}",
-                    "name": "{{2.data.prijemce_jmeno}}"
-                  }
+                "to": [
+                  "{{2.data.prijemce}}"
                 ],
                 "subject": "{{2.data.predmet}}",
-                "content": "{{2.data.telo_html}}",
                 "contentType": "html",
-                "replyTo": [
-                  {
-                    "address": "{{2.data.odpovedet_na}}"
-                  }
-                ]
+                "html": "{{2.data.telo_html}}",
+                "replyTo": "{{2.data.odpovedet_na}}"
               },
               "metadata": {
-                "notes": "Tahle větev je ta častější: fakturu dostává jen ten, kdo platí převodem. Kdo platí QR kódem nebo jako jednotlivec nepřispívá, dostane potvrzení bez přílohy.",
+                "notes": "Tahle větev je ta častější: fakturu dostává jen ten, kdo platí převodem. Kdo platí QR kódem nebo jako jednotlivec nepřispívá, dostane potvrzení bez přílohy. Příjemce se stejně jako vedle bere živě ze Supabase, z pole {{2.data.prijemce}}.",
                 "restore": {
                   "parameters": {
-                    "__IMTCONN__": {
-                      "label": "Outlook / Microsoft 365 (po importu připojit znovu)"
+                    "account": {
+                      "label": "E-mail (SMTP) – po importu připojit znovu"
                     }
                   }
                 },
                 "designer": {
                   "x": 900,
-                  "y": 0,
-                  "name": "7. Outlook – odeslání bez přílohy"
+                  "y": 150,
+                  "name": "7. E-mail – odeslání bez přílohy"
                 }
               },
               "filter": {
