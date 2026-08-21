@@ -20,7 +20,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { sestavSpayd } from '../_shared/spayd.ts';
 import { vytvorQrPng } from '../_shared/qr.ts';
 import { vytvorFakturuPdf } from '../_shared/faktura.ts';
-import { nactiNastaveniGmailu, odesliEmail } from '../_shared/gmail.ts';
+import { kdoOdesila, posli } from '../_shared/posta.ts';
 
 // ---------------------------------------------------------------------------
 // NASTAVENÍ
@@ -690,8 +690,7 @@ async function posliPotvrzeni(
   splatnostCesky: string,
   faktura: HotovaFaktura | null,
 ): Promise<boolean> {
-  const nastaveni = nactiNastaveniGmailu();
-  if (!nastaveni) {
+  if (kdoOdesila() === 'nikdo') {
     console.warn(`E-mail přeskočen: chybí nastavení odesílání. Přihláška VS ${vs} je uložená.`);
     return false;
   }
@@ -707,8 +706,7 @@ async function posliPotvrzeni(
     splatnost: splatnostCesky,
   };
 
-  try {
-    const id = await odesliEmail(nastaveni, {
+  return await posli({
       prijemce: p.email,
       prijemceJmeno: p.kontaktni_osoba,
       predmet: `Přihláška přijata — variabilní symbol ${vs}`,
@@ -719,13 +717,7 @@ async function posliPotvrzeni(
       prilohy: faktura
         ? [{ nazev: faktura.soubor, typ: 'application/pdf', data: faktura.pdf }]
         : [],
-    });
-    console.log(`Potvrzení odesláno, VS ${vs}, zpráva ${id}.`);
-    return true;
-  } catch (e) {
-    console.error(`Potvrzení se nepovedlo odeslat, VS ${vs}. Přihláška je uložená.`, e);
-    return false;
-  }
+  });
 }
 
 // ---------------------------------------------------------------------------

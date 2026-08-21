@@ -97,27 +97,9 @@ function adresa(email: string, jmeno?: string | null): string {
   return jmeno ? `${zakodujHlavicku(jmeno)} <${email}>` : email;
 }
 
-export interface Email {
-  prijemce: string;
-  prijemceJmeno?: string | null;
-  predmet: string;
-  /** Prostý text. Uvidí ho ten, kdo má vypnuté HTML. */
-  text: string;
-  /** HTML verze. Nepovinná — bez ní se pošle jen text. */
-  html?: string | null;
-  /** Adresa pro odpověď, když je jiná než odesílatel. */
-  odpovedetNa?: string | null;
-  /** Soubory k připojení. Prázdné pole i `undefined` znamenají „bez příloh". */
-  prilohy?: Priloha[];
-}
-
-export interface Priloha {
-  /** Název, pod kterým se soubor příjemci uloží. */
-  nazev: string;
-  /** Typ obsahu, například `application/pdf`. */
-  typ: string;
-  data: Uint8Array;
-}
+// Tvar zprávy i přílohy je společný pro Gmail i Outlook — bydlí v posta.ts,
+// aby se obě cesty nemohly rozejít.
+export type { Priloha, Zprava as Email } from './posta.ts';
 
 /**
  * Sestaví surovou zprávu ve formátu, který Gmail API očekává
