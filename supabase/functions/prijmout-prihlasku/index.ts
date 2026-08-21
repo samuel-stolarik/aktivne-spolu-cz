@@ -557,7 +557,11 @@ const TYP_TEXT: Record<string, string> = {
 };
 
 const DODAVATEL = Deno.env.get('DODAVATEL_NAZEV') ?? 'Právě teď! o.p.s.';
-const WEB = Deno.env.get('DODAVATEL_WEB') ?? 'www.pravetedops.cz';
+// Zobrazuje se s pomlčkami, protože se to líp čte. Jako ODKAZ se ale
+// používat nesmí: doména s pomlčkami sice existuje a přesměrovává, ale
+// nemá platný certifikát, takže klik na https by skončil varováním.
+// Na faktuře i v patičce e-mailu je to jen text, ne odkaz.
+const WEB = Deno.env.get('DODAVATEL_WEB') ?? 'www.prave-ted-ops.cz';
 const KONTAKT_EMAIL = Deno.env.get('DODAVATEL_EMAIL') ?? '';
 const KONTAKT_TELEFON = Deno.env.get('DODAVATEL_TELEFON') ?? '';
 const VETA_DPH = Deno.env.get('FAKTURA_VETA_DPH') ??
@@ -992,13 +996,10 @@ interface HotovaFaktura {
  * platební údaje a fakturu nechce; dobrovolný příspěvek jednotlivce je dar,
  * na který se faktura nevystavuje vůbec.
  *
- * ČÍSLO SI NEVYMÝŠLÍME. Dává ho databázová funkce ve tvaru RR/SS/NNN
- * (26/03/001) — souvislá pořadová řada, jak ji chce účetní.
- *
- * ⚠️ KAŽDÉ VOLÁNÍ SPOTŘEBUJE JEDNO ČÍSLO. Dřív se číslovalo variabilním
- * symbolem a volání se dalo opakovat bez následků; teď se sekvence posune
- * pokaždé. Zkušební faktura tedy v řadě nechá díru — před ostrým spuštěním
- * se sekvence vrací na začátek (viz migrace 20260821180000).
+ * ČÍSLO SI NEVYMÝŠLÍME ANI NEVOLÁME ZNOVU. Přidělilo se při přijetí
+ * přihlášky spolu s variabilním symbolem (26/03/001 a 2603001) a sem se
+ * jen předá. Druhé volání by spotřebovalo další číslo a rozešlo by se
+ * s variabilním symbolem, který je už uložený.
  *
  * `null` NENÍ důvod přihlášku zamítnout. Přihláška je v tu chvíli uložená
  * a člověk má platební údaje v e-mailu; chybějící faktura se dá dovystavit.
@@ -1010,27 +1011,12 @@ async function vystavFakturu(
   vs: number,
   datumVystaveni: string,
   datumSplatnosti: string,
+  cislo: string,
+  spayd: string | null,
 ): Promise<HotovaFaktura | null> {
   if (p.forma_platby !== 'prevod') return null;
 
-  const rada = (Deno.env.get('FAKTURY_CISLO_RADY') ?? '').trim();
-  if (!rada) {
-    console.warn(
-      `Faktura přeskočena: chybí FAKTURY_CISLO_RADY. Přihláška VS ${vs} je uložená.`,
-    );
-    return null;
-  }
-
   try {
-    // POZOR: tohle volání POSOUVÁ SEKVENCI. Není opakovatelné — každé
-    // zavolání spotřebuje jedno číslo. Proto se vystavuje jen tady, jednou
-    // při přijetí přihlášky, a nikde jinde se nevolá.
-    const { data: cislo, error } = await klient.rpc('cislo_faktury', {
-      rok: Number(new Date().getFullYear()),
-      rada,
-    });
-    if (error || !cislo) throw error ?? new Error('Databáze nevrátila číslo faktury.');
-
     const iban = Deno.env.get('IBAN_UCTU') ?? null;
 
     const pdf = vytvorFakturuPdf({
@@ -1059,6 +1045,10 @@ async function vystavFakturu(
       iban,
       swift: Deno.env.get('SWIFT_UCTU') ?? null,
       zpravaProPrijemce: Deno.env.get('ZPRAVA_PLATBY') ?? 'AKTIVNE SPOLU',
+
+      // QR na fakturu. Skládá se stejným řetězcem jako QR v e-mailu, takže
+      // se nemůžou lišit částkou ani symbolem.
+      spayd,
 
       polozkaNazev:
         Deno.env.get('FAKTURA_POLOZKA') ??
@@ -1185,15 +1175,32 @@ Deno.serve(async (req) => {
   // Bere se výhradně z databázové sekvence. Kdyby se počítal tady (třeba
   // „poslední + 1" nebo z času), dvě přihlášky odeslané ve stejnou vteřinu
   // by dostaly stejné číslo a platby by se nedaly rozeznat.
-  const { data: vsData, error: vsChyba } = await klient.rpc('dalsi_variabilni_symbol');
-  if (vsChyba || vsData === null || vsData === undefined) {
-    console.error('Nepovedlo se přidělit variabilní symbol:', vsChyba);
+  // Variabilní symbol i číslo faktury vzniknou z JEDNOHO pořadového čísla,
+  // takže se nemůžou rozejít: 26/03/001 a 2603001. Volá se to jednou —
+  // každé další volání by spotřebovalo číslo navíc.
+  const rada = (Deno.env.get('FAKTURY_CISLO_RADY') ?? '').trim();
+  if (!rada) {
+    console.error('Chybí FAKTURY_CISLO_RADY — bez řady nejde přidělit číslo.');
     return odpoved(req, {
       ok: false,
-      chyba: 'Přihlášku se teď nepodařilo uložit. Zkuste to prosím za chvíli znovu.',
-    }, 503);
+      chyba: 'Přihlášku teď nejde přijmout. Zkuste to prosím za chvíli, nebo nám napište.',
+    }, 500);
   }
-  const variabilniSymbol = Number(vsData);
+
+  const { data: cisloData, error: vsChyba } = await klient
+    .rpc('pridel_cislo', { rok: Number(new Date().getFullYear()), rada })
+    .single();
+
+  if (vsChyba || !cisloData?.variabilni_symbol) {
+    console.error('Přidělení čísla selhalo:', vsChyba);
+    return odpoved(req, {
+      ok: false,
+      chyba: 'Přihlášku se nepodařilo uložit. Zkuste to prosím znovu, nebo nám napište.',
+    }, 500);
+  }
+
+  const variabilniSymbol = Number(cisloData.variabilni_symbol);
+  const cisloFaktury = String(cisloData.cislo_faktury);
 
   // ULOŽENÍ
   const { data: ulozeno, error: chybaUlozeni } = await klient
@@ -1229,6 +1236,8 @@ Deno.serve(async (req) => {
     variabilniSymbol,
     datumCesky(new Date().toISOString().slice(0, 10)),
     splatnost.cesky,
+    cisloFaktury,
+    spayd,
   );
 
   const posta = await posliPotvrzeni(

@@ -75,7 +75,10 @@ const poradatele = [
     osoba: "[DOPLNIT: jméno kontaktní osoby — Právě teď! o.p.s.]",
     email: "[DOPLNIT: e-mail — Právě teď! o.p.s.]",
     telefon: "[DOPLNIT: telefon — Právě teď! o.p.s.]",
-    webPopis: "www.pravetedops.cz",
+    // Zobrazuje se s pomlčkami (líp se to čte), ale odkaz míří na doménu
+    // BEZ nich. Ta s pomlčkami sice přesměrovává, jenže nemá platný
+    // certifikát — klik na https by skončil bezpečnostním varováním.
+    webPopis: "www.prave-ted-ops.cz",
     webOdkaz: "https://www.pravetedops.cz",
   },
   {

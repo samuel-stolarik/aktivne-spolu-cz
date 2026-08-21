@@ -11,8 +11,11 @@
 // NEPLÁTCE DPH — TVRDÁ PRAVIDLA, KTERÁ SE NESMÍ PORUŠIT
 // Právě teď! o.p.s. není plátcem DPH (potvrzeno v ARESu). Z toho plyne:
 //   - žádný rozpis daně: ani sazba, ani základ, ani řádek DPH,
-//   - doklad se jmenuje FAKTURA, nikdy „daňový doklad" — ten neplátce
-//     vystavovat nesmí,
+//   - doklad se jmenuje FAKTURA, nikdy „daňový doklad" — ten smí vystavit
+//     jen plátce DPH (§ 26 zákona o DPH). Pod hlavičkou ale NEPÍŠEME, že
+//     „doklad není daňovým dokladem": zní to, jako by faktura byla k ničemu,
+//     a zadavateli to vadilo. Že se daň neuplatňuje, stojí dole u částky
+//     — to stačí a je to přesné.
 //   - na faktuře NENÍ pole „DIČ dodavatele". Ani prázdné, ani s pomlčkou.
 //     To pole na ni nepatří.
 //   - je tam věta o neplátcovství a částka je konečná.
@@ -26,6 +29,7 @@
 
 import { PISMO_TUCNE, PISMO_ZAKLADNI } from './pismo-faktury.ts';
 import { zmerText, ttfDoPdf, type NactenePismo } from './ttf.ts';
+import { vytvorQrMatici } from './qr.ts';
 
 export interface UdajeFaktury {
   cisloFaktury: string;
@@ -53,6 +57,12 @@ export interface UdajeFaktury {
 
   polozkaNazev: string;
   vetaNeplatceDph: string;
+
+  /**
+   * Platební řetězec SPAYD pro QR platbu. Když chybí, QR se na fakturu
+   * nekreslí a nic se nerozbije — jen tam ten čtvereček nebude.
+   */
+  spayd?: string | null;
 }
 
 // --- Rozvržení stránky (A4 v bodech, 1 bod = 1/72 palce) --------------------
@@ -152,6 +162,33 @@ class Stranka {
     );
   }
 
+  /**
+   * Nakreslí QR kód jako mřížku čtverečků.
+   *
+   * Ne jako vložený obrázek: odpadá tím kódování PNG do dokumentu a kód
+   * zůstane ostrý při jakémkoli zvětšení i tisku. Sousední tmavé čtverečky
+   * se kreslí každý zvlášť — poskládat je do větších obdélníků by ušetřilo
+   * pár set bajtů a přidalo místo, kde se dá udělat chyba v kódu, který
+   * má vyjít na milimetr.
+   */
+  qr(mrizka: boolean[][], x: number, strana: number) {
+    const krok = strana / mrizka.length;
+    this.prikazy.push('0 0 0 rg');
+
+    for (let radek = 0; radek < mrizka.length; radek++) {
+      for (let sloupec = 0; sloupec < mrizka.length; sloupec++) {
+        if (!mrizka[radek][sloupec]) continue;
+        const bx = x + sloupec * krok;
+        // Souřadnice v PDF rostou zdola, mřížka se čte shora — proto ten obrat.
+        const by = VYSKA - this.y - (radek + 1) * krok;
+        this.prikazy.push(
+          `${bx.toFixed(2)} ${by.toFixed(2)} ${krok.toFixed(2)} ${krok.toFixed(2)} re`,
+        );
+      }
+    }
+    this.prikazy.push('f');
+  }
+
   dolu(o: number) {
     this.y += o;
   }
@@ -180,13 +217,6 @@ export function vytvorFakturuPdf(u: UdajeFaktury): Uint8Array {
   s.y = 70;
   s.text('FAKTURA', OKRAJ, 26, { tucne: true, barva: TYRKYS });
   s.text(u.cisloFaktury, praveOkraj, 16, { tucne: true, vpravo: praveOkraj });
-  s.dolu(10);
-  s.text(
-    'Doklad není daňovým dokladem — vystavovatel není plátcem DPH.',
-    OKRAJ,
-    8.5,
-    { barva: SEDA },
-  );
 
   s.dolu(18);
   s.cara(OKRAJ, praveOkraj);
@@ -282,6 +312,25 @@ export function vytvorFakturuPdf(u: UdajeFaktury): Uint8Array {
 
   s.dolu(14);
   s.cara(OKRAJ, praveOkraj, INKOUST, 1.2);
+
+  // --- QR platba ----------------------------------------------------------
+  // Vlevo kód, vpravo vedle něj vysvětlení. Kdo platí z mobilu, nemusí nic
+  // opisovat; kdo platí z počítače, má údaje o kus výš.
+  if (u.spayd) {
+    s.dolu(26);
+    const vrchQr = s.y;
+    s.qr(vytvorQrMatici(u.spayd), OKRAJ, 96);
+
+    s.y = vrchQr + 16;
+    s.text('ZAPLATIT MOBILEM', OKRAJ + 116, 8.5, { tucne: true, barva: TYRKYS });
+    s.dolu(16);
+    s.text('Načtěte kód v bankovní aplikaci.', OKRAJ + 116, 9.5);
+    s.dolu(13);
+    s.text('Částka i variabilní symbol se vyplní samy.', OKRAJ + 116, 9.5, { barva: SEDA });
+
+    // Zbytek stránky musí začít pod kódem, ne pod textem vedle něj.
+    s.y = vrchQr + 96;
+  }
 
   // --- Věta o neplátcovství ----------------------------------------------
   s.dolu(30);

@@ -169,3 +169,27 @@ export function vytvorQrPng(text: string, nastaveni: NastaveniQr = {}): Uint8Arr
 
   return sestavPng(strana, strana, body);
 }
+
+/**
+ * Vrátí jen mřížku QR kódu, bez obrázku.
+ *
+ * Používá to faktura: v PDF se kód nekreslí jako vložený obrázek, ale jako
+ * pár set malých čtverečků. Odpadá tím kódování PNG do dokumentu a kód je
+ * ostrý při jakémkoli zvětšení — je to vektor, ne rastr.
+ *
+ * @returns Pole řádků, v každém `true` = tmavý čtvereček.
+ */
+export function vytvorQrMatici(text: string): boolean[][] {
+  const qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+
+  const pocet = qr.getModuleCount();
+  const mrizka: boolean[][] = [];
+  for (let radek = 0; radek < pocet; radek++) {
+    const r: boolean[] = [];
+    for (let sloupec = 0; sloupec < pocet; sloupec++) r.push(qr.isDark(radek, sloupec));
+    mrizka.push(r);
+  }
+  return mrizka;
+}
