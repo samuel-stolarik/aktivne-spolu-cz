@@ -676,6 +676,23 @@ function htmlEmailu(
   // QR kód se vkládá odkazem, ne obrázkem v těle. Vložený obrázek si spousta
   // schránek nezobrazí, dokud ho člověk ručně nepovolí — a to je přesně ten
   // okamžik, kdy člověk platbu vzdá.
+  // Kdo nepřispívá, nesmí dostat platební tabulku. Ukazovat mu „Částka 0 Kč“
+  // a „Kam poslat platbu“ vypadá, jako by něco dlužil — a variabilní symbol
+  // se zprávou pro banku je k ničemu, když nikam nic neposílá.
+  const blokBezPlatby = `<tr>
+          <td style="padding:28px 32px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                   style="background-color:#edf7f9;border-radius:12px;">
+              <tr>
+                <td style="padding:20px 22px;font-size:15px;line-height:1.6;color:#45443f;">
+                  <strong>Nic platit nemusíte.</strong> Přihláška je hotová a počítáme s vámi.
+                  Kdybyste nás přece jen chtěli podpořit, stačí se ozvat — rádi pošleme údaje.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>`;
+
   const blokQr = qrUrl
     ? `<tr><td style="padding:20px 32px 0;font-size:14px;line-height:1.6;color:#45443f;">
          <a href="${e(qrUrl)}" style="color:#12707f;font-weight:600;">Otevřít QR kód k platbě</a>
@@ -739,6 +756,7 @@ function htmlEmailu(
           </td>
         </tr>
 
+        ${p.castka_kc > 0 ? `
         <!-- Platba -->
         <tr>
           <td style="padding:28px 32px 0;">
@@ -782,6 +800,7 @@ function htmlEmailu(
             ${e(VETA_DPH)}
           </td>
         </tr>
+        ` : blokBezPlatby}
 
         <!-- Co bude dál -->
         <tr>
