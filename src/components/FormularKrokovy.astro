@@ -431,9 +431,27 @@ const poleTridy =
       {/* === Krok 7 — forma platby ==================================== */}
       <div class="krok" data-krok="platba" hidden>
         <fieldset class="m-0 border-0 p-0">
-          <legend class="otazka">Jak chcete zaplatit?</legend>
-          <p class="mt-2 mb-4 text-popisek">
+          {/* Otázka i nabídka se liší podle toho, kdo se hlásí. Jednotlivec
+              poplatek platit NEMUSÍ — buď přispěje částkou, kterou si sám
+              vybere, nebo nepřispěje vůbec. Škola a organizace platí 500 Kč.
+
+              Obě varianty jsou v šabloně a přepíná se mezi nimi až skriptem.
+              Kdyby se sestavovaly zvlášť, musela by se ta otázka udržovat
+              na dvou místech a jedna z nich by se dřív nebo později
+              rozešla s druhou. */}
+          <legend class="otazka">
+            <span data-platba-nadpis="ostatni">Jak chcete zaplatit?</span>
+            <span data-platba-nadpis="jednotlivec" hidden>
+              Chcete nás podpořit?
+            </span>
+          </legend>
+
+          <p class="mt-2 mb-4 text-popisek" data-platba-popis="ostatni">
             Registrační poplatek je 500 Kč.
+          </p>
+          <p class="mt-2 mb-4 text-popisek" data-platba-popis="jednotlivec" hidden>
+            Jako jednotlivec nic platit nemusíte. Když nás ale chcete podpořit,
+            budeme rádi za jakýkoliv příspěvek — pomůže projekt udržet.
           </p>
 
           <div class="space-y-3">
@@ -445,7 +463,12 @@ const poleTridy =
                 class="mt-1 h-5 w-5 accent-[#12707F]"
               />
               <span>
-                <span class="block font-semibold">QR kód</span>
+                <span class="block font-semibold">
+                  <span data-platba-qr="ostatni">QR kód</span>
+                  <span data-platba-qr="jednotlivec" hidden>
+                    Ano, chci přispět
+                  </span>
+                </span>
                 <span class="text-popisek">
                   Pošleme vám QR kód k okamžité platbě z mobilního
                   bankovnictví.
@@ -453,7 +476,35 @@ const poleTridy =
               </span>
             </label>
 
-            <label class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border-2 border-merunka-tlumena p-4 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys">
+            {/* Výběr částky. Ukazuje se jen jednotlivci a jen když si zvolil,
+                že chce přispět — jinak by na kroku stálo pole, které nemá
+                co dělat.
+
+                Je to seznam, ne volné pole: člověk nemusí přemýšlet, kolik
+                je „správně", a zároveň se do QR kódu nedostane překlep.
+                Nejnižší částka je 100 Kč, aby QR platba dávala smysl. */}
+            <div class="ml-8 hidden" data-platba-castka>
+              <label for="castka_kc-k" class="popisek">
+                Kolik chcete přispět?
+              </label>
+              <select id="castka_kc-k" name="castka_kc" class={poleTridy}>
+                <option value="100">100 Kč</option>
+                <option value="200">200 Kč</option>
+                <option value="300">300 Kč</option>
+                <option value="500" selected>500 Kč</option>
+                <option value="1000">1 000 Kč</option>
+                <option value="2000">2 000 Kč</option>
+              </select>
+              <p class="chyba" data-chyba-pro="castka_kc"></p>
+            </div>
+
+            {/* Faktura jen pro školy a organizace. Dobrovolný příspěvek je
+                dar, ne úhrada služby — faktura na něj nepatří, a proto se
+                jednotlivci tahle možnost vůbec nenabízí. */}
+            <label
+              class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border-2 border-merunka-tlumena p-4 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys"
+              data-platba-volba="prevod"
+            >
               <input
                 type="radio"
                 name="forma_platby"
@@ -467,6 +518,28 @@ const poleTridy =
                 <span class="text-popisek">
                   Vystavíme fakturu pro účetnictví školy nebo organizace.
                   Doptáme se pak ještě na fakturační údaje.
+                </span>
+              </span>
+            </label>
+
+            {/* Jen pro jednotlivce. Musí to být plnohodnotná volba, ne
+                nevyplněné pole — jinak by se nepoznalo, jestli se člověk
+                rozhodl nepřispět, nebo jen krok přeskočil. */}
+            <label
+              class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border-2 border-merunka-tlumena p-4 transition-colors duration-150 has-checked:border-tyrkys has-checked:bg-plocha-tyrkys"
+              data-platba-volba="neprispivam"
+              hidden
+            >
+              <input
+                type="radio"
+                name="forma_platby"
+                value="neprispivam"
+                class="mt-1 h-5 w-5 accent-[#12707F]"
+              />
+              <span>
+                <span class="block font-semibold">Teď ne, děkuji</span>
+                <span class="text-popisek">
+                  Přihláška platí i tak. Přispět můžete kdykoliv později.
                 </span>
               </span>
             </label>
@@ -875,6 +948,68 @@ const poleTridy =
       return hodnota("forma_platby") === "prevod";
     }
 
+    /** Jednotlivec platit nemusí — přispívá dobrovolně, nebo vůbec. */
+    function jeJednotlivec(): boolean {
+      return hodnota("typ_poradatele") === "jednotlivec";
+    }
+
+    /**
+     * Přepne krok platby podle toho, kdo se hlásí.
+     *
+     * Volá se při každém vstupu na krok i při změně volby, protože typ
+     * pořadatele se dá kdykoliv přepsat návratem na první krok. Kdyby se
+     * to nastavilo jen jednou, mohla by u jednotlivce zůstat viset nabídka
+     * faktury — a ta se pak nedá odeslat, protože ji server odmítne.
+     */
+    function prepniPlatbuPodleTypu() {
+      const jednotlivec = jeJednotlivec();
+
+      formular!
+        .querySelectorAll<HTMLElement>("[data-platba-nadpis], [data-platba-popis], [data-platba-qr]")
+        .forEach((prvek) => {
+          const pro =
+            prvek.dataset.platbaNadpis ??
+            prvek.dataset.platbaPopis ??
+            prvek.dataset.platbaQr;
+          prvek.hidden = jednotlivec ? pro !== "jednotlivec" : pro !== "ostatni";
+        });
+
+      const prevod = formular!.querySelector<HTMLElement>('[data-platba-volba="prevod"]');
+      const neprispivam = formular!.querySelector<HTMLElement>(
+        '[data-platba-volba="neprispivam"]',
+      );
+      if (prevod) prevod.hidden = jednotlivec;
+      if (neprispivam) neprispivam.hidden = !jednotlivec;
+
+      // Schovaná volba nesmí zůstat zaškrtnutá. Stane se to, když někdo
+      // vybere fakturu jako škola a pak se vrátí a přepne se na jednotlivce —
+      // odeslal by hodnotu, kterou u sebe nevidí.
+      const vybrane = formular!.querySelector<HTMLInputElement>(
+        'input[name="forma_platby"]:checked',
+      );
+      if (vybrane) {
+        const zakazano = jednotlivec ? "prevod" : "neprispivam";
+        if (vybrane.value === zakazano) vybrane.checked = false;
+      }
+
+      prepniVyberCastky();
+    }
+
+    /** Výběr částky patří jen k volbě „chci přispět" u jednotlivce. */
+    function prepniVyberCastky() {
+      const obal = formular!.querySelector<HTMLElement>("[data-platba-castka]");
+      if (!obal) return;
+
+      const patriSem = jeJednotlivec() && hodnota("forma_platby") === "qr";
+      obal.classList.toggle("hidden", !patriSem);
+
+      // Nejen schovat, ale i vypnout. Schované pole prohlížeč pořád odesílá,
+      // takže by za školu odešla „výše příspěvku", kterou nikdo nezadával.
+      // Vypnuté pole se neodesílá vůbec.
+      const vyber = obal.querySelector<HTMLSelectElement>("select");
+      if (vyber) vyber.disabled = !patriSem;
+    }
+
     type Kontrola = () => string | null;
 
     const kontroly: Record<string, Kontrola> = {
@@ -926,8 +1061,23 @@ const poleTridy =
       // souboru, ať se obě verze formuláře nerozejdou.
       datum_akce: () => zkontrolujDatum(hodnota("datum_akce")),
 
-      forma_platby: () =>
-        hodnota("forma_platby") ? null : "Vyberte formu platby.",
+      forma_platby: () => {
+        if (hodnota("forma_platby")) return null;
+        return jeJednotlivec()
+          ? "Vyberte, jestli chcete přispět."
+          : "Vyberte formu platby.";
+      },
+
+      // Částka se kontroluje jen tam, kde se na ni ptáme. Server si ji
+      // stejně ověřuje znovu a navíc ji hlídá podmínka v databázi.
+      castka_kc: () => {
+        if (!jeJednotlivec() || hodnota("forma_platby") !== "qr") return null;
+        const castka = Number(hodnota("castka_kc"));
+        if (!Number.isInteger(castka) || castka < 100) {
+          return "Vyberte částku, kterou chcete přispět (nejméně 100 Kč).";
+        }
+        return null;
+      },
 
       fakt_nazev: () =>
         !jePrevod() || hodnota("fakt_nazev")
@@ -1017,8 +1167,8 @@ const poleTridy =
       {
         klic: "platba",
         nazev: "Forma platby",
-        pole: ["forma_platby"],
-        souhrn: ["forma_platby"],
+        pole: ["forma_platby", "castka_kc"],
+        souhrn: ["forma_platby", "castka_kc"],
         jeVidet: () => true,
       },
       {
@@ -1273,6 +1423,7 @@ const poleTridy =
       datum_akce: "Datum konání akce",
       napad_na_aktivitu: "Nápad na aktivitu",
       forma_platby: "Forma platby",
+      castka_kc: "Výše příspěvku",
       fakt_nazev: "Název na faktuře",
       fakt_adresa: "Fakturační adresa",
       fakt_ic: "IČ",
@@ -1294,6 +1445,7 @@ const poleTridy =
       forma_platby: {
         qr: "QR kód",
         prevod: "Převod na účet s vystavením faktury",
+        neprispivam: "Bez příspěvku",
       },
     };
 
@@ -1303,6 +1455,7 @@ const poleTridy =
      * být česky — jinak by člověk kontroloval údaj, který takhle nezadával.
      */
     const upravaHodnot: Record<string, (zapsano: string) => string> = {
+      castka_kc: (zapsano) => `${Number(zapsano).toLocaleString("cs-CZ")} Kč`,
       datum_akce: ceskyDatum,
     };
 
@@ -1315,6 +1468,17 @@ const poleTridy =
           // Prázdné nepovinné pole se nevypisuje. Řádek s pomlčkou
           // by jen budil dojem, že něco chybí.
           if (!zapsano) continue;
+
+          // Výše příspěvku má v rekapitulaci co dělat jen tehdy, když se na
+          // ni formulář ptal. Seznam má vždycky nějakou hodnotu vybranou,
+          // takže bez téhle podmínky by u školy svítilo „Výše příspěvku
+          // 500 Kč" jako by si ji volila.
+          if (
+            pole === "castka_kc" &&
+            !(jeJednotlivec() && hodnota("forma_platby") === "qr")
+          ) {
+            continue;
+          }
 
           const radek = document.createElement("div");
           radek.className =
@@ -1547,6 +1711,9 @@ const poleTridy =
             smazChybuPole("ico");
           }
 
+          // Krok platby se ptá jinak školy a jinak jednotlivce.
+          prepniPlatbuPodleTypu();
+
           // Ubyl nebo přibyl krok, takže „z kolika" už neplatí.
           prekresliPostup();
         }),
@@ -1558,9 +1725,19 @@ const poleTridy =
         prvek.addEventListener("change", () => {
           smazChybuPole("forma_platby");
           if (jePrevod()) prenesIco();
+          prepniVyberCastky();
           prekresliPostup();
         }),
       );
+
+    formular
+      .querySelector('select[name="castka_kc"]')
+      ?.addEventListener("change", () => smazChybuPole("castka_kc"));
+
+    // Výchozí stav kroku platby. Bez tohohle by u jednotlivce, který se
+    // na krok dostane bez jediné změny typu, zůstala otázka „Jak chcete
+    // zaplatit?" a nabídnutá faktura.
+    prepniPlatbuPodleTypu();
 
     // Popisek tlačítka na nepovinném kroku se mění podle toho, jestli
     // je pole prázdné („Přeskočit a pokračovat"), nebo ne („Pokračovat").

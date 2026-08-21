@@ -66,6 +66,8 @@ const TLACITKA_SCHVALENI: Record<string, string> = {
 const NAZVY_PLATEB: Record<string, string> = {
   qr: "QR kód",
   prevod: "Převodem",
+  // Jen u jednotlivců — ti registrační poplatek platit nemusí.
+  neprispivam: "Bez příspěvku",
 };
 
 const NAZVY_PORADATELU: Record<string, string> = {

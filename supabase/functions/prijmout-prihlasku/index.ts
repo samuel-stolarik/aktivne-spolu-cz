@@ -102,7 +102,23 @@ function odpoved(req: Request, telo: unknown, stav = 200): Response {
 // a člověk uvidí nesrozumitelnou chybu místo srozumitelné hlášky z formuláře.
 
 const TYPY_PORADATELE = ['skola', 'organizace', 'jednotlivec'] as const;
-const FORMY_PLATBY = ['qr', 'prevod'] as const;
+const FORMY_PLATBY = ['qr', 'prevod', 'neprispivam'] as const;
+
+/**
+ * Dobrovolný příspěvek u jednotlivců.
+ *
+ * Jednotlivec registrační poplatek platit NEMUSÍ — buď přispěje částkou,
+ * kterou si sám vybere, nebo nepřispěje vůbec. Škol a organizací se to
+ * netýká, těm zůstává poplatek 500 Kč.
+ *
+ * Spodní hranice je proto, aby se za pár korun negeneroval QR kód, který
+ * bance stojí za víc než ten příspěvek. Horní je proti překlepu: kdo omylem
+ * napíše o tři nuly víc, zjistí to jinak až v bankovní aplikaci.
+ *
+ * Obě čísla MUSÍ sedět s podmínkou `prihlasky_platba_podle_typu` v migraci.
+ */
+const PRISPEVEK_NEJMENE_KC = 100;
+const PRISPEVEK_NEJVICE_KC = 100000;
 
 /**
  * Je datum konání povinné?
@@ -252,6 +268,8 @@ interface Prihlaska {
   datum_akce: string | null;
   napad_na_aktivitu: string | null;
   forma_platby: string;
+  /** Kolik se má zaplatit. 500 u škol a firem, u jednotlivce jeho volba nebo 0. */
+  castka_kc: number;
   fakt_nazev: string | null;
   fakt_adresa: string | null;
   fakt_ic: string | null;
@@ -306,8 +324,53 @@ function zkontroluj(vstup: Record<string, unknown>): { data: Prihlaska } | { chy
   if (napadRaw.length > 2000) chyby.napad_na_aktivitu = 'Nápad je moc dlouhý (nejvýš 2000 znaků).';
   const napad_na_aktivitu = napadRaw || null; // nepovinné
 
+  // ------------------------------------------------------------------------
+  // Platba a částka
+  //
+  // Rozhoduje TYP POŘADATELE, ne to, co přišlo z formuláře. Kdyby si někdo
+  // upravil stránku a poslal za školu „nepřispívám" nebo za jednotlivce
+  // padesát korun, skončí to tady — a kdyby náhodou ne, chytne to podmínka
+  // v databázi (prihlasky_platba_podle_typu).
+  //
+  // Částka se u škol a organizací z formuláře NEBERE VŮBEC. Je to pevný
+  // poplatek; přijímat na něj číslo z prohlížeče by znamenalo, že si každý
+  // může poslat, kolik chce.
+  // ------------------------------------------------------------------------
+  const jednotlivec = typ_poradatele === 'jednotlivec';
   const forma_platby = text(vstup.forma_platby);
+  let castka_kc = CASTKA_KC;
+
   if (!FORMY_PLATBY.includes(forma_platby as typeof FORMY_PLATBY[number])) {
+    chyby.forma_platby = jednotlivec
+      ? 'Vyberte, jestli chcete přispět.'
+      : 'Vyberte, jak chcete zaplatit.';
+  } else if (jednotlivec) {
+    if (forma_platby === 'prevod') {
+      // Dobrovolný příspěvek není úhrada služby, takže se na něj nevystavuje
+      // faktura. Formulář tuhle možnost jednotlivci ani nenabízí.
+      chyby.forma_platby = 'Na dobrovolný příspěvek fakturu nevystavujeme.';
+    } else if (forma_platby === 'neprispivam') {
+      castka_kc = 0;
+    } else if (text(vstup.castka_kc) === '') {
+      // Starší verze formuláře se na částku vůbec neptají a jednotlivci
+      // v nich vybírají jen mezi QR a převodem. Chybějící pole proto NENÍ
+      // chyba — platí výchozí poplatek. Kdyby se místo toho hlásila chyba,
+      // přestaly by ty stránky přijímat přihlášky od jednotlivců a nikdo
+      // by nevěděl proč.
+      castka_kc = CASTKA_KC;
+    } else {
+      const zadano = Number(text(vstup.castka_kc));
+      if (!Number.isInteger(zadano)) {
+        chyby.castka_kc = 'Vyberte částku, kterou chcete přispět.';
+      } else if (zadano < PRISPEVEK_NEJMENE_KC) {
+        chyby.castka_kc = `Nejnižší příspěvek je ${PRISPEVEK_NEJMENE_KC} Kč.`;
+      } else if (zadano > PRISPEVEK_NEJVICE_KC) {
+        chyby.castka_kc = 'Tak vysokou částku raději domluvme osobně, napište nám.';
+      } else {
+        castka_kc = zadano;
+      }
+    }
+  } else if (forma_platby === 'neprispivam') {
     chyby.forma_platby = 'Vyberte, jak chcete zaplatit.';
   }
 
@@ -359,6 +422,7 @@ function zkontroluj(vstup: Record<string, unknown>): { data: Prihlaska } | { chy
       datum_akce,
       napad_na_aktivitu,
       forma_platby,
+      castka_kc,
       fakt_nazev,
       fakt_adresa,
       fakt_ic,
@@ -385,7 +449,12 @@ async function pripravQr(
   klient: any,
   variabilniSymbol: number,
   splatnostIso: string,
+  castka: number,
+  jeDobrovolny: boolean,
 ): Promise<{ url: string | null; spayd: string | null }> {
+  // Kdo nepřispívá, nemá co platit — QR kód by byl na nulu.
+  if (castka <= 0) return { url: null, spayd: null };
+
   const iban = Deno.env.get('IBAN_UCTU');
   if (!iban) {
     console.warn('QR přeskočeno: chybí nastavení IBAN_UCTU.');
@@ -399,12 +468,19 @@ async function pripravQr(
   // Bez háčků a bez hvězdiček. Hvězdička odděluje pole platebního řetězce
   // a diakritiku bankovní aplikace často nezobrazí — hlídá to `ocistiZpravu`
   // ve spayd.ts, ale nemá smysl jí to schválně posílat rozbité.
-  const zaklad = Deno.env.get('ZPRAVA_PLATBY') ?? 'AKTIVNE SPOLU';
+  //
+  // U jednotlivce se zpráva liší schválně. V bance pak na výpisu stojí
+  // „DOBROVOLNY PRISPEVEK", ne „registrační poplatek" — a to je rozdíl,
+  // který zajímá účetní: příspěvek je dar, poplatek je úhrada služby.
+  // Kdyby na výpisu stálo u obojího totéž, muselo by se to párovat ručně.
+  const zaklad = jeDobrovolny
+    ? 'DOBROVOLNY PRISPEVEK'
+    : Deno.env.get('ZPRAVA_PLATBY') ?? 'AKTIVNE SPOLU';
 
   const spayd = sestavSpayd({
     iban,
     swift: Deno.env.get('SWIFT_UCTU') ?? null,
-    castka: CASTKA_KC,
+    castka,
     mena: 'CZK',
     variabilniSymbol,
     splatnost: splatnostIso,
@@ -476,22 +552,37 @@ function textEmailu(
     );
   }
 
-  radky.push(
-    '',
-    `Zbývá zaplatit účastnický poplatek, a to do ${u.splatnost}:`,
-    '',
-    `  Částka:             ${castkaSlovy(CASTKA_KC)} Kč`,
-    `  Číslo účtu:         ${u.cisloUctu}`,
-    `  Variabilní symbol:  ${vs}`,
-    `  Splatnost:          ${u.splatnost}`,
-  );
+  // Kdo nepřispívá, nemá co platit — celý platební blok se vynechá.
+  // Posílat mu údaje k platbě by znamenalo tvrdit mu, že něco dluží.
+  if (p.castka_kc <= 0) {
+    radky.push(
+      '',
+      'Nic platit nemusíte — přihláška je hotová.',
+      'Kdybyste nás přece jen chtěli podpořit, ozvěte se a rádi pošleme údaje.',
+    );
+  } else {
+    const jeDobrovolny = p.typ_poradatele === 'jednotlivec';
+    radky.push(
+      '',
+      jeDobrovolny
+        ? `Váš dobrovolný příspěvek můžete poslat do ${u.splatnost}:`
+        : `Zbývá zaplatit účastnický poplatek, a to do ${u.splatnost}:`,
+      '',
+      `  Částka:             ${castkaSlovy(p.castka_kc)} Kč`,
+      `  Číslo účtu:         ${u.cisloUctu}`,
+      `  Variabilní symbol:  ${vs}`,
+      `  Splatnost:          ${u.splatnost}`,
+    );
+  }
 
-  if (u.iban) radky.push(`  IBAN (ze zahraničí): ${u.iban}`);
+  if (p.castka_kc > 0) {
+    if (u.iban) radky.push(`  IBAN (ze zahraničí): ${u.iban}`);
 
-  radky.push(
-    '',
-    'Variabilní symbol prosím nevynechávejte — podle něj platbu poznáme.',
-  );
+    radky.push(
+      '',
+      'Variabilní symbol prosím nevynechávejte — podle něj platbu poznáme.',
+    );
+  }
 
   if (qrUrl) {
     radky.push(
@@ -562,15 +653,24 @@ function htmlEmailu(
   <p style="margin:0 0 16px;">Dobrý den, ${e(p.kontaktni_osoba)},</p>
   <p style="margin:0 0 16px;">děkujeme za přihlášku. Máme ji u sebe a počítáme s vámi.</p>
   ${terminBlok}
-  <p style="margin:0 0 8px;">Zbývá zaplatit účastnický poplatek, a to do <strong>${e(u.splatnost)}</strong>:</p>
+  ${
+    p.castka_kc <= 0
+      ? `<p style="margin:0;">Nic platit nemusíte — přihláška je hotová. Kdybyste nás přece
+         jen chtěli podpořit, ozvěte se a rádi pošleme údaje.</p>`
+      : `<p style="margin:0 0 8px;">${
+          p.typ_poradatele === 'jednotlivec'
+            ? 'Váš dobrovolný příspěvek můžete poslat do'
+            : 'Zbývá zaplatit účastnický poplatek, a to do'
+        } <strong>${e(u.splatnost)}</strong>:</p>
   <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 8px;">
-    <tr><td style="color:#555;">Částka</td><td><strong>${castkaSlovy(CASTKA_KC)} Kč</strong></td></tr>
+    <tr><td style="color:#555;">Částka</td><td><strong>${castkaSlovy(p.castka_kc)} Kč</strong></td></tr>
     <tr><td style="color:#555;">Číslo účtu</td><td><strong>${e(u.cisloUctu)}</strong></td></tr>
     <tr><td style="color:#555;">Variabilní symbol</td><td><strong>${vs}</strong></td></tr>
     <tr><td style="color:#555;">Splatnost</td><td><strong>${e(u.splatnost)}</strong></td></tr>
     ${u.iban ? `<tr><td style="color:#555;">IBAN (ze zahraničí)</td><td>${e(u.iban)}</td></tr>` : ''}
   </table>
-  <p style="margin:0;">Variabilní symbol prosím nevynechávejte — podle něj platbu poznáme.</p>
+  <p style="margin:0;">Variabilní symbol prosím nevynechávejte — podle něj platbu poznáme.</p>`
+  }
   ${qrBlok}
   ${fakturaBlok}
   <p style="margin:24px 0 0;">Kdyby cokoli nebylo jasné, stačí na tenhle e-mail odpovědět.</p>
@@ -734,13 +834,19 @@ Deno.serve(async (req) => {
   // pro návštěvníka. Všechno další je „hezké mít".
   const splatnost = datumSplatnosti();
 
-  const { url: qrUrl, spayd } = await pripravQr(klient, variabilniSymbol, splatnost.iso);
+  const { url: qrUrl, spayd } = await pripravQr(
+    klient,
+    variabilniSymbol,
+    splatnost.iso,
+    data.castka_kc,
+    data.typ_poradatele === 'jednotlivec',
+  );
   const emailOdeslan = await posliPotvrzeni(data, variabilniSymbol, qrUrl, splatnost.cesky);
 
   await ozviSeDoFakturace({
     id: ulozeno.id,
     variabilni_symbol: variabilniSymbol,
-    castka_kc: CASTKA_KC,
+    castka_kc: data.castka_kc,
     splatnost: splatnost.iso,
     ...data,
     qr_url: qrUrl,
