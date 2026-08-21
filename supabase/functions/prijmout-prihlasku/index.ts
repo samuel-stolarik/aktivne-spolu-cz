@@ -178,6 +178,24 @@ function text(hodnota: unknown): string {
 }
 
 /**
+ * Číslo ze vstupu, ať přišlo jako číslo nebo jako text.
+ *
+ * Formulář posílá částku ze seznamu jako řetězec ("300"), ale kdokoli
+ * může zavolat funkci přímo a poslat ji jako číslo. `text()` by ho tiše
+ * zahodil a částka by spadla na výchozí pětistovku — dar 300 Kč by se
+ * uložil jako 500. Přesně to se stalo při zkoušce.
+ *
+ * @returns `null`, když hodnota chybí nebo není číslo.
+ */
+function cislo(hodnota: unknown): number | null {
+  if (typeof hodnota === 'number') return Number.isFinite(hodnota) ? hodnota : null;
+  const zapsano = text(hodnota);
+  if (zapsano === '') return null;
+  const prevedeno = Number(zapsano);
+  return Number.isFinite(prevedeno) ? prevedeno : null;
+}
+
+/**
  * Kontrola e-mailu. Schválně volná — jediná stoprocentní kontrola je poslat
  * na adresu zprávu. Chytá překlepy typu chybějící zavináč nebo tečka na konci,
  * ale neodmítne platnou adresu jen proto, že vypadá neobvykle.
@@ -352,7 +370,7 @@ function zkontroluj(vstup: Record<string, unknown>): { data: Prihlaska } | { chy
       chyby.forma_platby = 'Na dobrovolný příspěvek fakturu nevystavujeme.';
     } else if (forma_platby === 'neprispivam') {
       castka_kc = 0;
-    } else if (text(vstup.castka_kc) === '') {
+    } else if (cislo(vstup.castka_kc) === null) {
       // Starší verze formuláře se na částku vůbec neptají a jednotlivci
       // v nich vybírají jen mezi QR a převodem. Chybějící pole proto NENÍ
       // chyba — platí výchozí poplatek. Kdyby se místo toho hlásila chyba,
@@ -360,7 +378,7 @@ function zkontroluj(vstup: Record<string, unknown>): { data: Prihlaska } | { chy
       // by nevěděl proč.
       castka_kc = CASTKA_KC;
     } else {
-      const zadano = Number(text(vstup.castka_kc));
+      const zadano = cislo(vstup.castka_kc)!;
       if (!Number.isInteger(zadano)) {
         chyby.castka_kc = 'Vyberte částku, kterou chcete přispět.';
       } else if (zadano < PRISPEVEK_NEJMENE_KC) {
@@ -1011,10 +1029,12 @@ async function vystavFakturu(
   vs: number,
   datumVystaveni: string,
   datumSplatnosti: string,
-  cislo: string,
+  cislo: string | null,
   spayd: string | null,
 ): Promise<HotovaFaktura | null> {
-  if (p.forma_platby !== 'prevod') return null;
+  // Faktura jen za registrační poplatek placený převodem. Na dar se doklad
+  // nevystavuje, a bez čísla by ani nebylo z čeho.
+  if (p.forma_platby !== 'prevod' || !cislo) return null;
 
   try {
     const iban = Deno.env.get('IBAN_UCTU') ?? null;
@@ -1179,22 +1199,17 @@ Deno.serve(async (req) => {
   // takže se nemůžou rozejít: 26/03/001 a 2603001. Volá se to jednou —
   // každé další volání by spotřebovalo číslo navíc.
   //
-  // DVĚ ODDĚLENÉ ŘADY. Registrační poplatek je úhrada služby a vystavuje se
-  // na něj faktura; dobrovolný příspěvek jednotlivce je dar a do stejné řady
-  // dokladů nepatří. Každá řada má vlastní počítadlo, takže obě začínají
-  // od 001 a neovlivňují se.
+  // DVĚ ODDĚLENÁ ČÍSLOVÁNÍ. Registrační poplatek je úhrada služby a vystavuje
+  // se na něj faktura (26/03/001, VS 2603001). Příspěvek jednotlivce se účtuje
+  // jako DAR — nemá řadu ani číslo dokladu, jen pořadový symbol od 3001.
+  //
+  // Řada faktur se u daru neposílá a funkce ji ignoruje, takže jednotlivec
+  // projde i tehdy, když řada od účetní ještě není vyplněná.
   const jePrispevek = data.typ_poradatele === 'jednotlivec';
-  const rada = (
-    jePrispevek
-      ? Deno.env.get('PRISPEVKY_CISLO_RADY') ?? ''
-      : Deno.env.get('FAKTURY_CISLO_RADY') ?? ''
-  ).trim();
+  const rada = (Deno.env.get('FAKTURY_CISLO_RADY') ?? '').trim();
 
-  if (!rada) {
-    console.error(
-      `Chybí ${jePrispevek ? 'PRISPEVKY_CISLO_RADY' : 'FAKTURY_CISLO_RADY'} — ` +
-        'bez řady nejde přidělit číslo.',
-    );
+  if (!jePrispevek && !rada) {
+    console.error('Chybí FAKTURY_CISLO_RADY — bez řady nejde vystavit fakturu.');
     return odpoved(req, {
       ok: false,
       chyba: 'Přihlášku teď nejde přijmout. Zkuste to prosím za chvíli, nebo nám napište.',
@@ -1204,7 +1219,7 @@ Deno.serve(async (req) => {
   const { data: cisloData, error: vsChyba } = await klient
     .rpc('pridel_cislo', {
       rok: Number(new Date().getFullYear()),
-      rada,
+      rada: jePrispevek ? null : rada,
       prispevek: jePrispevek,
     })
     .single();
@@ -1218,7 +1233,10 @@ Deno.serve(async (req) => {
   }
 
   const variabilniSymbol = Number(cisloData.variabilni_symbol);
-  const cisloFaktury = String(cisloData.cislo_faktury);
+  // U daru je prázdné, a prázdné taky zůstane — faktura se nevystavuje.
+  const cisloFaktury = cisloData.cislo_faktury
+    ? String(cisloData.cislo_faktury)
+    : null;
 
   // ULOŽENÍ
   const { data: ulozeno, error: chybaUlozeni } = await klient
