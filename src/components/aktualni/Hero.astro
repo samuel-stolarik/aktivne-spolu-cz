@@ -71,7 +71,11 @@ const skupiny = [
         <span class="f-hero-nadech f-vzestup" style="--z: 1">
           Propojujeme generace.
         </span>
-        <span class="f-vzestup block" style="--z: 2">Vytvořte setkání,</span>
+        {/* Bez čárky za „setkání" na výslovné přání zadavatele.
+            Pravopisně tam čárka patří — uvozuje vedlejší větu vztažnou
+            („na které se nezapomíná") a ta se v češtině odděluje vždycky.
+            V podklady/texty.md i v ostatních verzích webu proto zůstala. */}
+        <span class="f-vzestup block" style="--z: 2">Vytvořte setkání</span>
         <span class="f-vzestup block" style="--z: 3">
           na které se
           <span class="relative inline-block">
@@ -208,7 +212,12 @@ const skupiny = [
 
   if (stridacka && kresby.length > 1) {
     const dotazNaPohyb = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const PAUZA = 6000;
+
+    // Dvě vteřiny na kresbu podle zadání. Je to rychlé tempo, a proto je
+    // prolnutí v CSS zkrácené na 650 ms — kdyby trvalo jako dřív skoro
+    // vteřinu a půl, další výměna by začala dřív, než by se ta předchozí
+    // stihla dokončit, a v úvodu by pořád visely dvě kresby přes sebe.
+    const PAUZA = 2000;
 
     let ktera = 0;
     let casovac: ReturnType<typeof setInterval> | null = null;

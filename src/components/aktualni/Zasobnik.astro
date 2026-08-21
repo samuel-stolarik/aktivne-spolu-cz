@@ -84,10 +84,20 @@ const karty = [
         <h2 class="f-titulek mt-4">Co je to Zásobník nápadů?</h2>
       </div>
 
-      {/* Kresba vlevo, text vedle ní. Do jednoho sloupce se to složí až
-          pod 40rem — na užší obrazovce by na kresbu i text zbylo tak málo
+      {/* První věta jde přes celou šířku hned pod nadpisem, jako podtitul
+          v předloze. Je to odpověď na otázku z nadpisu — kdyby stála
+          v úzkém sloupci vedle kresby, lámala by se po třech slovech
+          a ztratila by váhu, kterou má mít. */}
+      <p class="f-najezd f-zas-uvod mt-6 mb-0" data-poradi="1">
+        Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí žáci
+        ZŠ Magic Hill z Říčan u Prahy.
+      </p>
+
+      {/* Teprve pod podtitulem kresba vlevo a zbytek textu vedle ní —
+          přesně jako v předloze. Do jednoho sloupce se to složí až pod
+          40rem; na užší obrazovce by na kresbu i text zbylo tak málo
           místa, že by se text lámal po dvou slovech. */}
-      <div class="mt-8 grid gap-7 sm:grid-cols-[minmax(0,210px)_1fr] sm:items-start">
+      <div class="mt-7 grid gap-7 sm:grid-cols-[minmax(0,210px)_1fr] sm:items-start">
         {/* Scéna: dva žáci u počítače — ti aplikaci staví.
 
             Kresba je světlá schválně: sekce stojí na tmavé ploše a černá
@@ -100,24 +110,17 @@ const karty = [
           width="660"
           height="673"
           class="f-najezd h-auto w-full max-w-[210px]"
-          data-poradi="1"
+          data-poradi="2"
           loading="lazy"
         />
 
-        <div>
-          <p class="f-najezd mt-0 mb-0 max-w-[52ch]" data-poradi="2">
-            Jde o webovou aplikaci, kterou v rámci IT/AI kroužku vytvářejí
-            žáci ZŠ Magic Hill z Říčan u Prahy.
-          </p>
-
-          <p class="f-najezd mt-5 mb-0 max-w-[52ch]" data-poradi="3">
-            Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
-            (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
-            potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne
-            veřejně přístupná databáze plná ověřené inspirace pro organizátory
-            podobných akcí z celé ČR.
-          </p>
-        </div>
+        <p class="f-najezd mt-0 mb-0 max-w-[52ch]" data-poradi="3">
+          Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
+          (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
+          potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne veřejně
+          přístupná databáze plná ověřené inspirace pro organizátory podobných
+          akcí z celé ČR.
+        </p>
       </div>
     </div>
 
@@ -162,11 +165,6 @@ const karty = [
           ))
         }
       </ul>
-
-      {/* Poctivé označení: karty jsou ukázka formátu, ne živá data. */}
-      <p class="f-najezd f-zas-popisek" data-poradi="4">
-        Ukázka, jak budou záznamy v Zásobníku vypadat.
-      </p>
     </div>
   </div>
 </section>

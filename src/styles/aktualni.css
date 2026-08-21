@@ -872,14 +872,14 @@ body:not(.f-skript-jede) .f-otocka {
    v obou stavech (bod 3 výše).
 
    Doba otočení je delší než u ostatního pohybu na stránce a je to schválně.
-   Původních 560 ms bylo podle zadavatele moc rychlých — kartička švihla
-   a člověk nestihl zaregistrovat, že se otočila, jen že se něco mihlo.
-   Skoro celou sekundu je na takhle velký pohyb tak akorát: je vidět, že se
-   list obrací, a přitom se na výsledek nečeká. */
+   Původních 560 ms zadavateli přišlo moc rychlých — kartička švihla a člověk
+   nestihl zaregistrovat, že se otočila, jen že se něco mihlo. Celá sekunda
+   pak byla naopak zdlouhavá. 700 ms je výsledek toho ladění: pohyb je čitelný
+   a přitom se na text nečeká. */
 .f-otacky-ano .f-otocka-vnitrek {
   display: grid;
   transform-style: preserve-3d;
-  transition: transform 900ms cubic-bezier(0.22, 0.8, 0.32, 1);
+  transition: transform 700ms cubic-bezier(0.22, 0.8, 0.32, 1);
 }
 
 .f-otacky-ano .f-strana {
@@ -1089,9 +1089,18 @@ body:not(.f-skript-jede) .f-otocka {
   width: 100%;
   height: auto;
   opacity: 0;
-  /* Dlouhé prolnutí schválně: výměna má být sotva postřehnutelná změna
-     v koutě oka, ne přepnutí snímku. */
-  transition: opacity 1.2s ease-in-out;
+  /* Kresba se nejen prolne, ale přitom se nepatrně nadechne — bez toho
+     je výměna po dvou vteřinách jen bliknutí. Rozdíl měřítka je schválně
+     tak malý, aby se text vedle neměl s čím poměřovat.
+
+     Doba MUSÍ zůstat výrazně kratší než pauza mezi výměnami (2 s, viz
+     Hero.astro). Kdyby se protáhla, začala by další výměna dřív, než by
+     se předchozí dokončila, a v úvodu by pořád visely dvě kresby přes
+     sebe. */
+  scale: 0.985;
+  transition:
+    opacity 650ms ease-in-out,
+    scale 650ms cubic-bezier(0.22, 0.8, 0.32, 1);
 }
 
 .f-strid-kresba:not(:first-child) {
@@ -1102,6 +1111,7 @@ body:not(.f-skript-jede) .f-otocka {
 
 .f-strid-kresba.je-videt {
   opacity: 1;
+  scale: 1;
 }
 
 /* Při zakázaném pohybu se střídačka vůbec nerozjede (hlídá si to skript),
@@ -1109,6 +1119,7 @@ body:not(.f-skript-jede) .f-otocka {
    ať se to stane bez pohybu. */
 @media (prefers-reduced-motion: reduce) {
   .f-strid-kresba {
+    scale: 1;
     transition: none;
   }
 }
@@ -1146,50 +1157,55 @@ body:not(.f-skript-jede) .f-otocka {
   padding: 0;
 }
 
+/* Náklon i vytažení karty sedí na OBALU, ne na kartě samotné.
+   Není to detail: posunutá karta si s sebou musí vzít i svou citlivou
+   plochu, jinak by reagovala tam, kde už není vidět, a při přejíždění
+   myší by se karty přebíraly o kus vedle. Ze stejného důvodu je tady
+   i `z-index` — hover a vytažení se tak vždycky týkají téhož prvku. */
 .f-zas-obal {
   position: relative;
+  transform: rotate(var(--f-zas-uhel, 0deg));
+  /* Otáčení kolem bodu POD kartou. Karty se tím rozevírají jako list
+     v dlani, ne jako papíry rozházené po stole. */
+  transform-origin: 50% 130%;
+  transition: transform 320ms cubic-bezier(0.22, 0.8, 0.32, 1);
 }
 
-/* Vytažená karta musí ležet nade vším — na počítači kvůli vějíři,
-   na mobilu kvůli sousedkám při zvednutí. */
+/* Vytažená karta leží nade vším — na počítači kvůli vějíři, na mobilu
+   kvůli sousedkám při zvednutí. */
 .f-zas-obal:hover,
 .f-zas-obal:focus-within {
   z-index: 6;
+  transform: rotate(0deg) translateY(-8px);
 }
 
-/* Karta záznamu: bílý papír, kulaté rohy, měkký stín, drobný náklon.
-   Náklon nese proměnná, aby ho hover mohl srovnat a vějíř na počítači
-   si mohl říct o jiný úhel než sloupec na mobilu. */
+/* Karta záznamu: bílý papír, kulaté rohy, měkký stín. */
 .f-zas-karta {
   border-radius: 1rem;
   background-color: #fff;
   padding: 1.05rem 1.2rem 1.15rem;
   color: var(--color-text);
   box-shadow: var(--f-stin);
-  transform: rotate(var(--f-zas-uhel, 0deg));
-  transition:
-    transform 220ms cubic-bezier(0.22, 0.8, 0.32, 1),
-    box-shadow 220ms ease-out;
+  transition: box-shadow 320ms ease-out;
 }
 
 /* Mírné náklony ve sloupci — položené papíry, ne mrtvý seznam. */
-.f-zas-obal:nth-child(1) .f-zas-karta {
+.f-zas-obal:nth-child(1) {
   --f-zas-uhel: -1.3deg;
 }
 
-.f-zas-obal:nth-child(2) .f-zas-karta {
+.f-zas-obal:nth-child(2) {
   --f-zas-uhel: 1deg;
 }
 
-.f-zas-obal:nth-child(3) .f-zas-karta {
+.f-zas-obal:nth-child(3) {
   --f-zas-uhel: -0.6deg;
 }
 
-/* Zvednutí karty: narovná se, povystoupí a stín se prohloubí.
-   Stejný pohyb pro myš i fokus — jedna interakce, tři cesty. */
-.f-zas-karta:hover,
-.f-zas-karta:focus {
-  transform: rotate(0deg) translateY(-8px);
+/* Stín se pod vytaženou kartou prohloubí, aby bylo vidět, že je nad
+   ostatními. Stejně pro myš i fokus — jedna interakce, tři cesty. */
+.f-zas-obal:hover .f-zas-karta,
+.f-zas-obal:focus-within .f-zas-karta {
   box-shadow:
     0 2px 4px rgba(69, 68, 63, 0.08),
     0 26px 48px -18px rgba(4, 26, 30, 0.55);
@@ -1252,11 +1268,13 @@ body:not(.f-skript-jede) .f-otocka {
   margin: 0 0 0 0.35ch;
 }
 
-/* Popisek pod vějířem — poctivé přiznání, že jde o ukázku formátu. */
-.f-zas-popisek {
-  margin: 0.9rem 0 0;
-  font-size: var(--text-popisek);
-  text-align: center;
+/* Podtitul hned pod nadpisem — odpověď na otázku, kterou nadpis klade.
+   Trochu větší než běžný odstavec, ať je poznat, že patří k nadpisu,
+   a přes celou šířku sloupce, ne v úzkém pruhu vedle kresby. */
+.f-zas-uvod {
+  max-width: 62ch;
+  font-size: 1.125rem;
+  line-height: 1.6;
 }
 
 /* --------------------------------------------------------------------------
@@ -1285,36 +1303,37 @@ body:not(.f-skript-jede) .f-otocka {
     top: 0;
     left: 24px;
     z-index: 1;
+    --f-zas-uhel: -8deg;
   }
 
   .f-zas-obal:nth-child(2) {
     top: 90px;
     left: 48px;
     z-index: 2;
+    --f-zas-uhel: -4deg;
   }
 
   .f-zas-obal:nth-child(3) {
     top: 180px;
     left: 72px;
     z-index: 3;
-  }
-
-  .f-zas-obal:nth-child(1) .f-zas-karta {
-    --f-zas-uhel: -8deg;
-  }
-
-  .f-zas-obal:nth-child(2) .f-zas-karta {
-    --f-zas-uhel: -4deg;
-  }
-
-  .f-zas-obal:nth-child(3) .f-zas-karta {
     --f-zas-uhel: -1deg;
   }
 
-  /* Vytažená karta zůstává nad vějířem — pravidlo je i globálně,
-     tady jen jistí pořadí uvnitř media query. */
+  /* Vytažení karty z balíčku: srovná se, popojede doleva k textu, o kousek
+     povyroste a stín pod ní se prohloubí.
+
+     Doleva schválně — tam je volná plocha a karta se vysune ven z balíčku
+     jako list z ruky. Kdyby jen povyskočila nahoru, vlezla by pod sousedku
+     nad sebou a půlka by zůstala schovaná.
+
+     Posun je mírný (26 px na kartě široké 230), aby ukazatel myši zůstal
+     nad kartou i po vysunutí. Kdyby ujela dál, ukazatel by z ní sklouzl,
+     karta by zapadla zpátky a pod ukazatelem by zase byla — a takhle by
+     to blikalo pořád dokola. */
   .f-zas-obal:hover,
   .f-zas-obal:focus-within {
     z-index: 6;
+    transform: rotate(0deg) translate(-26px, -6px) scale(1.03);
   }
 }
