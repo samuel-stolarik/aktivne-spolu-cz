@@ -5,7 +5,7 @@
             "module": "gateway:CustomWebHook",
             "version": 1,
             "parameters": {
-                "hook": null,
+                "hook": 4328392,
                 "maxResults": 1
             },
             "mapper": {},
@@ -21,7 +21,7 @@
                             "data": {
                                 "editable": "true"
                             },
-                            "label": "aktivne-spolu – fakturace (po importu vytvoř NOVÝ webhook)"
+                            "label": "aktivne-spolu.cz – přihláška k vyfakturování"
                         }
                     }
                 },
@@ -342,7 +342,7 @@
                         }
                     }
                 },
-                "notes": "Hlavička Accept: application/vnd.pgrst.object+json zajistí, že se vrátí jeden objekt, ne pole. RLS je zapnuté a anon nemá na tabulku prihlasky žádná práva – tenhle modul MUSÍ jet přes service_role klíč. Variabilní symbol si Make nevymýšlí, přebírá ho z tohoto načtení – a protože se z něj skládá i číslo faktury, je tenhle modul jediným zdrojem obojího. Připojení se v Make zakládá jako klíč typu API Key Auth (pole Credentials), ne jako běžné připojení aplikace. Modul je záměrná pojistka: webhook sice nese kompletní data přihlášky, ale ta jdou z prohlížeče a daly by se podvrhnout – fakturační údaje proto bereme z databáze. Vyhledává se podle id z webhooku."
+                "notes": "Hlavička Accept: application/vnd.pgrst.object+json zajistí, že se vrátí jeden objekt, ne pole. RLS je zapnuté a anon nemá na tabulku prihlasky žádná práva – tenhle modul MUSÍ jet přes service_role klíč. Variabilní symbol si Make nevymýšlí, přebírá ho z tohoto načtení – a protože se z něj skládá i číslo faktury, je tenhle modul jediným zdrojem obojího. Připojení se v Make zakládá jako klíč typu API Key Auth (pole Credentials), ne jako běžné připojení aplikace. Modul je záměrná pojistka: webhook sice nese kompletní data přihlášky, ale ta jdou z prohlížeče a daly by se podvrhnout – fakturační údaje proto bereme z databáze. Vyhledává se podle id z webhooku. Ze sloupců se skládá i shrnutí registrace v e-mailu (modul 8), proto se jich načítá víc než jen fakturační údaje."
             }
         },
         {
@@ -507,7 +507,7 @@
                         "label": "Platnost proměnné"
                     }
                 ],
-                "notes": "Připraví hodnoty, které se dosazují do šablony faktury. Číslo faktury (26/03/100001) končí variabilním symbolem, takže název souboru vyjde faktura-26-03-100001.pdf a je z něj poznat, ke které platbě patří. Datum splatnosti se NEPOČÍTÁ znovu – bere se hotové z webhooku (pole splatnost), aby na faktuře bylo stejné datum jako v QR kódu k platbě. Splatnost (dnes + 7 dní) počítá Edge Function; když ji chceš změnit, mění se tam, ne tady. Proměnná splatnost_dnu v modulu 2 je jen informativní, na výpočet nemá vliv."
+                "notes": "Připraví hodnoty, které se dosazují do šablony faktury. Číslo faktury (26/03/100001) končí variabilním symbolem, takže název souboru vyjde faktura-26-03-100001.pdf a je z něj poznat, ke které platbě patří. Datum splatnosti se NEPOČÍTÁ znovu – bere se hotové z webhooku (pole splatnost), aby na faktuře bylo stejné datum jako v QR kódu k platbě. Splatnost (dnes + 7 dní) počítá Edge Function; když ji chceš změnit, mění se tam, ne tady. Proměnná splatnost_dnu v modulu 2 je jen informativní, na výpočet nemá vliv. Datum akce je v přihlášce NEPOVINNÉ, proto se skládá přes if() — bez té podmínky by v e-mailu zůstal prázdný řádek nebo slovo null."
             }
         },
         {
@@ -691,7 +691,7 @@
                 "designer": {
                     "x": 2100,
                     "y": 0,
-                    "name": "8. Gmail – odeslání faktury přihlašujícímu"
+                    "name": "8. Gmail – odeslání shrnutí a faktury přihlašujícímu"
                 },
                 "restore": {
                     "parameters": {
@@ -700,7 +700,7 @@
                         }
                     }
                 },
-                "notes": "E-mail jde na adresu z databáze, ne na adresu z webhooku. Text je psaný běžnou řečí, ne úředně. Gmail modul nemá pole Reply-To – kontaktní adresa je proto napsaná přímo v textu."
+                "notes": "E-mail jde na adresu z databáze, ne na adresu z webhooku. Obsahuje shrnutí registrace, platební údaje a fakturu v příloze. TŘI VĚCI, KTERÉ VYPADAJÍ JAKO CHYBA A NEJSOU: (1) Celý e-mail stojí na tabulkách a stylech psaných přímo u prvků – Outlook sází poštu přes Word, neumí flex ani grid a odkazovaný styl zahazuje. Kdo to přepíše na moderní CSS, rozbije to jen v Outlooku a nikde jinde si toho nevšimne. (2) Barvy jsou pevné a e-mail se nepřepíná do tmavého motivu – schránky s tmavým režimem si barvy přebarvují po svém a vzniká tmavý text na tmavém. (3) Na začátku těla je skrytý řádek – je to text, který schránka ukáže ve výpisu pošty vedle předmětu; bez něj si tam vezme první větu i s pozdravem. Gmail modul nemá pole Reply-To – kontaktní adresa je proto napsaná přímo v textu."
             }
         },
         {
@@ -913,7 +913,7 @@
                 "moduleIds": [
                     1
                 ],
-                "content": "<p>Po importu tady NENÍ funkční webhook. Vytvoř nový a jeho adresu zapiš do proměnné MAKE_WEBHOOK_URL v Supabase. Bez toho se faktury tiše nevystavují.</p>",
+                "content": "<p>Webhook je založený a připojený. Jeho adresu je potřeba zapsat do proměnné MAKE_WEBHOOK_URL v Supabase a Edge Function nasadit znovu. Bez toho se faktury tiše nevystavují.</p>",
                 "isFilterNote": false,
                 "metadata": {
                     "color": "#F8B24C"
@@ -929,6 +929,17 @@
                 "metadata": {
                     "color": "#F8B24C"
                 }
+            },
+            {
+                "id": 3,
+                "content": "<p>E-mail je poskládaný z tabulek se styly psanými přímo u prvků. Je to schválně kvůli Outlooku – nepřepisovat na moderní CSS.</p>",
+                "metadata": {
+                    "color": "#7DC3E8"
+                },
+                "moduleIds": [
+                    8
+                ],
+                "isFilterNote": false
             }
         ]
     },
