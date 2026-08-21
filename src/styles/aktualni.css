@@ -1277,67 +1277,6 @@ body:not(.f-skript-jede) .f-otocka {
   line-height: 1.6;
 }
 
-/* --------------------------------------------------------------------------
-   Vějíř na počítači (od lg, kde má sekce dva sloupce)
-
-   Karty se překrývají shora dolů se stálým krokem 90 px. Ten není náhodný:
-   odhaluje na zadních kartách přesně štítek a název, takže i bez jediného
-   doteku je vidět, co na kterých je. Úhly se liší jen mírně, aby hrany
-   držely u sebe a zpod karet nevykukovaly útržky řádků.
-   -------------------------------------------------------------------------- */
-@media (min-width: 64rem) {
-  .f-zas-ruka {
-    position: relative;
-    display: block;
-    height: 29rem;
-    max-width: none;
-    margin: 0;
-  }
-
-  .f-zas-obal {
-    position: absolute;
-    width: 230px;
-  }
-
-  .f-zas-obal:nth-child(1) {
-    top: 0;
-    left: 24px;
-    z-index: 1;
-    --f-zas-uhel: -8deg;
-  }
-
-  .f-zas-obal:nth-child(2) {
-    top: 90px;
-    left: 48px;
-    z-index: 2;
-    --f-zas-uhel: -4deg;
-  }
-
-  .f-zas-obal:nth-child(3) {
-    top: 180px;
-    left: 72px;
-    z-index: 3;
-    --f-zas-uhel: -1deg;
-  }
-
-  /* Vytažení karty z balíčku: srovná se, popojede doleva k textu, o kousek
-     povyroste a stín pod ní se prohloubí.
-
-     Doleva schválně — tam je volná plocha a karta se vysune ven z balíčku
-     jako list z ruky. Kdyby jen povyskočila nahoru, vlezla by pod sousedku
-     nad sebou a půlka by zůstala schovaná.
-
-     Posun je mírný (26 px na kartě široké 230), aby ukazatel myši zůstal
-     nad kartou i po vysunutí. Kdyby ujela dál, ukazatel by z ní sklouzl,
-     karta by zapadla zpátky a pod ukazatelem by zase byla — a takhle by
-     to blikalo pořád dokola. */
-  .f-zas-obal:hover,
-  .f-zas-obal:focus-within {
-    z-index: 6;
-    transform: rotate(0deg) translate(-26px, -6px) scale(1.03);
-  }
-}
-
 /* ==========================================================================
    MENU POD TŘEMI ČÁRKAMI
    (nová pravidla patří na konec souboru, ať se nepobijí s tím, co už tu je)
@@ -1450,57 +1389,79 @@ body:not(.f-skript-jede) .f-otocka {
 }
 
 /* ==========================================================================
-   VĚJÍŘ KARET — rozevřený z jednoho bodu, ne poskládaný do schodů
+   VĚJÍŘ KARET — rozložený balíček podle předlohy od zadavatele
 
-   Předchozí verze karty odsazovala po 90 px dolů a doprava. Vypadalo to
-   jako tři papíry položené na sobě na stole, ne jako karty držené v ruce.
-   Teď se všechny tři točí kolem JEDNOHO bodu pod nimi — tím vznikne vějíř,
-   jaký drží člověk v dlani.
+   Karty leží přes sebe posunuté doprava dolů a všechny jsou natočené na
+   stejnou stranu. PŘEDNÍ je ta PRVNÍ v pořadí a je vidět celá; zbylé dvě
+   za ní vykukují levým okrajem. Tak drží člověk rozložený balíček v ruce.
 
-   Krajní karty se skloní o 15°, prostřední stojí rovně. Víc už ne: text na
-   nakloněné kartě se čte hůř a při 20° a víc začne z vějíře čouhat roh přes
-   okraj sloupce.
+   Dvě věci, na kterých ten dojem stojí:
+
+   1. POŘADÍ JE OBRÁCENÉ PROTI ZDROJI. V šabloně jdou karty odzadu dopředu
+      (kvůli tabulátoru), ale navrchu má ležet první kategorie. Proto má
+      nth-child(1) nejvyšší z-index, ne nejnižší.
+
+   2. KARTY JSOU SKORO ČTVERCOVÉ. Vysoké a úzké karty se v natočeném
+      balíčku překrývají tak, že ze zadních zbude proužek bez jediného
+      čitelného slova. Ve čtverci vykoukne i kus štítku.
    ========================================================================== */
 @media (min-width: 64rem) {
   .f-zas-ruka {
-    height: 26rem;
-    /* Prostor pod spodní hranou karet, kde leží pomyslný bod otáčení. */
-    padding-bottom: 2rem;
+    height: 27rem;
   }
 
   .f-zas-obal {
-    /* Všechny tři leží na sobě — rozdíl dělá jen úhel. */
-    top: 1.5rem;
-    left: 50%;
-    margin-left: -115px;
-    /* Bod otáčení hluboko pod kartou. Čím dál, tím mírnější oblouk;
-       320 % výšky drží karty pohromadě u dolní hrany a rozevírá je nahoře,
-       přesně jako když se drží v ruce. */
-    transform-origin: 50% 320%;
+    top: 0;
+    left: 0;
+    width: 300px;
+    /* Otáčení kolem spodní hrany, ne kolem středu — balíček se tím rozevírá
+       od dlaně nahoru místo aby se kolem osy protočil. */
+    transform-origin: 50% 100%;
   }
 
-  .f-zas-obal:nth-child(1) {
-    --f-zas-uhel: -15deg;
+  .f-zas-karta {
+    /* Skoro čtverec (300 × ~272). Viz bod 2 v hlavičce. */
+    min-height: 17rem;
+    padding: 1.35rem 1.5rem 1.5rem;
+  }
+
+  /* Zadní karta vlevo, přední vpravo. Rozdíl úhlů je jen 3° na kartu —
+     větší rozevření vypadá jako rozsypané papíry, ne jako držený balíček. */
+  .f-zas-obal:nth-child(3) {
+    --f-zas-uhel: -13deg;
+    left: 0;
+    top: 2.5rem;
     z-index: 1;
   }
 
   .f-zas-obal:nth-child(2) {
-    --f-zas-uhel: 0deg;
+    --f-zas-uhel: -10deg;
+    left: 2.25rem;
+    top: 1.25rem;
     z-index: 2;
   }
 
-  .f-zas-obal:nth-child(3) {
-    --f-zas-uhel: 15deg;
+  .f-zas-obal:nth-child(1) {
+    --f-zas-uhel: -7deg;
+    left: 4.5rem;
+    top: 0;
     z-index: 3;
   }
 
-  /* Vytažení karty z vějíře: srovná se, povyjede nahoru a povyroste.
-     Nahoru, ne do strany — z vějíře se karta vytahuje směrem od dlaně.
+  /* Stín je na tmavé ploše silnější než jinde na webu — bez něj balíček
+     splyne v jednu bílou plochu a nepozná se, kde končí jedna karta
+     a začíná druhá. */
+  .f-zas-karta {
+    box-shadow: 0 2px 6px rgba(4, 26, 30, 0.18), 0 18px 40px -20px rgba(4, 26, 30, 0.6);
+  }
+
+  /* Vytažení karty z balíčku: srovná se, povyjede nahoru a povyroste.
+     Nahoru, ne do strany — z balíčku se karta tahá směrem od dlaně.
      Posun je mírný, aby z karty nesklouzl ukazatel myši; kdyby ujela dál,
      karta by zapadla zpátky, hned se zas vytáhla a blikalo by to. */
   .f-zas-obal:hover,
   .f-zas-obal:focus-within {
     z-index: 6;
-    transform: rotate(0deg) translateY(-22px) scale(1.04);
+    transform: rotate(0deg) translateY(-18px) scale(1.03);
   }
 }
