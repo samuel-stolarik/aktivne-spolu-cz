@@ -1,3 +1,13 @@
+// ⚠️ TENHLE SOUBOR SE NEPOUŽÍVÁ A POPISUJE ZRUŠENÝ ZPŮSOB ČÍSLOVÁNÍ.
+//
+// Vznikl, když se faktury číslovaly variabilním symbolem (26/03/100001).
+// Od migrace 20260821180000 je číslo pořadové (26/03/001) a přiděluje ho
+// databázová funkce `public.cislo_faktury(rok, rada)`. Nic z tohohle souboru
+// se nikam neimportuje — necháváme ho jen jako záznam, jak to fungovalo dřív.
+//
+// Kdyby se někdy hodil, MUSÍ se nejdřív přepsat na nový tvar; jinak vyrobí
+// číslo, které databáze odmítne (podmínka faktura_cislo_tvar).
+
 /**
  * Číslo faktury ve tvaru RR/SS/<variabilní symbol> — například 26/03/100001.
  *

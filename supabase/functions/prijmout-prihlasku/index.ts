@@ -766,8 +766,8 @@ function htmlEmailu(
               <tr>
                 <td style="padding:16px 20px;font-size:14px;line-height:1.6;color:#45443f;">
                   <strong>Variabilní symbol prosím nevynechávejte.</strong> Podle něj
-                  platbu poznáme a spárujeme s vaší přihláškou. Je to zároveň poslední
-                  část čísla faktury ${e(cisloFaktury ?? '')}, takže se nedá splést.
+                  platbu poznáme a spárujeme s vaší přihláškou. Bez něj se platba
+                  hledá ručně a potvrzení pak trvá déle.
                 </td>
               </tr>
             </table>
@@ -945,10 +945,13 @@ interface HotovaFaktura {
  * platební údaje a fakturu nechce; dobrovolný příspěvek jednotlivce je dar,
  * na který se faktura nevystavuje vůbec.
  *
- * ČÍSLO SI NEVYMÝŠLÍME. Dává ho databázová funkce ve tvaru RR/SS/<VS>, takže
- * na faktuře i na platbě je vidět stejné číslo. Funkce nic neposouvá — pro
- * stejný variabilní symbol vrátí vždycky totéž, takže opakované volání
- * nespálí číslo navíc.
+ * ČÍSLO SI NEVYMÝŠLÍME. Dává ho databázová funkce ve tvaru RR/SS/NNN
+ * (26/03/001) — souvislá pořadová řada, jak ji chce účetní.
+ *
+ * ⚠️ KAŽDÉ VOLÁNÍ SPOTŘEBUJE JEDNO ČÍSLO. Dřív se číslovalo variabilním
+ * symbolem a volání se dalo opakovat bez následků; teď se sekvence posune
+ * pokaždé. Zkušební faktura tedy v řadě nechá díru — před ostrým spuštěním
+ * se sekvence vrací na začátek (viz migrace 20260821180000).
  *
  * `null` NENÍ důvod přihlášku zamítnout. Přihláška je v tu chvíli uložená
  * a člověk má platební údaje v e-mailu; chybějící faktura se dá dovystavit.
@@ -972,10 +975,12 @@ async function vystavFakturu(
   }
 
   try {
-    const { data: cislo, error } = await klient.rpc('cislo_faktury_pro_vs', {
+    // POZOR: tohle volání POSOUVÁ SEKVENCI. Není opakovatelné — každé
+    // zavolání spotřebuje jedno číslo. Proto se vystavuje jen tady, jednou
+    // při přijetí přihlášky, a nikde jinde se nevolá.
+    const { data: cislo, error } = await klient.rpc('cislo_faktury', {
       rok: Number(new Date().getFullYear()),
       rada,
-      variabilni_symbol: vs,
     });
     if (error || !cislo) throw error ?? new Error('Databáze nevrátila číslo faktury.');
 
