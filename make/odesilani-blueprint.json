@@ -72,10 +72,9 @@
     },
     {
       "id": 2,
-      "module": "http:ActionSendDataAPIKeyAuth",
+      "module": "http:ActionSendData",
       "version": 3,
       "parameters": {
-        "auth": null,
         "handleErrors": true
       },
       "mapper": {
@@ -100,20 +99,17 @@
             "value": "application/vnd.pgrst.object+json"
           },
           {
+            "name": "apikey",
+            "value": "SEM_VLOZ_KLIC"
+          },
+          {
             "name": "Authorization",
             "value": "Bearer SEM_VLOZ_KLIC"
           }
         ]
       },
       "metadata": {
-        "notes": "Obsah zprávy se čte odsud, ne z webhooku. RLS je zapnuté a tabulka nemá žádnou politiku, takže sem musí jít service_role klíč — anon nepřečte nic. Filtr před rozcestníkem pustí dál jen zprávy, které ještě čekají.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
-        "restore": {
-          "parameters": {
-            "auth": {
-              "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
-            }
-          }
-        },
+        "notes": "Obyčejný HTTP dotaz, BEZ přihlašovacích údajů (Credentials). Klíč se vkládá rovnou do dvou hlaviček níž.\n\nPROČ TAKHLE: Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. Připojení typu API Key Auth v Make umí poslat jen jednu dvojici, takže druhá by se stejně musela vypsat ručně. Když se vypíšou obě, odpadá zakládání připojení a je to o krok míň, kde se dá chybovat.\n\nDO OBOU HLAVIČEK JDE TENTÝŽ KLÍČ, jen `Authorization` má před ním slovo `Bearer` a mezeru.",
         "designer": {
           "x": 300,
           "y": 0,
@@ -150,10 +146,9 @@
           "flow": [
             {
               "id": 4,
-              "module": "http:ActionSendDataAPIKeyAuth",
+              "module": "http:ActionSendData",
               "version": 3,
               "parameters": {
-                "auth": null,
                 "handleErrors": true
               },
               "mapper": {
@@ -174,20 +169,17 @@
                 "method": "get",
                 "headers": [
                   {
+                    "name": "apikey",
+                    "value": "SEM_VLOZ_KLIC"
+                  },
+                  {
                     "name": "Authorization",
                     "value": "Bearer SEM_VLOZ_KLIC"
                   }
                 ]
               },
               "metadata": {
-                "notes": "Stáhne PDF faktury jako binární soubor. Bucket faktury je NEveřejný, takže i sem musí service_role klíč. parseResponse je vypnuté — jinak by se Make pokusil z PDF udělat text a příloha by dorazila rozbitá.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
-                "restore": {
-                  "parameters": {
-                    "auth": {
-                      "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
-                    }
-                  }
-                },
+                "notes": "Obyčejný HTTP dotaz, BEZ přihlašovacích údajů (Credentials). Klíč se vkládá rovnou do dvou hlaviček níž.\n\nPROČ TAKHLE: Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. Připojení typu API Key Auth v Make umí poslat jen jednu dvojici, takže druhá by se stejně musela vypsat ručně. Když se vypíšou obě, odpadá zakládání připojení a je to o krok míň, kde se dá chybovat.\n\nDO OBOU HLAVIČEK JDE TENTÝŽ KLÍČ, jen `Authorization` má před ním slovo `Bearer` a mezeru.",
                 "designer": {
                   "x": 900,
                   "y": 0,
@@ -247,10 +239,9 @@
             },
             {
               "id": 6,
-              "module": "http:ActionSendDataAPIKeyAuth",
+              "module": "http:ActionSendData",
               "version": 3,
               "parameters": {
-                "auth": null,
                 "handleErrors": true
               },
               "mapper": {
@@ -281,20 +272,17 @@
                     "value": "return=minimal"
                   },
                   {
+                    "name": "apikey",
+                    "value": "SEM_VLOZ_KLIC"
+                  },
+                  {
                     "name": "Authorization",
                     "value": "Bearer SEM_VLOZ_KLIC"
                   }
                 ]
               },
               "metadata": {
-                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
-                "restore": {
-                  "parameters": {
-                    "auth": {
-                      "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
-                    }
-                  }
-                },
+                "notes": "Obyčejný HTTP dotaz, BEZ přihlašovacích údajů (Credentials). Klíč se vkládá rovnou do dvou hlaviček níž.\n\nPROČ TAKHLE: Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. Připojení typu API Key Auth v Make umí poslat jen jednu dvojici, takže druhá by se stejně musela vypsat ručně. Když se vypíšou obě, odpadá zakládání připojení a je to o krok míň, kde se dá chybovat.\n\nDO OBOU HLAVIČEK JDE TENTÝŽ KLÍČ, jen `Authorization` má před ním slovo `Bearer` a mezeru.",
                 "designer": {
                   "x": 1500,
                   "y": 0,
@@ -352,10 +340,9 @@
             },
             {
               "id": 8,
-              "module": "http:ActionSendDataAPIKeyAuth",
+              "module": "http:ActionSendData",
               "version": 3,
               "parameters": {
-                "auth": null,
                 "handleErrors": true
               },
               "mapper": {
@@ -386,20 +373,17 @@
                     "value": "return=minimal"
                   },
                   {
+                    "name": "apikey",
+                    "value": "SEM_VLOZ_KLIC"
+                  },
+                  {
                     "name": "Authorization",
                     "value": "Bearer SEM_VLOZ_KLIC"
                   }
                 ]
               },
               "metadata": {
-                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
-                "restore": {
-                  "parameters": {
-                    "auth": {
-                      "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
-                    }
-                  }
-                },
+                "notes": "Obyčejný HTTP dotaz, BEZ přihlašovacích údajů (Credentials). Klíč se vkládá rovnou do dvou hlaviček níž.\n\nPROČ TAKHLE: Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. Připojení typu API Key Auth v Make umí poslat jen jednu dvojici, takže druhá by se stejně musela vypsat ručně. Když se vypíšou obě, odpadá zakládání připojení a je to o krok míň, kde se dá chybovat.\n\nDO OBOU HLAVIČEK JDE TENTÝŽ KLÍČ, jen `Authorization` má před ním slovo `Bearer` a mezeru.",
                 "designer": {
                   "x": 1200,
                   "y": 0,
