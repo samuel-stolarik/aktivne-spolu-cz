@@ -2,13 +2,49 @@
 /**
  * Proč se zapojit — pět důvodů a manifest „Cíl akce".
  *
- * Čtyři důvody jsou vysázené jako klidný editorial ve dvou sloupcích,
- * pátý (Certifikát a odměna) je zvýrazněný na tyrkysové ploše — je to
- * jediný důvod, který slibuje něco hmatatelného, tak ať je vidět.
+ * Čtyři důvody jsou ve dvou sloupcích, pátý (Certifikát a odměna) leží
+ * přes oba a je zvýrazněný na tyrkysové ploše — je to jediný důvod, který
+ * slibuje něco hmatatelného, tak ať je vidět.
+ *
+ * OTOČNÉ KARTIČKY
+ * Pět odstavců naráz byla zeď textu. Kartička proto v klidu ukazuje jen
+ * nadpis a text má na odvrácené straně; otočí se po najetí myší, klepnutí
+ * prstem i stiskem Enteru. Otáčení samo obstarává CSS na konci
+ * aktualni.css, tady je jen zapnutí a připnutí klepnutím.
+ *
+ * ČTYŘI VĚCI, KTERÉ SE NESMÍ ROZBÍT (stejné jako v animované verzi,
+ * jen napojené na to, jak se vypnutý pohyb řeší tady):
+ *
+ *   1. TEXT MUSÍ BÝT VŽDYCKY K PŘEČTENÍ. Otáčení zapíná až třída
+ *      `f-otacky-ano` na <body>, kterou přidává krátký skript nad sekcí —
+ *      tedy jen tehdy, když jede JavaScript A návštěvník nemá zakázaný
+ *      pohyb. Jinak je kartička obyčejná karta s nadpisem a textem pod
+ *      sebou. (Stránka nemá třídu `pohyb-ano` jako animovaná verze: pohyb
+ *      se tu vypíná pravidly `@media (prefers-reduced-motion: reduce)`
+ *      a skript v aktualni.astro si totéž zjišťuje přes matchMedia.
+ *      Kartička se ptá stejně.)
+ *      Zadní strana se ani v otáčecím režimu neschovává `display: none`
+ *      ani `visibility: hidden`, jen se odvrací — pro čtečku obrazovky
+ *      je pořád na svém místě a přečte se.
+ *
+ *   2. NEJDE TO JEN MYŠÍ. Nadpis je zároveň <button>, takže Tab
+ *      a Enter/mezerník otáčí bez jediného řádku navíc. Klepnutí prstem
+ *      obsluhuje posluchač na CELÉ kartičce — po otočení je tlačítko
+ *      odvrácené a klepnutí na něj nedopadne, takže kdyby posluchač visel
+ *      jen na něm, na telefonu by nešlo kartičku zavřít.
+ *
+ *   3. VÝŠKA SE OTOČENÍM NESMÍ ZMĚNIT. Obě strany leží v JEDNÉ buňce
+ *      mřížky, takže výšku počítá prohlížeč z té delší a obsah pod
+ *      kartičkami se při otáčení nehne.
+ *
+ *   4. RÁMEČEK ZAOSTŘENÍ JE NA CELÉ KARTIČCE, ne na tlačítku — na tlačítku
+ *      by se po otočení odvrátil a kdo chodí tabulátorem, přestal by
+ *      vidět, kde je.
  *
  * „Cíl akce" není další odrážka, ale manifest: velká věta na tmavé
  * inkoustové ploše přes celou šířku. Je to jediné místo v horní půlce
  * stránky, kde design ztmavne — ta věta je důvod, proč projekt existuje.
+ * Schválně se NEOTÁČÍ, viz komentář u ní níž.
  *
  * TEXTY: doslova z podklady/texty.md, sekce 2.
  */
@@ -43,7 +79,35 @@ const odmena = {
   nadpis: "Certifikát a odměna",
   text: "Každý zapojený jednotlivec, tým či skupina získá účastnický certifikát a bude zařazen/a do losování o poukazy na společnou večeři, sportovní nebo výtvarné pomůcky!",
 };
+
+// Všech pět důvodů jede stejnou kartičkou. Odměna se liší jen tím, že leží
+// na tyrkysové ploše přes oba sloupce — zvýraznění nese jedna třída, ne
+// druhá kopie stejného kusu značek.
+const karticky = [
+  ...duvody.map((duvod) => ({ ...duvod, zvyraznena: false })),
+  { ...odmena, zvyraznena: true },
+];
 ---
+
+{/* Otáčení zapíná až tenhle skript — schválně obyčejný `is:inline` nad
+    sekcí, aby třída byla na <body> dřív, než prohlížeč dočte kartičky.
+    Kdyby se přidávala až po načtení stránky, kartičky by na okamžik
+    problikly rozbalené a pak se srazily na samotné nadpisy.
+
+    Bez JavaScriptu se sem kód nedostane, při zakázaném pohybu se třída
+    nepřidá — v obou případech zůstane kartička obyčejnou kartou, ve které
+    je nadpis i text pod sebou. */}
+<script is:inline>
+  // Otáčení se zapíná jen s povoleným pohybem…
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.body.classList.add("f-otacky-ano");
+  }
+
+  // …a tahle třída říká jen tolik, že JavaScript vůbec jede. Kartičky se
+  // podle ní jistí proti tomu, aby zůstaly průhledné, když se odhalování
+  // při scrollu nikdy nespustí (viz konec aktualni.css).
+  document.body.classList.add("f-skript-jede");
+</script>
 
 <section id="proc-se-zapojit" class="bg-pozadi">
   {/* Steh přes hranici s hero: nit pokračuje tam, kam ukázala šipka,
@@ -61,40 +125,79 @@ const odmena = {
       </h2>
     </div>
 
-    <div class="mt-12 grid gap-x-14 gap-y-10 md:grid-cols-2">
+    <div class="mt-12 grid gap-5 md:grid-cols-2">
       {
-        duvody.map((duvod, poradi) => (
-          <div class="f-najezd flex items-start gap-5" data-poradi={poradi + 1}>
-            <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--f-merunka-mlha)]">
-              <Ikona jmeno={duvod.ikona} velikost={26} />
-            </span>
-            <div>
-              <h3 class="text-xl">{duvod.nadpis}</h3>
-              <p class="mt-2 mb-0">{duvod.text}</p>
+        karticky.map((duvod, poradi) => (
+          <article
+            class:list={[
+              "f-najezd f-otocka",
+              duvod.zvyraznena && "f-otocka-odmena md:col-span-2",
+            ]}
+            data-poradi={poradi + 1}
+          >
+            <div class="f-otocka-vnitrek">
+              {/* Přední strana — v klidu je vidět jen tahle. */}
+              <div class="f-strana f-strana-lic">
+                <span class="f-otocka-ikona">
+                  <Ikona jmeno={duvod.ikona} velikost={26} />
+                </span>
+
+                {/* Nadpis JE ovladač.
+                    Zůstává v <h3>, takže se jím dá pořád listovat čtečkou
+                    obrazovky, a zároveň je to opravdové <button>: Tab, Enter
+                    i mezerník na něm fungují samy od sebe a klepnutí prstem
+                    taky, nic se nedoprogramovává.
+
+                    `tabindex="-1"` je tu pro případ, že by JavaScript neběžel
+                    nebo měl návštěvník zakázaný pohyb — pak se nic neotáčí
+                    a tlačítko by bylo prázdná zastávka v pořadí tabulátoru.
+                    Skript ho odebere teprve ve chvíli, kdy otáčení zapne. */}
+                <h3 class="f-otocka-nadpis">
+                  <button
+                    type="button"
+                    class="f-otocka-prepinac"
+                    tabindex="-1"
+                    aria-controls={`duvod-${poradi + 1}-text`}
+                  >
+                    {duvod.nadpis}
+                  </button>
+                </h3>
+
+                <span class="f-otocka-sipka" aria-hidden="true">
+                  <Ikona jmeno="chevron-down" velikost={18} />
+                </span>
+              </div>
+
+              {/* Zadní strana. Schválně se neschovává `display: none` ani
+                  `visibility: hidden`, jen se odvrací — text tak zůstává ve
+                  stromu pro čtečku obrazovky a přečte se i tomu, kdo
+                  kartičkou otočit nemůže. */}
+              <div class="f-strana f-strana-rub" id={`duvod-${poradi + 1}-text`}>
+                <p>{duvod.text}</p>
+
+                <span class="f-otocka-sipka" aria-hidden="true">
+                  <Ikona jmeno="chevron-up" velikost={18} />
+                </span>
+              </div>
             </div>
-          </div>
+          </article>
         ))
       }
-
-      {/* Pátý důvod přes oba sloupce — jediný, který slibuje odměnu. */}
-      <div
-        class="f-najezd f-karta-zdvih flex items-start gap-5 rounded-2xl bg-plocha-tyrkys p-7 md:col-span-2"
-        data-poradi="5"
-      >
-        <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white">
-          <Ikona jmeno={odmena.ikona} velikost={26} />
-        </span>
-        <div>
-          <h3 class="text-xl">{odmena.nadpis}</h3>
-          <p class="mt-2 mb-0">{odmena.text}</p>
-        </div>
-      </div>
     </div>
   </div>
 
   {/* Manifest — cíl akce přes celou šířku, jediná tmavá věta horní půlky.
       Teplý odlesk v pozadí pluje pomaleji než scroll, takže tmavá plocha
-      žije celou svou hloubkou, zatímco text stojí pevně. */}
+      žije celou svou hloubkou, zatímco text stojí pevně.
+
+      SCHVÁLNĚ SE NEOTÁČÍ, stejně jako v animované verzi. Není to šestý
+      důvod, ale shrnutí celé sekce — a nadpis „Cíl akce" sám o sobě neříká
+      vůbec nic, takže by za otočením nečekala odměna, jen prázdná dlaždice.
+      Kdyby se otáčelo všech šest, zbyla by na obrazovce samá hesla a jediná
+      souvislá věta v sekci by zmizela. Že se chová jinak, je vidět na první
+      pohled: jako jediná stojí na tmavé inkoustové ploše přes celou šířku,
+      nemá kartičkový rám ani šipku, nemá kurzor ruky a text je na ní vidět
+      pořád. */}
   <div class="f-tma relative px-5 py-16 sm:py-20">
     <div class="absolute inset-0 overflow-hidden" aria-hidden="true">
       <div class="f-par f-tma-akcent" style="--f-hloubka: 26"></div>
@@ -112,3 +215,79 @@ const odmena = {
     </div>
   </div>
 </section>
+
+<script>
+  // ==========================================================================
+  // Otočné kartičky — zapnutí a připnutí klepnutím
+  //
+  // Samotné otáčení dělá CSS (konec aktualni.css). Tady se jen z nadpisu
+  // udělá opravdový ovladač a přidá se připnutí, aby kartička zůstala
+  // otočená i po odjetí myši — jinak by se na dotyku nedala otevřít vůbec.
+  //
+  // Do HTML se `aria-expanded` ani plný `tabindex` nepíšou schválně: bez
+  // JavaScriptu se nic neotáčí, takže by to bylo tlačítko, které nic nedělá,
+  // a hlášený stav, který nikde není vidět.
+  // ==========================================================================
+  const dotazNaPohyb = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const karticky = document.querySelectorAll<HTMLElement>(".f-otocka");
+
+  /** Z nadpisů se stanou ovladače — kartičkami jde otáčet. */
+  function zapniOtaceni() {
+    document.body.classList.add("f-otacky-ano");
+
+    karticky.forEach((karta) => {
+      const prepinac = karta.querySelector<HTMLElement>(".f-otocka-prepinac");
+      prepinac?.removeAttribute("tabindex");
+      prepinac?.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  /**
+   * Zpátky na obyčejné karty — z nadpisu je zase jen nadpis. Používá se,
+   * když si návštěvník zakáže pohyb až za běhu: bez otáčení by tlačítko
+   * bylo prázdná zastávka v pořadí tabulátoru a hlásilo by rozbalený stav,
+   * který nikde není vidět.
+   */
+  function vypniOtaceni() {
+    document.body.classList.remove("f-otacky-ano");
+
+    karticky.forEach((karta) => {
+      karta.classList.remove("je-otocena");
+      const prepinac = karta.querySelector<HTMLElement>(".f-otocka-prepinac");
+      prepinac?.setAttribute("tabindex", "-1");
+      prepinac?.removeAttribute("aria-expanded");
+    });
+  }
+
+  if (dotazNaPohyb.matches) vypniOtaceni();
+  else zapniOtaceni();
+
+  // Změna nastavení pohybu za běhu (třeba v nastavení systému) se projeví hned.
+  dotazNaPohyb.addEventListener("change", (udalost) => {
+    if (udalost.matches) vypniOtaceni();
+    else zapniOtaceni();
+  });
+
+  karticky.forEach((karta) => {
+    // Stačí JEDEN posluchač na celé kartičce:
+    //   * Enter i mezerník na tlačítku vyvolají `click`, který sem probublá —
+    //     klávesnice je tím hotová.
+    //   * Klepnutí prstem po otočení dopadne na zadní stranu, kde už žádné
+    //     tlačítko není. Kdyby posluchač visel jen na tlačítku, nešlo by
+    //     kartičku na telefonu zavřít.
+    karta.addEventListener("click", () => {
+      // Návštěvník si mezitím mohl zakázat pohyb. Pak se neotáčí nic.
+      if (!document.body.classList.contains("f-otacky-ano")) return;
+
+      // Když si někdo označuje text, aby si ho zkopíroval, nepřeklopíme
+      // mu kartičku pod rukama.
+      const vyber = window.getSelection();
+      if (vyber && !vyber.isCollapsed) return;
+
+      const otevreno = karta.classList.toggle("je-otocena");
+      karta
+        .querySelector<HTMLElement>(".f-otocka-prepinac")
+        ?.setAttribute("aria-expanded", String(otevreno));
+    });
+  });
+</script>
