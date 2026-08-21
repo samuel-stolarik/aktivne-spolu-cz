@@ -1,5 +1,30 @@
 # Fakturace v Make — návod k předání
 
+> ## ⛔ TENHLE SCÉNÁŘ SE UŽ NEPOUŽÍVÁ
+>
+> Od 21. 8. 2026 vystavuje fakturu **Edge Function `prijmout-prihlasku`
+> v Supabase** — vezme číslo z databáze, složí PDF, uloží ho do bucketu
+> `faktury` a rovnou ho přiloží k potvrzovacímu e-mailu.
+>
+> **Proč se to přesunulo:** Make sám PDF neumí. Celá odbočka přes Google Docs
+> (vyplnit šablonu, vyexportovat, uklidit) tu byla jen kvůli tomu a stála tři
+> moduly, připojení ke Googlu a šablonu na cizím Disku. Data přitom celou dobu
+> ležela v Supabase. Prošel jsem katalog aplikací Make — vlastní modul na
+> HTML → PDF tam žádný není, všechno jsou aplikace třetích stran s vlastním
+> účtem a většinou placené, takže výměna by předání jen zhoršila.
+>
+> **Co to znamená pro předání:** Hana nepotřebuje Make účet, připojení ke
+> Googlu ani šablonu faktury. Fakturace jede celá v Supabase.
+>
+> **Scénář nezapínejte.** Zůstává jako záloha a jako popis toho, jak fakturace
+> fungovala. Kdyby se zapnul, vystavil by fakturu podruhé.
+>
+> Zapnout ho zpátky by šlo: stačí do Supabase vyplnit `MAKE_WEBHOOK_URL`.
+> Bez ní se do fakturace nikdo neozývá a nic nespadne.
+
+---
+
+
 Tenhle adresář obsahuje automatizaci, která **vystavuje faktury za registrační poplatek 500 Kč**
 u přihlášek na projekt k Mezinárodnímu dni seniorů (web aktivne-spolu.cz).
 

@@ -52,7 +52,8 @@ Odškrtat všechno, jinak něco tiše nepojede.
 **Mělo by být hotové, ale spuštění to nezablokuje:**
 
 - [ ] Kontaktní údaje na obě organizace (zatím se nezobrazují vůbec)
-- [ ] Dvoumístné číslo řady faktur od účetní — bez něj se nevystaví faktura
+- [ ] Dvoumístné číslo řady faktur od účetní (`FAKTURY_CISLO_RADY`) — bez něj
+      se faktura nevystaví. Přihlášku to nezastaví, jen se to zapíše do logu.
 - [ ] Oba letáky v PDF
 - [ ] DNS záznamy SPF a DKIM, jinak budou e-maily padat do spamu
 - [ ] Účty do administrace pro ty, kdo ji mají používat
