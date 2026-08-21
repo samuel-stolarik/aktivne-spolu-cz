@@ -850,7 +850,7 @@ async function posliPotvrzeni(
   qrUrl: string | null,
   splatnostCesky: string,
   faktura: HotovaFaktura | null,
-): Promise<boolean> {
+): Promise<{ odeslano: boolean; postaId: string | null }> {
   const iban = Deno.env.get('IBAN_UCTU') ?? null;
 
   // Na prvním místě je číslo účtu v tuzemském tvaru — to lidé opisují do
@@ -900,7 +900,7 @@ async function posliPotvrzeni(
       `Zpráva pro VS ${vs} čeká v odchozí poště — funkce nemá nastavené odesílání, ` +
         'vyzvedne si ji Make.',
     );
-    return false;
+    return { odeslano: false, postaId: odlozeno?.id ?? null };
   }
 
   const odeslano = await posli(zprava);
@@ -916,7 +916,7 @@ async function posliPotvrzeni(
       .eq('id', odlozeno.id);
   }
 
-  return odeslano;
+  return { odeslano, postaId: odlozeno?.id ?? null };
 }
 
 // ---------------------------------------------------------------------------
@@ -1179,7 +1179,7 @@ Deno.serve(async (req) => {
     splatnost.cesky,
   );
 
-  const emailOdeslan = await posliPotvrzeni(
+  const posta = await posliPotvrzeni(
     klient,
     ulozeno.id,
     data,
@@ -1197,7 +1197,10 @@ Deno.serve(async (req) => {
     ...data,
     qr_url: qrUrl,
     spayd,
-    email_odeslan: emailOdeslan,
+    email_odeslan: posta.odeslano,
+    // ID zprávy v odchozí poště. Make si podle něj vyzvedne obsah — přes
+    // webhook se text zprávy neposílá, viz migrace 20260821160000.
+    posta_id: posta.postaId,
     faktura_cislo: faktura?.cislo ?? null,
     faktura_url: faktura?.odkaz ?? null,
   });

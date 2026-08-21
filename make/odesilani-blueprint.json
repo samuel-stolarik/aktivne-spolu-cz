@@ -1,0 +1,429 @@
+{
+  "name": "aktivne-spolu.cz – odeslání potvrzení a faktury",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "notes": "Sem se ozve Supabase, když přibude přihláška. POSÍLÁ SE JEN ID, NIKDY TEXT ZPRÁVY — adresa webhooku je veřejná a kdyby přes ni šel obsah e-mailu, byla by z toho rozesílací služba pro spam. Klíčové pole je posta_id (řádek v tabulce odchozi_posta).",
+        "restore": {
+          "parameters": {
+            "hook": {
+              "data": {
+                "editable": "true"
+              },
+              "label": "aktivne-spolu.cz – odchozí pošta (po importu vytvoř NOVÝ webhook)"
+            }
+          }
+        },
+        "designer": {
+          "x": 0,
+          "y": 0,
+          "name": "1. Webhook – přišla nová zpráva"
+        },
+        "interface": [
+          {
+            "name": "posta_id",
+            "type": "text",
+            "label": "ID zprávy v odchozí poště (uuid)"
+          },
+          {
+            "name": "id",
+            "type": "text",
+            "label": "ID přihlášky (uuid)"
+          },
+          {
+            "name": "variabilni_symbol",
+            "type": "number",
+            "label": "Variabilní symbol"
+          },
+          {
+            "name": "email_odeslan",
+            "type": "boolean",
+            "label": "Odeslala už zprávu sama funkce?"
+          },
+          {
+            "name": "faktura_cislo",
+            "type": "text",
+            "label": "Číslo faktury, když byla vystavena"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hook",
+            "spec": [],
+            "type": "hook",
+            "label": "Webhook",
+            "required": true
+          },
+          {
+            "name": "maxResults",
+            "type": "number",
+            "label": "Maximální počet výsledků"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "http:ActionSendDataAPIKeyAuth",
+      "version": 3,
+      "parameters": {
+        "auth": null,
+        "handleErrors": true
+      },
+      "mapper": {
+        "ca": null,
+        "qs": [],
+        "gzip": true,
+        "timeout": 60,
+        "useMtls": false,
+        "bodyType": "raw",
+        "serializeUrl": false,
+        "shareCookies": false,
+        "parseResponse": true,
+        "followRedirect": true,
+        "useQuerystring": false,
+        "followAllRedirects": false,
+        "rejectUnauthorized": true,
+        "url": "https://kourmwqxkhdtahbxyuaq.supabase.co/rest/v1/odchozi_posta?id=eq.{{1.posta_id}}&select=prijemce,prijemce_jmeno,odpovedet_na,predmet,telo_text,telo_html,priloha_cesta,priloha_nazev,stav",
+        "method": "get",
+        "headers": [
+          {
+            "name": "Accept",
+            "value": "application/vnd.pgrst.object+json"
+          }
+        ]
+      },
+      "metadata": {
+        "notes": "Obsah zprávy se čte odsud, ne z webhooku. RLS je zapnuté a tabulka nemá žádnou politiku, takže sem musí jít service_role klíč — anon nepřečte nic. Filtr před rozcestníkem pustí dál jen zprávy, které ještě čekají.",
+        "restore": {
+          "parameters": {
+            "auth": {
+              "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
+            }
+          }
+        },
+        "designer": {
+          "x": 300,
+          "y": 0,
+          "name": "2. Supabase – načtení hotové zprávy"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0,
+          "name": "3. Má zpráva přílohu?"
+        }
+      },
+      "filter": {
+        "name": "Jen zprávy, které ještě čekají",
+        "conditions": [
+          [
+            {
+              "a": "{{2.data.stav}}",
+              "b": "ceka",
+              "o": "text:equal"
+            }
+          ]
+        ]
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 4,
+              "module": "http:ActionSendDataAPIKeyAuth",
+              "version": 3,
+              "parameters": {
+                "auth": null,
+                "handleErrors": true
+              },
+              "mapper": {
+                "ca": null,
+                "qs": [],
+                "gzip": true,
+                "timeout": 120,
+                "useMtls": false,
+                "bodyType": "raw",
+                "serializeUrl": false,
+                "shareCookies": false,
+                "parseResponse": false,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "followAllRedirects": false,
+                "rejectUnauthorized": true,
+                "url": "https://kourmwqxkhdtahbxyuaq.supabase.co/storage/v1/object/faktury/{{2.data.priloha_cesta}}",
+                "method": "get",
+                "headers": []
+              },
+              "metadata": {
+                "notes": "Stáhne PDF faktury jako binární soubor. Bucket faktury je NEveřejný, takže i sem musí service_role klíč. parseResponse je vypnuté — jinak by se Make pokusil z PDF udělat text a příloha by dorazila rozbitá.",
+                "restore": {
+                  "parameters": {
+                    "auth": {
+                      "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
+                    }
+                  }
+                },
+                "designer": {
+                  "x": 900,
+                  "y": 0,
+                  "name": "4. Supabase Storage – stažení faktury"
+                }
+              },
+              "filter": {
+                "name": "Jen když je faktura",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{2.data.priloha_cesta}}",
+                      "o": "exist"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "id": 5,
+              "module": "microsoft-email:createAndSendAMessage",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "toRecipients": [
+                  {
+                    "address": "{{2.data.prijemce}}",
+                    "name": "{{2.data.prijemce_jmeno}}"
+                  }
+                ],
+                "subject": "{{2.data.predmet}}",
+                "content": "{{2.data.telo_html}}",
+                "contentType": "html",
+                "replyTo": [
+                  {
+                    "address": "{{2.data.odpovedet_na}}"
+                  }
+                ],
+                "attachments": [
+                  {
+                    "filename": "{{2.data.priloha_nazev}}",
+                    "data": "{{4.data}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "notes": "Příloha se bere z modulu 4. Maximální velikost jednoho souboru jsou 3 MB; faktura má desítky kilobajtů.",
+                "restore": {
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "label": "Outlook / Microsoft 365 (po importu připojit znovu)"
+                    }
+                  }
+                },
+                "designer": {
+                  "x": 1200,
+                  "y": 0,
+                  "name": "5. Outlook – odeslání s fakturou"
+                }
+              }
+            },
+            {
+              "id": 6,
+              "module": "http:ActionSendDataAPIKeyAuth",
+              "version": 3,
+              "parameters": {
+                "auth": null,
+                "handleErrors": true
+              },
+              "mapper": {
+                "ca": null,
+                "qs": [],
+                "gzip": true,
+                "timeout": 60,
+                "useMtls": false,
+                "bodyType": "raw",
+                "serializeUrl": false,
+                "shareCookies": false,
+                "parseResponse": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "followAllRedirects": false,
+                "rejectUnauthorized": true,
+                "url": "https://kourmwqxkhdtahbxyuaq.supabase.co/rest/v1/odchozi_posta?id=eq.{{1.posta_id}}",
+                "method": "patch",
+                "contentType": "application/json",
+                "data": "{\n  \"stav\": \"odeslano\",\n  \"odeslano_kdy\": \"{{formatDate(now; \"YYYY-MM-DDTHH:mm:ssZ\")}}\",\n  \"pokusu\": 1\n}",
+                "headers": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "name": "Prefer",
+                    "value": "return=minimal"
+                  }
+                ]
+              },
+              "metadata": {
+                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.",
+                "restore": {
+                  "parameters": {
+                    "auth": {
+                      "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
+                    }
+                  }
+                },
+                "designer": {
+                  "x": 1500,
+                  "y": 0,
+                  "name": "6. Supabase – označit jako odeslané"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 7,
+              "module": "microsoft-email:createAndSendAMessage",
+              "version": 2,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "toRecipients": [
+                  {
+                    "address": "{{2.data.prijemce}}",
+                    "name": "{{2.data.prijemce_jmeno}}"
+                  }
+                ],
+                "subject": "{{2.data.predmet}}",
+                "content": "{{2.data.telo_html}}",
+                "contentType": "html",
+                "replyTo": [
+                  {
+                    "address": "{{2.data.odpovedet_na}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "notes": "Tahle větev je ta častější: fakturu dostává jen ten, kdo platí převodem. Kdo platí QR kódem nebo jako jednotlivec nepřispívá, dostane potvrzení bez přílohy.",
+                "restore": {
+                  "parameters": {
+                    "__IMTCONN__": {
+                      "label": "Outlook / Microsoft 365 (po importu připojit znovu)"
+                    }
+                  }
+                },
+                "designer": {
+                  "x": 900,
+                  "y": 0,
+                  "name": "7. Outlook – odeslání bez přílohy"
+                }
+              },
+              "filter": {
+                "name": "Jen když faktura není",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{2.data.priloha_cesta}}",
+                      "o": "notexist"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "id": 8,
+              "module": "http:ActionSendDataAPIKeyAuth",
+              "version": 3,
+              "parameters": {
+                "auth": null,
+                "handleErrors": true
+              },
+              "mapper": {
+                "ca": null,
+                "qs": [],
+                "gzip": true,
+                "timeout": 60,
+                "useMtls": false,
+                "bodyType": "raw",
+                "serializeUrl": false,
+                "shareCookies": false,
+                "parseResponse": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "followAllRedirects": false,
+                "rejectUnauthorized": true,
+                "url": "https://kourmwqxkhdtahbxyuaq.supabase.co/rest/v1/odchozi_posta?id=eq.{{1.posta_id}}",
+                "method": "patch",
+                "contentType": "application/json",
+                "data": "{\n  \"stav\": \"odeslano\",\n  \"odeslano_kdy\": \"{{formatDate(now; \"YYYY-MM-DDTHH:mm:ssZ\")}}\",\n  \"pokusu\": 1\n}",
+                "headers": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "name": "Prefer",
+                    "value": "return=minimal"
+                  }
+                ]
+              },
+              "metadata": {
+                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.",
+                "restore": {
+                  "parameters": {
+                    "auth": {
+                      "label": "Supabase service_role – API Key Auth (po importu vytvořit znovu)"
+                    }
+                  }
+                },
+                "designer": {
+                  "x": 1200,
+                  "y": 0,
+                  "name": "8. Supabase – označit jako odeslané"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "designer": {
+      "orphans": []
+    },
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": true,
+      "freshVariables": false
+    }
+  }
+}
