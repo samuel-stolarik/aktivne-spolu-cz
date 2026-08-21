@@ -518,6 +518,49 @@ async function pripravQr(
 // ---------------------------------------------------------------------------
 
 /** Čísla se v textu píšou s mezerou po tisících, ať se dobře čtou. */
+/**
+ * Ošetří text, který jde do HTML e-mailu.
+ *
+ * Jména a adresy píšou lidé a může v nich být cokoli — apostrof, ampersand,
+ * špičatá závorka. Bez tohohle by se z „Škola & spol." rozsypal zbytek
+ * zprávy. Dřív to bylo schované uvnitř skládání e-mailu; teď je to venku,
+ * protože to potřebují dvě místa.
+ */
+function e(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Čitelné názvy typů pořadatele do shrnutí v e-mailu. */
+const TYP_TEXT: Record<string, string> = {
+  skola: 'Škola nebo školka',
+  organizace: 'Organizace nebo firma',
+  jednotlivec: 'Jednotlivec',
+};
+
+const DODAVATEL = Deno.env.get('DODAVATEL_NAZEV') ?? 'Právě teď! o.p.s.';
+const WEB = Deno.env.get('DODAVATEL_WEB') ?? 'www.pravetedops.cz';
+const KONTAKT_EMAIL = Deno.env.get('DODAVATEL_EMAIL') ?? '';
+const KONTAKT_TELEFON = Deno.env.get('DODAVATEL_TELEFON') ?? '';
+const VETA_DPH = Deno.env.get('FAKTURA_VETA_DPH') ??
+  'Právě teď! o.p.s. není plátcem DPH a nemá přiděleno DIČ. ' +
+  'Fakturovaná částka je konečná, daň se neuplatňuje.';
+
+/**
+ * Zpráva pro příjemce platby. U dobrovolného příspěvku jednotlivce je jiná —
+ * účetní pak na bankovním výpisu pozná dar od registračního poplatku.
+ * Musí sedět s tím, co jde do QR kódu (viz pripravQr).
+ */
+function zpravaProBanku(p: Prihlaska, vs: number): string {
+  const zaklad = p.typ_poradatele === 'jednotlivec'
+    ? 'DOBROVOLNY PRISPEVEK'
+    : Deno.env.get('ZPRAVA_PLATBY') ?? 'AKTIVNE SPOLU';
+  return `${zaklad} ${vs}`;
+}
+
 function castkaSlovy(castka: number): string {
   return castka.toLocaleString('cs-CZ');
 }
@@ -622,61 +665,159 @@ function htmlEmailu(
   vs: number,
   u: UdajePlatby,
   qrUrl: string | null,
+  cisloFaktury: string | null,
 ): string {
-  // Šablona je schválně jednoduchá: tabulky a řádkové styly. Poštovní
-  // programy si s modernějším HTML neporadí a rozsypalo by se to.
-  const e = (s: string) =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-  const qrBlok = qrUrl
-    ? `
-      <p style="margin:24px 0 8px;">Nejrychleji zaplatíte přes QR kód — načtěte ho v mobilní bance,
-      částka i variabilní symbol se vyplní samy.</p>
-      <p style="margin:0;"><img src="${e(qrUrl)}" width="220" height="220"
-        alt="QR kód platby, variabilní symbol ${vs}"
-        style="display:block;border:1px solid #e5e5e5;"></p>`
+  // Odstavec o faktuře jen tam, kde faktura opravdu je. Slibovat přílohu,
+  // která nedorazila, je horší než o ní nemluvit vůbec.
+  const blokFaktury = cisloFaktury
+    ? `<strong style="color:#12707f;">Fakturu ${e(cisloFaktury)} najdete v příloze</strong> tohoto e-mailu.`
     : '';
 
-  // Datum česky, nikdy ve tvaru 2026-10-01. Píšeme ho i proto, aby si člověk
-  // hned všiml, kdyby v kalendáři omylem klikl na jiný den, než chtěl.
-  const terminBlok = p.datum_akce
-    ? `<p style="margin:0 0 16px;">Vaše setkání máme zapsané na <strong>${e(datumCesky(p.datum_akce))}</strong>.
-       Kdyby se termín změnil, stačí nám odpovědět na tenhle e-mail.</p>`
+  // QR kód se vkládá odkazem, ne obrázkem v těle. Vložený obrázek si spousta
+  // schránek nezobrazí, dokud ho člověk ručně nepovolí — a to je přesně ten
+  // okamžik, kdy člověk platbu vzdá.
+  const blokQr = qrUrl
+    ? `<tr><td style="padding:20px 32px 0;font-size:14px;line-height:1.6;color:#45443f;">
+         <a href="${e(qrUrl)}" style="color:#12707f;font-weight:600;">Otevřít QR kód k platbě</a>
+         — načtěte ho v mobilní bance, částka i variabilní symbol se vyplní samy.
+       </td></tr>`
     : '';
 
-  const fakturaBlok = p.forma_platby === 'prevod'
-    ? `<p style="margin:24px 0 0;">Fakturu vám pošleme e-mailem, jakmile ji vystavíme.
-       Její číslo bude končit vaším variabilním symbolem <strong>${vs}</strong>, ať se to nedá splést.</p>`
-    : '';
+  return `<!-- Předmět v náhledu schránky. Skrytý text hned na začátku těla
+     je jediný způsob, jak ovlivnit, co se ukáže vedle předmětu ve výpisu
+     pošty — jinak si tam schránka vezme první větu i s pozdravem. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+  Registrace přijata. Faktura ${e(cisloFaktury ?? '')} je v příloze, splatnost ${e(u.splatnost)}.
+</div>
 
-  return `<!doctype html>
-<html lang="cs"><body style="margin:0;padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#1a1a1a;">
-  <p style="margin:0 0 16px;">Dobrý den, ${e(p.kontaktni_osoba)},</p>
-  <p style="margin:0 0 16px;">děkujeme za přihlášku. Máme ji u sebe a počítáme s vámi.</p>
-  ${terminBlok}
-  ${
-    p.castka_kc <= 0
-      ? `<p style="margin:0;">Nic platit nemusíte — přihláška je hotová. Kdybyste nás přece
-         jen chtěli podpořit, ozvěte se a rádi pošleme údaje.</p>`
-      : `<p style="margin:0 0 8px;">${
-          p.typ_poradatele === 'jednotlivec'
-            ? 'Váš dobrovolný příspěvek můžete poslat do'
-            : 'Zbývá zaplatit účastnický poplatek, a to do'
-        } <strong>${e(u.splatnost)}</strong>:</p>
-  <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 8px;">
-    <tr><td style="color:#555;">Částka</td><td><strong>${castkaSlovy(p.castka_kc)} Kč</strong></td></tr>
-    <tr><td style="color:#555;">Číslo účtu</td><td><strong>${e(u.cisloUctu)}</strong></td></tr>
-    <tr><td style="color:#555;">Variabilní symbol</td><td><strong>${vs}</strong></td></tr>
-    <tr><td style="color:#555;">Splatnost</td><td><strong>${e(u.splatnost)}</strong></td></tr>
-    ${u.iban ? `<tr><td style="color:#555;">IBAN (ze zahraničí)</td><td>${e(u.iban)}</td></tr>` : ''}
-  </table>
-  <p style="margin:0;">Variabilní symbol prosím nevynechávejte — podle něj platbu poznáme.</p>`
-  }
-  ${qrBlok}
-  ${fakturaBlok}
-  <p style="margin:24px 0 0;">Kdyby cokoli nebylo jasné, stačí na tenhle e-mail odpovědět.</p>
-  <p style="margin:16px 0 0;">Ať se akce vydaří!</p>
-</body></html>`;
+<!-- CELÝ E-MAIL STOJÍ NA TABULKÁCH A STYLECH PSANÝCH PŘÍMO U PRVKŮ.
+     Není to zastaralost: poštovní klienti (hlavně Outlook, který sází přes
+     Word) neumí flex, grid ani odkazovaný styl. Tabulka a atribut jsou
+     jediné, co vysází všude stejně. -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="background-color:#f4f1ea;margin:0;padding:24px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600"
+             style="max-width:600px;width:100%;background-color:#ffffff;border-radius:14px;overflow:hidden;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+
+        <!-- Hlavička -->
+        <tr>
+          <td style="background-color:#0a3e47;padding:28px 32px;">
+            <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#f0b95e;font-weight:600;">
+              Mezinárodní den seniorů
+            </p>
+            <p style="margin:8px 0 0;font-size:24px;line-height:1.25;color:#ffffff;font-weight:600;">
+              Mezigeneračně aktivně spolu
+            </p>
+          </td>
+        </tr>
+
+        <!-- Potvrzení -->
+        <tr>
+          <td style="padding:32px 32px 8px;">
+            <p style="margin:0;font-size:16px;line-height:1.6;color:#45443f;">
+              Dobrý den, ${e(p.kontaktni_osoba)},
+            </p>
+            <p style="margin:16px 0 0;font-size:16px;line-height:1.6;color:#45443f;">
+              máme vaši přihlášku a moc si jí vážíme. Níž je shrnutí toho, co jste
+              vyplnili${p.castka_kc > 0 ? ' a údaje k zaplacení' : ''}.
+              ${blokFaktury}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Shrnutí registrace -->
+        <tr>
+          <td style="padding:28px 32px 0;">
+            <p style="margin:0 0 4px;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#12707f;font-weight:600;">
+              Shrnutí registrace
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Kdo se hlásí</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(TYP_TEXT[p.typ_poradatele] ?? p.typ_poradatele)}</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Název</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(p.nazev_poradatele)}</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Kontaktní osoba</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(p.kontaktni_osoba)}</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">E-mail</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(p.email)}</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Telefon</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(p.telefon)}</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Kde se akce koná</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(p.mesto + ', ' + p.kraj)}</td></tr><tr><td style="padding:10px 0;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Kdy</td><td style="padding:10px 0;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(p.datum_akce ? datumCesky(p.datum_akce) : 'zatím neurčeno')}</td></tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Platba -->
+        <tr>
+          <td style="padding:28px 32px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                   style="background-color:#edf7f9;border-radius:12px;">
+              <tr>
+                <td style="padding:20px 22px;">
+                  <p style="margin:0 0 4px;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#12707f;font-weight:600;">
+                    Kam poslat platbu
+                  </p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Částka</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${castkaSlovy(p.castka_kc)} Kč</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Číslo účtu</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(u.cisloUctu)}</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Variabilní symbol</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${vs}</td></tr><tr><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Zpráva pro příjemce</td><td style="padding:10px 0;border-bottom:1px solid #f7dcae;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(zpravaProBanku(p, vs))}</td></tr><tr><td style="padding:10px 0;font-size:14px;line-height:1.5;color:#6b6a64;width:42%;vertical-align:top;">Splatnost</td><td style="padding:10px 0;font-size:15px;line-height:1.5;color:#45443f;font-weight:600;vertical-align:top;">${e(u.splatnost)}</td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Proč na VS záleží -->
+        <tr>
+          <td style="padding:20px 32px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+                   style="background-color:#fbf1dc;border-radius:12px;">
+              <tr>
+                <td style="padding:16px 20px;font-size:14px;line-height:1.6;color:#45443f;">
+                  <strong>Variabilní symbol prosím nevynechávejte.</strong> Podle něj
+                  platbu poznáme a spárujeme s vaší přihláškou. Je to zároveň poslední
+                  část čísla faktury ${e(cisloFaktury ?? '')}, takže se nedá splést.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Platba ze zahraničí -->
+        <tr>
+          <td style="padding:20px 32px 0;font-size:14px;line-height:1.6;color:#6b6a64;">
+            Platíte-li ze zahraničí, použijte IBAN <strong style="color:#45443f;">${e(u.iban ?? '')}</strong>
+            a SWIFT <strong style="color:#45443f;">${e(Deno.env.get('SWIFT_UCTU') ?? '')}</strong>.<br>
+            ${e(VETA_DPH)}
+          </td>
+        </tr>
+
+        <!-- Co bude dál -->
+        <tr>
+          <td style="padding:28px 32px 0;">
+            <p style="margin:0 0 4px;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#12707f;font-weight:600;">
+              Co bude dál
+            </p>
+            <p style="margin:0;font-size:15px;line-height:1.7;color:#45443f;">
+              Uspořádejte své mezigenerační setkání v týdnu kolem 1.&nbsp;10. Po akci
+              vám přijde odkaz na krátký formulář — z něj vznikne záznam ve veřejném
+              Zásobníku nápadů, ze kterého budou čerpat organizátoři z celé ČR.
+            </p>
+          </td>
+        </tr>
+
+        ${blokQr}
+
+        <!-- Patička -->
+        <tr>
+          <td style="padding:28px 32px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr><td style="border-top:1px solid #f7dcae;padding-top:20px;font-size:14px;line-height:1.7;color:#6b6a64;">
+                Kdyby cokoliv, napište na
+                <a href="mailto:${e(KONTAKT_EMAIL)}" style="color:#12707f;font-weight:600;text-decoration:none;">${e(KONTAKT_EMAIL)}</a>
+                nebo zavolejte na ${e(KONTAKT_TELEFON)}.<br><br>
+                Těšíme se na vaše setkání!<br>
+                <strong style="color:#45443f;">${e(DODAVATEL)}</strong><br>
+                ${e(WEB)}
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`;
 }
 
 /**
@@ -711,7 +852,7 @@ async function posliPotvrzeni(
       prijemceJmeno: p.kontaktni_osoba,
       predmet: `Přihláška přijata — variabilní symbol ${vs}`,
       text: textEmailu(p, vs, u, qrUrl),
-      html: htmlEmailu(p, vs, u, qrUrl),
+      html: htmlEmailu(p, vs, u, qrUrl, faktura?.cislo ?? null),
       // Faktura jde rovnou v příloze. Dřív ji posílal Make zvlášť, takže
       // člověku chodily dva e-maily o jedné věci.
       prilohy: faktura

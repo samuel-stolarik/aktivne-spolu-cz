@@ -8,8 +8,10 @@
 // která web převezme. Kdyby se to někdy vrátilo zpátky nebo se měnil
 // poskytovatel při stěhování, mění se jedno nastavení, ne kód.
 //
-// POŘADÍ VOLBY: Outlook má přednost. Když jsou vyplněné oba, jede Outlook —
-// je to ten, na kterém se domluvilo. Gmail zůstává jako záloha.
+// POŘADÍ VOLBY: Resend, pak Outlook, pak Gmail. Resend je první schválně —
+// jako jediný nestojí na OAuth, takže mu nemá co vypršet. U Microsoftu
+// vyprší klientské tajemství po dvou letech a e-maily tiše přestanou chodit;
+// oprava je pak na vývojáři, ne na organizaci, která web provozuje.
 //
 // KDYŽ NENÍ VYPLNĚNÉ NIC, pošta se NEODESÍLÁ a NIC NESPADNE. Přihláška se
 // uloží, variabilní symbol se přidělí, QR kód se zobrazí — do logu se zapíše,
@@ -18,6 +20,7 @@
 
 import { nactiNastaveniGmailu, odesliEmail } from './gmail.ts';
 import { nactiNastaveniOutlooku, odesliPresOutlook } from './outlook.ts';
+import { nactiNastaveniResendu, odesliPresResend } from './resend.ts';
 
 export interface Priloha {
   /** Název, pod kterým se soubor příjemci uloží. */
@@ -41,9 +44,10 @@ export interface Zprava {
 }
 
 /** Přes koho pošta odchází. Hodí se do logu, ať je při hledání chyby jasno. */
-export type Odesilatel = 'outlook' | 'gmail' | 'nikdo';
+export type Odesilatel = 'resend' | 'outlook' | 'gmail' | 'nikdo';
 
 export function kdoOdesila(): Odesilatel {
+  if (nactiNastaveniResendu()) return 'resend';
   if (nactiNastaveniOutlooku()) return 'outlook';
   if (nactiNastaveniGmailu()) return 'gmail';
   return 'nikdo';
@@ -57,6 +61,18 @@ export function kdoOdesila(): Odesilatel {
  *          příjem přihlášky.
  */
 export async function posli(z: Zprava): Promise<boolean> {
+  const resend = nactiNastaveniResendu();
+  if (resend) {
+    try {
+      const id = await odesliPresResend(resend, z);
+      console.log(`Odesláno přes Resend na ${z.prijemce}, zpráva ${id}.`);
+      return true;
+    } catch (e) {
+      console.error('Odeslání přes Resend selhalo.', e);
+      return false;
+    }
+  }
+
   const outlook = nactiNastaveniOutlooku();
   if (outlook) {
     try {
@@ -83,8 +99,8 @@ export async function posli(z: Zprava): Promise<boolean> {
 
   console.warn(
     'E-mail se neodeslal: není vyplněné žádné nastavení pošty. ' +
-      'Chybí MS_CLIENT_ID/MS_CLIENT_SECRET/MS_REFRESH_TOKEN/ODESILATEL_EMAIL ' +
-      '(Outlook), případně GOOGLE_* (Gmail).',
+      'Chybí RESEND_API_KEY + ODESILATEL_EMAIL (Resend), ' +
+      'případně MS_* (Outlook) nebo GOOGLE_* (Gmail).',
   );
   return false;
 }
