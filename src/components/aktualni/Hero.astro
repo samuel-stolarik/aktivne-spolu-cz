@@ -19,6 +19,26 @@ import Tlacitko from "../Tlacitko.astro";
 import Ilustrace from "../Ilustrace.astro";
 import Nit from "./Nit.astro";
 
+/**
+ * Čtyři kreslené scény, které se v úvodní obrazovce střídají.
+ *
+ * Vznikly z jedné předlohy od zadavatele (mřížka 2×2) — rozřezal ji
+ * scripts/kresby-z-predlohy.py. Všechny čtyři mají SHODNÝ rozměr plátna
+ * a postavy stojí na společné spodní hraně; kdyby to tak nebylo, stránka
+ * by při každé výměně poskočila a postava by poletovala nahoru a dolů.
+ *
+ * Popis je jeden pro celou střídačku (viz `role="img"` níž), ne po scénách.
+ * Kdyby měla každá scéna vlastní `alt`, měnil by se popis obrázku pod rukama
+ * někomu, kdo si ho nechává předčítat — a bez varování, protože se to děje
+ * samo od sebe.
+ */
+const kresby = [
+  { soubor: "kresba-babicka-kytice.webp", popis: "seniorka s kyticí" },
+  { soubor: "kresba-babicka-s-detmi.webp", popis: "seniorka povídá s dětmi" },
+  { soubor: "kresba-babicka-darek.webp", popis: "seniorka s dárkem" },
+  { soubor: "kresba-babicka-kvetina.webp", popis: "seniorka s květinou v květináči" },
+];
+
 /* Čtyři skupiny, pro které akce je — mikro-copy pod tlačítky z podkladů. */
 const skupiny = [
   { ikona: "school", popis: "Školy a školky" },
@@ -93,19 +113,38 @@ const skupiny = [
     <div class="f-par relative mx-auto w-full max-w-[420px]" style="--f-hloubka: -12">
       <div class="f-hero-kruh f-vzestup" style="--z: 2" aria-hidden="true"></div>
       <div class="relative px-6 pt-10 text-tyrkys">
-        {/* Kreslená scéna od zadavatele. Je to rastr, ne obrys, takže se
-            nedá „kreslit tahem" jako předchozí postavy ani obarvovat —
-            místo toho jemně nastoupí. Pozadí má odbarvené na průhledné,
-            takže sedí na jakoukoli plochu. */}
-        <img
-          src="/obrazky/kresba-babicka-kytice.webp"
-          alt="Seniorka drží kytici v rozkvetlé zahradě"
-          width="820"
-          height="461"
-          class="f-vzestup h-auto w-full"
+        {/* Kreslené scény od zadavatele. Jsou to rastry, ne obrysy, takže se
+            nedají „kreslit tahem" jako předchozí postavy ani obarvovat —
+            místo toho celá střídačka jemně nastoupí. Pozadí mají odbarvené
+            na průhledné, takže sedí na jakoukoli plochu.
+
+            CELÁ SKUPINA JE PRO ČTEČKU OBRAZOVKY JEDEN OBRÁZEK: `role="img"`
+            s jedním popisem, jednotlivé kresby mají `alt=""`. Jinak by se
+            v předčítané podobě stránky objevily čtyři obrázky tam, kde je
+            vidět jeden, a popis by se sám od sebe měnil.
+
+            Bez JavaScriptu se nic nestřídá a zůstane vidět první kresba —
+            třídu `je-videt` má rovnou v šabloně, ne až od skriptu. */}
+        <div
+          class="f-strid f-vzestup"
           style="--z: 3"
-          fetchpriority="high"
-        />
+          role="img"
+          aria-label="Kreslené scény ze setkání generací: seniorka s kyticí, při povídání s dětmi, s dárkem a s květinou"
+        >
+          {
+            kresby.map((kresba, poradi) => (
+              <img
+                src={`/obrazky/${kresba.soubor}`}
+                alt=""
+                width="523"
+                height="336"
+                class:list={["f-strid-kresba", poradi === 0 && "je-videt"]}
+                fetchpriority={poradi === 0 ? "high" : undefined}
+                decoding="async"
+              />
+            ))
+          }
+        </div>
       </div>
     </div>
   </div>
@@ -141,3 +180,69 @@ const skupiny = [
     <Ikona jmeno="chevron-down" velikost={30} trida="f-sipka" />
   </div>
 </section>
+
+<script>
+  // ==========================================================================
+  // Střídání kreslených scén v úvodní obrazovce
+  //
+  // Prolínání samo dělá CSS, tady se jen přehazuje třída `je-videt`. Skript
+  // nic nezobrazuje ani neskrývá napevno — když nepoběží, zůstane vidět první
+  // kresba, protože tu třídu má už v šabloně.
+  //
+  // KDY SE STŘÍDAČKA ZASTAVÍ:
+  //   * při zakázaném pohybu se vůbec nerozjede (a když si ho návštěvník
+  //     zakáže až za běhu, zastaví se hned),
+  //   * na neaktivní kartě prohlížeče — jinak by na pozadí běžela donekonečna
+  //     pro nikoho,
+  //   * když na ni najedeš myší nebo se do ní dostaneš tabulátorem.
+  //
+  // Zastavení najetím ale NENÍ plnohodnotné ovládání: kdo je na dotykovém
+  // displeji nebo chodí po stránce klávesnicí, střídačku zastavit nemůže.
+  // Stejné omezení má řádka s tipy na aktivity a čeká na stejné rozhodnutí —
+  // pořádné řešení je viditelné tlačítko „zastavit", a to je zásah do vzhledu.
+  // ==========================================================================
+  const stridacka = document.querySelector<HTMLElement>(".f-strid");
+  const kresby = stridacka
+    ? [...stridacka.querySelectorAll<HTMLElement>(".f-strid-kresba")]
+    : [];
+
+  if (stridacka && kresby.length > 1) {
+    const dotazNaPohyb = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const PAUZA = 6000;
+
+    let ktera = 0;
+    let casovac: ReturnType<typeof setInterval> | null = null;
+
+    function dalsi() {
+      kresby[ktera].classList.remove("je-videt");
+      ktera = (ktera + 1) % kresby.length;
+      kresby[ktera].classList.add("je-videt");
+    }
+
+    function jed() {
+      if (casovac !== null || dotazNaPohyb.matches || document.hidden) return;
+      casovac = setInterval(dalsi, PAUZA);
+    }
+
+    function stuj() {
+      if (casovac === null) return;
+      clearInterval(casovac);
+      casovac = null;
+    }
+
+    stridacka.addEventListener("mouseenter", stuj);
+    stridacka.addEventListener("mouseleave", jed);
+    stridacka.addEventListener("focusin", stuj);
+    stridacka.addEventListener("focusout", jed);
+
+    document.addEventListener("visibilitychange", () =>
+      document.hidden ? stuj() : jed(),
+    );
+
+    dotazNaPohyb.addEventListener("change", () =>
+      dotazNaPohyb.matches ? stuj() : jed(),
+    );
+
+    jed();
+  }
+</script>
