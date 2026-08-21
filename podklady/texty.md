@@ -25,7 +25,7 @@ Ať už vedete školu, tvoříte mladý pracovní kolektiv, působíte v nezisko
 **Doplňkový vizuální prvek** — mikro-copy pod tlačítky nebo ikonky:
 
 - Školy a školky
-- Mladé kolektivy a firmy
+- Kolektivy a firmy
 - Neziskovky a komunity
 - Gen Z a nadšenci
 

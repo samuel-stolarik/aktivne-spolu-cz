@@ -130,7 +130,7 @@ export const KATALOG: PolozkaObsahu[] = [
     skupina: 'Úvodní obrazovka',
     popis: 'Druhá položka v řádku „pro koho to je"',
     typ: 'text',
-    vychozi: 'Mladé kolektivy a firmy',
+    vychozi: 'Kolektivy a firmy',
   },
   {
     klic: 'hero.cilovka-3',
