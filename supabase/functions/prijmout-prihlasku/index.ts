@@ -824,18 +824,33 @@ function htmlEmailu(
  * Pošle potvrzení. Nikdy nevyhodí výjimku — nefungující pošta nesmí shodit
  * přihlášku. Když se to nepovede, zůstane to v logu a e-mail se pošle ručně.
  */
+/**
+ * Připraví potvrzovací e-mail a postará se, aby odešel.
+ *
+ * VŽDYCKY se zpráva nejdřív odloží do tabulky `odchozi_posta`. Teprve pak se
+ * ji funkce pokusí odeslat sama — a jen tehdy, když má čím (Resend, Outlook
+ * nebo Gmail). Když nemá, řádek zůstane ve stavu „ceka" a vyzvedne si ho
+ * odesílatel v Make.
+ *
+ * PROČ SE ODKLÁDÁ I KDYŽ SE ROVNOU ODESÍLÁ
+ * Je z toho záznam, co komu odešlo — dohledatelný, i když se pošta cestou
+ * ztratí. A když odeslání selže, řádek prostě zůstane čekat; nic se
+ * neztratí a další pokus ho vezme znovu.
+ *
+ * PŘES WEBHOOK DO MAKE JDE JEN ID, NIKDY TEXT ZPRÁVY. Adresa webhooku je
+ * veřejná; kdyby se přes ni dal poslat libovolný text na libovolnou adresu,
+ * byla by z toho rozesílací služba pro spam.
+ */
 async function posliPotvrzeni(
+  // deno-lint-ignore no-explicit-any
+  klient: any,
+  prihlaskaId: string,
   p: Prihlaska,
   vs: number,
   qrUrl: string | null,
   splatnostCesky: string,
   faktura: HotovaFaktura | null,
 ): Promise<boolean> {
-  if (kdoOdesila() === 'nikdo') {
-    console.warn(`E-mail přeskočen: chybí nastavení odesílání. Přihláška VS ${vs} je uložená.`);
-    return false;
-  }
-
   const iban = Deno.env.get('IBAN_UCTU') ?? null;
 
   // Na prvním místě je číslo účtu v tuzemském tvaru — to lidé opisují do
@@ -847,18 +862,61 @@ async function posliPotvrzeni(
     splatnost: splatnostCesky,
   };
 
-  return await posli({
-      prijemce: p.email,
-      prijemceJmeno: p.kontaktni_osoba,
-      predmet: `Přihláška přijata — variabilní symbol ${vs}`,
-      text: textEmailu(p, vs, u, qrUrl),
-      html: htmlEmailu(p, vs, u, qrUrl, faktura?.cislo ?? null),
-      // Faktura jde rovnou v příloze. Dřív ji posílal Make zvlášť, takže
-      // člověku chodily dva e-maily o jedné věci.
-      prilohy: faktura
-        ? [{ nazev: faktura.soubor, typ: 'application/pdf', data: faktura.pdf }]
-        : [],
-  });
+  const zprava = {
+    prijemce: p.email,
+    prijemceJmeno: p.kontaktni_osoba,
+    predmet: `Přihláška přijata — variabilní symbol ${vs}`,
+    text: textEmailu(p, vs, u, qrUrl),
+    html: htmlEmailu(p, vs, u, qrUrl, faktura?.cislo ?? null),
+    prilohy: faktura
+      ? [{ nazev: faktura.soubor, typ: 'application/pdf', data: faktura.pdf }]
+      : [],
+  };
+
+  // 1. Odložit. Chyba zápisu odeslání nezastaví — přihláška i tak platí.
+  const { data: odlozeno, error: chybaOdlozeni } = await klient
+    .from('odchozi_posta')
+    .insert({
+      prihlaska_id: prihlaskaId,
+      prijemce: zprava.prijemce,
+      prijemce_jmeno: zprava.prijemceJmeno,
+      odpovedet_na: Deno.env.get('ODPOVEDET_NA') ?? null,
+      predmet: zprava.predmet,
+      telo_text: zprava.text,
+      telo_html: zprava.html,
+      priloha_cesta: faktura?.cesta ?? null,
+      priloha_nazev: faktura?.soubor ?? null,
+    })
+    .select('id')
+    .single();
+
+  if (chybaOdlozeni) {
+    console.error(`Zprávu se nepovedlo odložit k odeslání, VS ${vs}.`, chybaOdlozeni);
+  }
+
+  // 2. Odeslat, když je čím. Jinak si ji vyzvedne Make.
+  if (kdoOdesila() === 'nikdo') {
+    console.log(
+      `Zpráva pro VS ${vs} čeká v odchozí poště — funkce nemá nastavené odesílání, ` +
+        'vyzvedne si ji Make.',
+    );
+    return false;
+  }
+
+  const odeslano = await posli(zprava);
+
+  if (odlozeno?.id) {
+    await klient
+      .from('odchozi_posta')
+      .update(
+        odeslano
+          ? { stav: 'odeslano', odeslano_kdy: new Date().toISOString(), pokusu: 1 }
+          : { stav: 'ceka', pokusu: 1, chyba_text: 'Odeslání z funkce selhalo.' },
+      )
+      .eq('id', odlozeno.id);
+  }
+
+  return odeslano;
 }
 
 // ---------------------------------------------------------------------------
@@ -874,6 +932,8 @@ const PLATNOST_ODKAZU_S = 315_360_000;
 interface HotovaFaktura {
   cislo: string;
   soubor: string;
+  /** Cesta v bucketu `faktury`. Odsud si ji stáhne odesílatel pošty. */
+  cesta: string;
   pdf: Uint8Array;
   odkaz: string | null;
 }
@@ -982,7 +1042,7 @@ async function vystavFakturu(
     if (chybaZapisu) console.error(`Číslo faktury se nepovedlo zapsat, VS ${vs}.`, chybaZapisu);
 
     console.log(`Faktura ${cislo} vystavena, VS ${vs}.`);
-    return { cislo, soubor, pdf, odkaz };
+    return { cislo, soubor, cesta, pdf, odkaz };
   } catch (e) {
     console.error(`Fakturu se nepovedlo vystavit, VS ${vs}. Přihláška je uložená.`, e);
     return null;
@@ -1120,6 +1180,8 @@ Deno.serve(async (req) => {
   );
 
   const emailOdeslan = await posliPotvrzeni(
+    klient,
+    ulozeno.id,
     data,
     variabilniSymbol,
     qrUrl,
