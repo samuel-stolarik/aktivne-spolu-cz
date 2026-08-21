@@ -98,11 +98,15 @@
           {
             "name": "Accept",
             "value": "application/vnd.pgrst.object+json"
+          },
+          {
+            "name": "Authorization",
+            "value": "Bearer SEM_VLOZ_KLIC"
           }
         ]
       },
       "metadata": {
-        "notes": "Obsah zprávy se čte odsud, ne z webhooku. RLS je zapnuté a tabulka nemá žádnou politiku, takže sem musí jít service_role klíč — anon nepřečte nic. Filtr před rozcestníkem pustí dál jen zprávy, které ještě čekají.",
+        "notes": "Obsah zprávy se čte odsud, ne z webhooku. RLS je zapnuté a tabulka nemá žádnou politiku, takže sem musí jít service_role klíč — anon nepřečte nic. Filtr před rozcestníkem pustí dál jen zprávy, které ještě čekají.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
         "restore": {
           "parameters": {
             "auth": {
@@ -168,10 +172,15 @@
                 "rejectUnauthorized": true,
                 "url": "https://kourmwqxkhdtahbxyuaq.supabase.co/storage/v1/object/faktury/{{2.data.priloha_cesta}}",
                 "method": "get",
-                "headers": []
+                "headers": [
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer SEM_VLOZ_KLIC"
+                  }
+                ]
               },
               "metadata": {
-                "notes": "Stáhne PDF faktury jako binární soubor. Bucket faktury je NEveřejný, takže i sem musí service_role klíč. parseResponse je vypnuté — jinak by se Make pokusil z PDF udělat text a příloha by dorazila rozbitá.",
+                "notes": "Stáhne PDF faktury jako binární soubor. Bucket faktury je NEveřejný, takže i sem musí service_role klíč. parseResponse je vypnuté — jinak by se Make pokusil z PDF udělat text a příloha by dorazila rozbitá.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
                 "restore": {
                   "parameters": {
                     "auth": {
@@ -270,11 +279,15 @@
                   {
                     "name": "Prefer",
                     "value": "return=minimal"
+                  },
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer SEM_VLOZ_KLIC"
                   }
                 ]
               },
               "metadata": {
-                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.",
+                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
                 "restore": {
                   "parameters": {
                     "auth": {
@@ -371,11 +384,15 @@
                   {
                     "name": "Prefer",
                     "value": "return=minimal"
+                  },
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer SEM_VLOZ_KLIC"
                   }
                 ]
               },
               "metadata": {
-                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.",
+                "notes": "Teprve tímhle je zpráva vyřízená. Dokud zůstane ve stavu „ceka“, vezme ji další běh znovu — nic se neztratí a nic se netváří, že proběhlo.\n\nDVĚ HLAVIČKY, NE JEDNA. Supabase vyžaduje `apikey` I `Authorization` — ověřeno, s jednou samotnou vrací 401 „No API key found in request“. `apikey` dodá připojení typu API Key Auth (pole Credentials), `Authorization` je vypsaná rovnou tady v Headers a musí mít tvar `Bearer <klíč>` — tedy slovo Bearer, mezera, klíč.",
                 "restore": {
                   "parameters": {
                     "auth": {
