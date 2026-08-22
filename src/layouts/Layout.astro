@@ -44,6 +44,16 @@ const { titulek, popis, sMenu = true } = Astro.props;
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="cs_CZ" />
 
+    {/* Google Analytics — měřicí kód G-FCCK990ZVV dodala organizace Právě teď! o.p.s. */}
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FCCK990ZVV"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-FCCK990ZVV');
+    </script>
+
     {/* Doplní texty upravené v administraci (/admin/). V HTML zůstávají
         původní texty, tohle jen přepíše ty, které správce změnil.
         Když databáze nejede, nestane se nic a web vypadá normálně. */}

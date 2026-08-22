@@ -149,6 +149,16 @@ const strukturovanaData = {
       set:html={JSON.stringify(strukturovanaData)}
     />
 
+    {/* Google Analytics — měřicí kód G-FCCK990ZVV dodala organizace Právě teď! o.p.s. */}
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FCCK990ZVV"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-FCCK990ZVV');
+    </script>
+
     {/* Texty upravené v administraci (/admin/) se doplní i sem. */}
     <PrepisyObsahu />
 
