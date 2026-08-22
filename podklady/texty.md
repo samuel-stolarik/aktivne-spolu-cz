@@ -27,7 +27,7 @@ Ať už vedete školu, tvoříte mladý pracovní kolektiv, působíte v nezisko
 - Školy a školky
 - Kolektivy a firmy
 - Neziskovky a komunity
-- Gen Z a nadšenci
+- Jednotlivci a mladí nadšenci
 
 ---
 

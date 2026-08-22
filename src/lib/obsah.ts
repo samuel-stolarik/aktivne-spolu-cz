@@ -144,7 +144,7 @@ export const KATALOG: PolozkaObsahu[] = [
     skupina: 'Úvodní obrazovka',
     popis: 'Čtvrtá položka v řádku „pro koho to je"',
     typ: 'text',
-    vychozi: 'Gen Z a nadšenci',
+    vychozi: 'Jednotlivci a mladí nadšenci',
   },
   {
     klic: 'web.logo',
