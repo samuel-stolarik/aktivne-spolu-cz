@@ -50,9 +50,24 @@ function nactiKatalog() {
 // Text sestaveného webu
 // ---------------------------------------------------------------------------
 
-/** Stejné sjednocení mezer jako v src/lib/obsah.ts. */
+/**
+ * Stejné sjednocení mezer jako v src/lib/obsah.ts — s JEDNÍM rozdílem navíc.
+ *
+ * Tenhle skript na rozdíl od běhu v prohlížeči nemá skutečný DOM. Text ze
+ * stránky proto nezískává přes `textContent` (ten mezery mezi značkami
+ * sám od sebe nevkládá), ale tak, že každou značku v HTML nahradí mezerou
+ * (viz textStranky níž) — jinak by se slova z různých řádků slepila
+ * dohromady. Jenže když věta končí uvnitř značky, která leží těsně před
+ * tečkou (typicky `<strong>500 Kč</strong>.`), vznikne z uzavírací značky
+ * mezera, kterou prohlížeč nikdy nevykreslí: „500 Kč ." místo „500 Kč.".
+ * Katalog pak hlásí text jako chybějící, i když na stránce je — jen jinak
+ * rozmezerovaný. Řádek navíc tu mezeru před interpunkcí zase odstraní.
+ */
 function sjednotText(text) {
-  return text.replace(/\s+/g, " ").trim();
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/\s+([.,;:!?)])/g, "$1")
+    .trim();
 }
 
 function nahradEntity(text) {

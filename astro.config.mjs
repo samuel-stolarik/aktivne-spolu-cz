@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
+import sitemap from "@astrojs/sitemap";
 
 // Web jde na kořen domény aktivne-spolu.cz, proto base: "/".
 // Výstup je čistě statický — obsahem složky dist/ se přímo nahradí root na FTP.
@@ -19,4 +20,11 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
   },
+  integrations: [
+    sitemap({
+      // /admin/ ven ze sitemapy stejně jako z robots.txt — je zamčená
+      // přihlášením a nemá smysl na ni googlu ukazovat.
+      filter: (adresa) => !adresa.includes("/admin/"),
+    }),
+  ],
 });

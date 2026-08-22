@@ -45,7 +45,7 @@ Odškrtat všechno, jinak něco tiše nepojede.
       uloží a QR kód se zobrazí, ale **potvrzovací e-mail nikomu nepřijde**.
       Chybí `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`
       a odesílací adresa.
-- [ ] **Vybrat jednu verzi vzhledu** a ostatní smazat (viz níž).
+- [x] ~~Vybrat jednu verzi vzhledu a ostatní smazat~~ — hotovo, viz níž.
 - [ ] **Smazat ukázková data z mapky** — `npm run smaz-ukazku`. Je na ní pět
       vymyšlených akcí, které vznikly kvůli ukázce.
 
@@ -277,29 +277,20 @@ Dokud se tak nestane, e-maily mohou padat do spamu.
 
 ---
 
-## Verze vzhledu k rozhodnutí
+## Rozhodnutí o verzi vzhledu
 
-Vzniklo několik verzí nad **úplně stejným obsahem a stejnou databází**.
-Liší se jen vzhledem a mírou pohybu:
+Vznikalo souběžně pět verzí nad stejným obsahem a stejnou databází, ke
+srovnání přes přepínač na `npm run dev`. Zadavatel vybral tu, které se
+pracovně říkalo „aktuální" — teď je to jediná stránka webu, `/`.
 
-| Adresa | Verze |
-| --- | --- |
-| `/` | uzemněná — klidná, velkorysý prostor, decentní pohyb |
-| `/varianta-b/` | jako uzemněná, ale sekce jako bílé listy se stínem |
-| `/kreativni/` | výraznější typografie, jedoucí řádka tipů, rozevírací karty |
-| `/animovana/` | v každé sekci dvě až tři animace |
-| `/fable/` | postavená od nuly kolem motivu nitě, dvě tmavé plochy |
-
-K tomu `/zasobnik-navrh/` — samostatný návrh jediné sekce (Zásobník nápadů),
-ne celá stránka.
-
-Při `npm run dev` se dole zobrazí přepínač mezi verzemi. Do produkčního
-buildu se nedostane.
-
-**Až padne rozhodnutí, smažou se stránky nevybraných verzí, jejich styly
-a komponenty a `src/components/PrepinacVariant.astro`.** Nechávat je tam
-znamená udržovat pět webů místo jednoho — každá změna obsahu by se musela
-promítnout všude.
+Zbylé čtyři (uzemněná, bílé listy, kreativní, animovaná) i samostatný návrh
+`/zasobnik-navrh/` jsou smazané i s komponentami a styly, které používaly
+jen ony — `src/components/PrepinacVariant.astro`, `src/components/fable/`,
+`src/components/zasobnik/`, `ObsahStranky.astro`, `Stitek.astro`, `Karta.astro`,
+starší `Formular.astro` (nahradil ho `FormularKrokovy.astro`) a styly
+`kreativni.css`, `animovana.css`, `fable.css`, `zasobnik-navrh.css`. Podobu
+smazaných verzí najdeš v historii Gitu, kdyby se k něčemu z nich chtěl
+zadavatel vrátit.
 
 ---
 

@@ -1,23 +1,380 @@
 ---
 /**
- * Úvodní stránka — varianta předělů "linka".
+ * Domovská stránka — a od rozhodnutí zadavatele jediná veřejná verze webu.
+ * Dřív žila na /aktualni/ vedle čtyř dalších verzí k porovnání; ty jsou
+ * pryč i s komponentami, které používaly jen ony (viz git historie).
  *
- * Sekce odděluje velkorysý svislý prostor, změna plochy tam, kde se plocha
- * mění, a jemná meruňková linka tam, kde spolu sousedí dvě sekce
- * na stejném pozadí.
+ * KONCEPT „NIT"
+ * Stránkou se táhne meruňková nakreslená nit — nit mezi dvěma generacemi.
+ * Podtrhne slovo „nezapomíná" v hero, stane se páteří čtyř kroků (kreslí
+ * se podle scrollu) a končí u registračního formuláře. Obrysové ilustrace
+ * se kreslí stejným tahem, takže celá stránka mluví jazykem tahu pera.
  *
- * Druhou variantu ("karta") najdeš na /varianta-b/. Obě běží nad úplně
- * stejným obsahem, liší se jen předělem — viz src/components/Sekce.astro.
+ * POŘADÍ SEKCÍ se od podkladů liší v jednom: mapa přihlášených akcí je
+ * zařazená PŘED registraci. Je to sociální důkaz — „jiní už do toho šli" —
+ * a ten patří těsně před rozhodnutí, ne za něj.
+ *
+ * Dramaturgie: přesvědčit (důvody + manifest) → ukázat zvládnutelnost
+ * (kroky, tipy, podpora) → co po akci zůstane (Zásobník) → kdo už jde
+ * do toho (mapa) → akce (registrace) → kontakt.
+ *
+ * TEXTY: doslova z podklady/texty.md — nepřepisují se a nezkracují.
+ * Chybějící podklady jsou označené [DOPLNIT: …] v komentářích komponent.
+ *
+ * NEPOUŽÍVÁ Layout.astro: stránka má vlastní hlavičku, vlastní rytmus
+ * najíždění a tělo potřebuje třídu .stranka-fable pro odvozené odstíny.
+ * Sdílené kusy (formulář, mapa, pořadatelé, patička, přepisy z
+ * administrace) se ale berou hotové — jsou odzkoušené naostro.
  */
-import Layout from "../layouts/Layout.astro";
-import ObsahStranky from "../components/ObsahStranky.astro";
-import PrepinacVariant from "../components/PrepinacVariant.astro";
+import "../styles/global.css";
+import "../styles/aktualni.css";
+
+import PrepisyObsahu from "../components/admin/PrepisyObsahu.astro";
+import Paticka from "../components/Paticka.astro";
+import Mapa from "../components/Mapa.astro";
+
+import Hlavicka from "../components/aktualni/Hlavicka.astro";
+import Hero from "../components/aktualni/Hero.astro";
+import Duvody from "../components/aktualni/Duvody.astro";
+import Kroky from "../components/aktualni/Kroky.astro";
+import Tipy from "../components/aktualni/Tipy.astro";
+import Podpora from "../components/aktualni/Podpora.astro";
+import Zasobnik from "../components/aktualni/Zasobnik.astro";
+import Registrace from "../components/aktualni/Registrace.astro";
+import KeStazeni from "../components/aktualni/KeStazeni.astro";
+
+const titulek =
+  "Propojujeme generace — Mezinárodní den seniorů | aktivně spolu";
+const popis =
+  "Zorganizujte přátelské mezigenerační setkání ve svém okolí a oslavte " +
+  "Mezinárodní den seniorů v týdnu kolem 1. 10. Registrace pro školy, " +
+  "firemní týmy, neziskovky i jednotlivce.";
+
+// Absolutní adresa — sociální sítě a Google si s relativní cestou v
+// og:image a canonical neporadí, potřebují plnou URL.
+const adresaStranky = Astro.url.origin + "/";
+const adresaObrazku = Astro.url.origin + "/obrazky/og-image.jpg";
+
+/**
+ * Strukturovaná data (JSON-LD).
+ *
+ * ZÁMĚRNĚ NE typ Event. Nabízelo by se to — stránka mluví o Mezinárodním
+ * dni seniorů — ale Event v schema.org čeká JEDNO místo a JEDEN čas.
+ * Tady je to obrácaně: web je registrační platforma pro stovky nezávislých
+ * setkání, každé jinde a jindy v rámci týdne kolem 1. 10. Vymyslet tomu
+ * jedno místo (třeba Prahu) by byl nepravdivý údaj — a Google nepravdivá
+ * strukturovaná data buď ignoruje, nebo je to důvod k ruční kontrole účtu
+ * v Search Console.
+ *
+ * Používá se proto WebSite (aby o webu Google věděl jako o celku) a
+ * Organization za vydavatele — ta pravdivá je, byla podle podle ARES.
+ */
+const strukturovanaData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": adresaStranky + "#web",
+      url: adresaStranky,
+      name: "Mezigeneračně aktivně spolu",
+      description: popis,
+      inLanguage: "cs",
+      publisher: { "@id": adresaStranky + "#vydavatel" },
+    },
+    {
+      "@type": "NGO",
+      "@id": adresaStranky + "#vydavatel",
+      name: "Právě teď! o.p.s.",
+      url: "https://www.pravetedops.cz",
+      email: "cepova@prave-ted-ops.cz",
+      telephone: "+420603852740",
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "Fügnerovo náměstí 1808/3",
+        addressLocality: "Praha",
+        postalCode: "120 00",
+        addressCountry: "CZ",
+      },
+    },
+  ],
+};
 ---
 
-<Layout
-  titulek="Mezigeneračně aktivně spolu — zapojte se do Mezinárodního dne seniorů"
-  popis="Zorganizujte mezigenerační setkání se seniory v týdnu kolem 1. října a staňte se součástí celostátního Zásobníku nápadů."
->
-  <PrepinacVariant aktivni="linka" />
-  <ObsahStranky predel="linka" />
-</Layout>
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulek}</title>
+    <meta name="description" content={popis} />
+    <link rel="canonical" href={adresaStranky} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Písmo s přednačtením, ať text neposkočí po dotažení fontu. -->
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin-ext.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:title" content={titulek} />
+    <meta property="og:description" content={popis} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="cs_CZ" />
+    <meta property="og:url" content={adresaStranky} />
+    <meta property="og:site_name" content="Mezigeneračně aktivně spolu" />
+    {/* 1200×630 — rozměr, který Facebook, LinkedIn i WhatsApp beze změny
+        oříznou na náhled. Menší obrázek by se roztahoval a byl rozmazaný. */}
+    <meta property="og:image" content={adresaObrazku} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={titulek} />
+    <meta name="twitter:description" content={popis} />
+    <meta name="twitter:image" content={adresaObrazku} />
+
+    {/* @graph místo dvou samostatných <script> tagů — Google umí obojí,
+        ale jeden blok je pro validátor přehlednější. */}
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify(strukturovanaData)}
+    />
+
+    {/* Texty upravené v administraci (/admin/) se doplní i sem. */}
+    <PrepisyObsahu />
+
+    {/* Bez JavaScriptu se najíždění nikdy nespustí — obsah proto musí
+        být viditelný rovnou, jinak by stránka zůstala prázdná.
+
+        `!important` tu není z lenosti. Astro si odkazy na styly vkládá až za
+        celý obsah <head>, takže tenhle blok skončí PŘED nimi a při shodné
+        síle selektoru by ho `.f-najezd { opacity: 0 }` z aktualni.css
+        přebilo — stránka by bez JavaScriptu zůstala prázdná i s touhle
+        pojistkou. Pořadí v souboru s tím nic neudělá, sílu ano. */}
+    <noscript>
+      <style>
+        .f-najezd,
+        .najezd {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+
+        .podtrzeni {
+          transform: scaleX(1) !important;
+        }
+      </style>
+    </noscript>
+  </head>
+
+  <body class="stranka-fable">
+    <!-- Přeskočení na obsah pro čtečky obrazovky a ovládání z klávesnice. -->
+    <a
+      href="#obsah"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded focus:bg-tyrkys focus:px-4 focus:py-2 focus:text-white"
+    >
+      Přeskočit na obsah
+    </a>
+
+    <Hlavicka />
+
+    <main id="obsah">
+      <Hero />
+      <Duvody />
+      <Kroky />
+      <Tipy />
+      <Podpora />
+      <Zasobnik />
+      <Mapa seSeznamem={false} />
+      <Registrace />
+      <KeStazeni />
+    </main>
+
+    <Paticka />
+
+    <script>
+      // ======================================================================
+      // Najíždění obsahu při scrollu.
+      //
+      // Obsluhuje vlastní třídy stránky (.f-najezd, kreslení nití a ilustrací
+      // při scrollu) i třídy převzatých komponent (.najezd, .podtrzeni
+      // z formuláře, mapy a pořadatelů) — jeden pozorovatel pro všechno.
+      //
+      // Jen jednou: po odhalení prvek přestáváme sledovat, animace se
+      // neopakuje při scrollu zpět. Při prefers-reduced-motion se
+      // pozorovatel vůbec nespouští a všechno se rovnou odhalí.
+      // ======================================================================
+      const chceMenePohybu = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      const prvky = document.querySelectorAll<HTMLElement>(
+        ".f-najezd, .najezd, .podtrzeni, .f-nit-scroll, .f-kresli-scroll, .f-pop",
+      );
+
+      if (chceMenePohybu) {
+        prvky.forEach((prvek) => prvek.classList.add("je-videt"));
+      } else {
+        const pozorovatel = new IntersectionObserver(
+          (zaznamy) => {
+            zaznamy.forEach((zaznam) => {
+              if (!zaznam.isIntersecting) return;
+
+              const prvek = zaznam.target as HTMLElement;
+
+              // Prvky jedné sekce naskakují se zpožděním 70 ms po sobě.
+              const poradi = Number(prvek.dataset.poradi ?? 0);
+              window.setTimeout(
+                () => prvek.classList.add("je-videt"),
+                poradi * 70,
+              );
+
+              pozorovatel.unobserve(prvek);
+            });
+          },
+          {
+            // Spustí se, až je prvek kousek uvnitř obrazovky.
+            rootMargin: "0px 0px -70px 0px",
+            threshold: 0.1,
+          },
+        );
+
+        prvky.forEach((prvek) => pozorovatel.observe(prvek));
+      }
+
+      // ------------------------------------------------------------------
+      // Scroll-driven efekty v prohlížečích bez scroll-driven animací
+      // ------------------------------------------------------------------
+      // Chrome a Edge kreslí nit a posouvají hloubkové vrstvy samy podle
+      // posunu stránky (viz fable.css). Safari a Firefox to zatím neumí,
+      // takže jim totéž dopočítáme tady a předáme jako `--dojeto` od 0
+      // do 1. CSS si z toho udělá posun čárky nebo souřadnici — vlastnost
+      // je stejná, jen se k ní jde jinudy.
+      //
+      // Tři režimy podle toho, co prvek dělá:
+      //   pater   dlouhá páteř kroků — dojíždí, zatímco JEJÍ SEKCE prochází
+      //           obrazovkou; rozsah je užší než celý průchod, ať je nit
+      //           hotová dřív, než sekce odjede pryč
+      //   predel  krátký steh přes hranici sekcí — hotový, než jeho spodek
+      //           dojede do půlky obrazovky (odpovídá `cover 0–60 %`)
+      //   prubeh  hloubková vrstva (.f-par) — 0 při vjezdu zespodu, 1 při
+      //           odjezdu nahoru (odpovídá `cover 0–100 %`)
+      //
+      // Všechno počítá jeden posluchač přes requestAnimationFrame. Když je
+      // pohyb zakázaný, nespouští se nic: nit zůstane vykreslená celá
+      // a vrstvy stojí — správný klidový stav, ne chyba.
+      if (
+        !chceMenePohybu &&
+        !CSS.supports("animation-timeline", "view()")
+      ) {
+        type Rezim = "pater" | "predel" | "prubeh";
+        const polozky: { cil: Element; zdroj: Element; rezim: Rezim }[] = [];
+
+        const pater = document.querySelector<SVGPathElement>(
+          ".f-nit-pater path",
+        );
+        const sekcePatere = pater?.closest("section");
+        if (pater && sekcePatere) {
+          polozky.push({ cil: pater, zdroj: sekcePatere, rezim: "pater" });
+        }
+
+        document
+          .querySelectorAll<SVGSVGElement>(".f-nit-predel")
+          .forEach((nit) =>
+            polozky.push({ cil: nit, zdroj: nit, rezim: "predel" }),
+          );
+
+        document
+          .querySelectorAll<HTMLElement>(".f-par")
+          .forEach((vrstva) =>
+            polozky.push({ cil: vrstva, zdroj: vrstva, rezim: "prubeh" }),
+          );
+
+        if (polozky.length > 0) {
+          let naplanovano = false;
+
+          const prepocitej = () => {
+            naplanovano = false;
+            const vyska = window.innerHeight;
+
+            for (const { cil, zdroj, rezim } of polozky) {
+              const r = zdroj.getBoundingClientRect();
+              let podil: number;
+
+              if (rezim === "pater") {
+                const zacatek = vyska * 0.95;
+                const konec = -r.height * 0.25;
+                podil = (zacatek - r.top) / (zacatek - konec);
+              } else if (rezim === "predel") {
+                podil = (vyska - r.top) / (0.6 * (vyska + r.height));
+              } else {
+                podil = (vyska - r.top) / (vyska + r.height);
+              }
+
+              (cil as HTMLElement).style.setProperty(
+                "--dojeto",
+                String(Math.max(0, Math.min(1, podil))),
+              );
+            }
+          };
+
+          const naplanuj = () => {
+            if (naplanovano) return;
+            naplanovano = true;
+            window.requestAnimationFrame(prepocitej);
+          };
+
+          prepocitej();
+          window.addEventListener("scroll", naplanuj, { passive: true });
+          window.addEventListener("resize", naplanuj, { passive: true });
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Šipka v hero: jakmile se návštěvník pohne, uhne nastupující niti.
+      // Při vypnutém pohybu zůstává na místě pořád.
+      // ------------------------------------------------------------------
+      if (!chceMenePohybu) {
+        const sipka = document.querySelector<HTMLElement>(".f-sipka-obal");
+
+        if (sipka) {
+          let schovana = false;
+
+          const prepniSipku = () => {
+            const ma = window.scrollY > 80;
+            if (ma === schovana) return;
+            schovana = ma;
+            sipka.classList.toggle("je-pryc", ma);
+          };
+
+          prepniSipku();
+          window.addEventListener("scroll", prepniSipku, { passive: true });
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Smyčky v hero (plování tvarů, houpání šipky) běží jen na obrazovce.
+      // Mimo ni se pozastaví — ušetřený výkon je znát hlavně na telefonu.
+      // ------------------------------------------------------------------
+      const hero = document.querySelector<HTMLElement>(".f-hero");
+
+      if (hero) {
+        const uspavac = new IntersectionObserver((zaznamy) => {
+          zaznamy.forEach((zaznam) =>
+            hero.classList.toggle("je-uspany", !zaznam.isIntersecting),
+          );
+        });
+
+        uspavac.observe(hero);
+      }
+    </script>
+  </body>
+</html>

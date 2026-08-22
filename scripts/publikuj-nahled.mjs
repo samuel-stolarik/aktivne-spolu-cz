@@ -123,9 +123,7 @@ git("push", "-q", "--force", "origin", VETEV);
 
 const zaklad = `https://samuel-stolarik.github.io/aktivne-spolu-cz`;
 console.log("");
-console.log("Náhled ke sdílení:");
-console.log(`  úvodní verze     ${zaklad}/`);
-console.log(`  kreativní verze  ${zaklad}/kreativni/`);
+console.log(`Náhled ke sdílení: ${zaklad}/`);
 console.log("");
 console.log("Po prvním nahrání trvá zveřejnění asi minutu.");
 console.log("Není to ostrý web — jen náhled k připomínkování.");

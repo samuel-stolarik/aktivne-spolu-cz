@@ -1,0 +1,8 @@
+# aktivne-spolu.cz
+#
+# Administrace se z prohledávání vyřazuje schválně: je zamčená přihlášením,
+# takže by se robot stejně nedostal dál, a nemá smysl na ni v indexu ukazovat.
+User-agent: *
+Disallow: /admin/
+
+Sitemap: https://aktivne-spolu.cz/sitemap-index.xml

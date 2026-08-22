@@ -93,7 +93,11 @@ export const KATALOG: PolozkaObsahu[] = [
     skupina: 'Úvodní obrazovka',
     popis: 'Hlavní nadpis úplně nahoře na stránce',
     typ: 'text',
-    vychozi: 'Propojme generace. Vytvořte setkání, na které se nezapomíná.',
+    // Zadavatel dvakrát měnil znění (sloveso „Propojme" → „Propojujeme",
+    // pak se schválně odstranila čárka za „setkání") a katalog se po ani
+    // jedné z těch změn nedoplnil — do dneška tu bylo znění, které na
+    // stránce neexistovalo, takže tenhle nadpis nešel z administrace upravit.
+    vychozi: 'Propojujeme generace. Vytvořte setkání na které se nezapomíná.',
   },
   {
     klic: 'hero.perex',
@@ -332,49 +336,32 @@ export const KATALOG: PolozkaObsahu[] = [
     vychozi: 'Čím se můžete inspirovat a co připravit?',
   },
   {
+    // Kartičky s dlouhým textem („1. kartička — text" apod.) tu bývaly tři,
+    // ke každé kategorii jedna. Zmizely, když se sekce předělala na jedoucí
+    // řádku s puntíky — ta ukazuje jen krátké položky (`polozky` v
+    // Tipy.astro), ne celou spojenou větu. Katalog o tom dlouho nevěděl:
+    // pole zůstávala v administraci k vidění, ale editace se nikde
+    // neprojevila — nebylo v HTML, co by se dalo přepsat. Zůstává jen
+    // nadpis kategorie, ten je pořád v legendě nad řádkou vidět.
     klic: 'tipy.tip-1.nadpis',
     skupina: 'Tipy na aktivity',
-    popis: '1. kartička — nadpis',
+    popis: '1. kategorie — nadpis',
     typ: 'text',
     vychozi: 'Kultura a tvořivost',
   },
   {
-    klic: 'tipy.tip-1.text',
-    skupina: 'Tipy na aktivity',
-    popis: '1. kartička — text',
-    typ: 'dlouhy',
-    vychozi:
-      'Společný zpěv, výtvarná dílna, tvoření dekorací, společné čtení.',
-  },
-  {
     klic: 'tipy.tip-2.nadpis',
     skupina: 'Tipy na aktivity',
-    popis: '2. kartička — nadpis',
+    popis: '2. kategorie — nadpis',
     typ: 'text',
     vychozi: 'Pohyb a pobyt venku',
   },
   {
-    klic: 'tipy.tip-2.text',
-    skupina: 'Tipy na aktivity',
-    popis: '2. kartička — text',
-    typ: 'dlouhy',
-    vychozi:
-      'Nenáročná procházka, zahradní hry, mezigenerační venkovní hry, například mölkky nebo pétanque.',
-  },
-  {
     klic: 'tipy.tip-3.nadpis',
     skupina: 'Tipy na aktivity',
-    popis: '3. kartička — nadpis',
+    popis: '3. kategorie — nadpis',
     typ: 'text',
     vychozi: 'Sdílení a setkávání',
-  },
-  {
-    klic: 'tipy.tip-3.text',
-    skupina: 'Tipy na aktivity',
-    popis: '3. kartička — text',
-    typ: 'dlouhy',
-    vychozi:
-      'Hraní stolních her, vyprávění příběhů, vzájemné učení (např. žáci ukáží práci s tabletem, senioři tradiční řemeslo).',
   },
   {
     klic: 'tipy.priprava.nadpis',
@@ -470,14 +457,6 @@ export const KATALOG: PolozkaObsahu[] = [
     vychozi:
       'Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne veřejně přístupná databáze plná ověřené inspirace pro organizátory podobných akcí z celé ČR.',
   },
-  {
-    klic: 'zasobnik.box',
-    skupina: 'Zásobník nápadů',
-    popis: 'Text v tyrkysovém boxu vedle odstavců',
-    typ: 'text',
-    vychozi: 'Veřejná databáze inspirace vzniká od 1. listopadu.',
-  },
-
   // --- Registrace a poplatek ----------------------------------------------
   {
     klic: 'registrace.nadpis',
