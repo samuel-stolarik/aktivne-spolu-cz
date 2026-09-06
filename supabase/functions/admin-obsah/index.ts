@@ -65,6 +65,16 @@ const SLOUPCE_PRIHLASKY = [
   'variabilni_symbol',
   'stav',
   'faktura_cislo',
+  // Pro rozklikávací detail v přehledu. Hana v adminu neviděla, jestli
+  // je přihlášená akce vůbec nějak popsaná — `napad_na_aktivitu` se sice
+  // stahoval, ale nikde se nezobrazoval, a fakturační údaje s částkou
+  // se nestahovaly vůbec.
+  'castka_kc',
+  'fakt_nazev',
+  'fakt_adresa',
+  'fakt_ic',
+  'fakt_dic',
+  'faktura_url',
   'schvaleno',
   'schvalil',
   'schvaleno_kdy',

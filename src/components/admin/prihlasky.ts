@@ -27,6 +27,13 @@ interface Prihlaska {
   variabilni_symbol: number;
   stav: string;
   faktura_cislo: string | null;
+  /** Údaje pro rozklikávací detail. */
+  castka_kc: number | null;
+  fakt_nazev: string | null;
+  fakt_adresa: string | null;
+  fakt_ic: string | null;
+  fakt_dic: string | null;
+  faktura_url: string | null;
 
   // Zveřejnění na mapce. Je to JINÁ VĚC než `stav` výš: `stav` říká, jak je
   // na tom platba, `schvaleno` říká, jestli akci uvidí lidé na webu.
@@ -41,6 +48,15 @@ interface Prihlaska {
   souradnice_stav: string;
   souradnice_duvod: string | null;
 }
+
+/**
+ * Které přihlášky mají otevřený detail.
+ *
+ * Drží se mimo tabulku schválně: překreslení (filtr, hledání, řazení)
+ * maže všechny řádky a znovu je staví. Bez tohohle by se detail zavřel
+ * pokaždé, když se v hledání změní písmeno.
+ */
+const rozbalene = new Set<string>();
 
 /** Názvy stavů tak, jak je uvidí správce. V databázi jsou bez diakritiky. */
 const NAZVY_STAVU: Record<string, string> = {
@@ -471,7 +487,7 @@ function vykresliTabulku(): void {
   if (radky.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 12;
+    td.colSpan = 13;
     td.className = "px-3 py-8 text-center";
     td.textContent =
       vsechnyPrihlasky.length === 0
@@ -522,10 +538,135 @@ function vykresliTabulku(): void {
       bunka(String(prihlaska.variabilni_symbol), "whitespace-nowrap"),
       bunkaSeStavem(prihlaska),
       bunkaSMapou(prihlaska),
+      bunkaSDetailem(prihlaska),
     );
 
     telo.append(tr);
+
+    // Detail jde hned pod svůj řádek, aby bylo vidět, ke komu patří.
+    if (rozbalene.has(prihlaska.id)) telo.append(radekDetailu(prihlaska));
   }
+}
+
+/** Tlačítko, které detail otevře a zavře. */
+function bunkaSDetailem(prihlaska: Prihlaska): HTMLTableCellElement {
+  const td = document.createElement("td");
+  td.className = "px-3 py-3 align-top";
+
+  const tlacitko = document.createElement("button");
+  tlacitko.type = "button";
+  const otevreno = rozbalene.has(prihlaska.id);
+  tlacitko.textContent = otevreno ? "Skrýt detail" : "Zobrazit detail";
+  tlacitko.className =
+    "inline-flex min-h-11 items-center whitespace-nowrap text-tyrkys underline";
+  tlacitko.setAttribute("aria-expanded", otevreno ? "true" : "false");
+  tlacitko.addEventListener("click", () => {
+    if (rozbalene.has(prihlaska.id)) rozbalene.delete(prihlaska.id);
+    else rozbalene.add(prihlaska.id);
+    vykresliTabulku();
+  });
+
+  td.append(tlacitko);
+  return td;
+}
+
+/**
+ * Rozbalený detail přihlášky.
+ *
+ * PROČ: v přehledu byly vidět jen kontakty a datum akce, takže se nedalo
+ * poznat, jestli přihlášená akce vůbec něco dělá — a přitom se právě
+ * podle toho rozhoduje, jestli ji pustit na mapku. Popis akce se
+ * z databáze stahoval, ale nikde se neukazoval; byl jen v exportu do
+ * Excelu, kvůli kterému by se musel stahovat celý soubor.
+ */
+function radekDetailu(prihlaska: Prihlaska): HTMLTableRowElement {
+  const tr = document.createElement("tr");
+  tr.className = "border-t border-merunka-tlumena bg-merunka-svetla/40";
+
+  const td = document.createElement("td");
+  td.colSpan = 13;
+  td.className = "px-3 py-4";
+
+  const obal = document.createElement("div");
+  obal.className = "grid gap-4 md:grid-cols-2";
+
+  // ── Popis akce ────────────────────────────────────────────────────
+  // Nejdůležitější věc na celém detailu, proto stojí první a přes celou
+  // šířku. Když ho pořadatel nevyplnil, musí to být napsané — prázdné
+  // místo vypadá jako chyba načítání.
+  const popis = document.createElement("div");
+  popis.className = "md:col-span-2";
+  const popisNadpis = document.createElement("p");
+  popisNadpis.className = "m-0 font-semibold";
+  popisNadpis.textContent = "Nápad na aktivitu";
+  const popisText = document.createElement("p");
+  popisText.className = "m-0 mt-1 whitespace-pre-wrap";
+  const napad = (prihlaska.napad_na_aktivitu ?? "").trim();
+  if (napad) {
+    popisText.textContent = napad;
+  } else {
+    popisText.textContent = "Pořadatel akci nepopsal.";
+    popisText.className += " text-popisek";
+  }
+  popis.append(popisNadpis, popisText);
+
+  obal.append(popis, blokUdaju("Akce", [
+    ["Datum konání", ceskyDenAkce(prihlaska.datum_akce)],
+    ["Město", `${prihlaska.mesto}, ${prihlaska.kraj}`],
+    ["Přihlášeno", ceskeDatum(prihlaska.vytvoreno)],
+  ]));
+
+  // ── Platba a doklad ───────────────────────────────────────────────
+  const platba = blokUdaju("Platba", [
+    ["Částka", prihlaska.castka_kc === null ? null : `${prihlaska.castka_kc} Kč`],
+    ["Forma", NAZVY_PLATEB[prihlaska.forma_platby] ?? prihlaska.forma_platby],
+    ["Variabilní symbol", String(prihlaska.variabilni_symbol)],
+    ["Číslo faktury", prihlaska.faktura_cislo],
+    ["Fakturovat na", prihlaska.fakt_nazev],
+    ["Adresa", prihlaska.fakt_adresa],
+    ["IČO", prihlaska.fakt_ic],
+    ["DIČ", prihlaska.fakt_dic],
+  ]);
+
+  if (prihlaska.faktura_url) {
+    const odkaz = document.createElement("a");
+    odkaz.href = prihlaska.faktura_url;
+    odkaz.target = "_blank";
+    odkaz.rel = "noreferrer";
+    odkaz.className = "mt-2 inline-flex min-h-11 items-center text-tyrkys underline";
+    odkaz.textContent = "Otevřít fakturu (PDF)";
+    platba.append(odkaz);
+  }
+
+  obal.append(platba);
+  td.append(obal);
+  tr.append(td);
+  return tr;
+}
+
+/** Skupina „popisek: hodnota". Prázdné údaje se vynechají, ne vypíší prázdné. */
+function blokUdaju(nadpis: string, udaje: [string, string | null][]): HTMLDivElement {
+  const blok = document.createElement("div");
+  const titulek = document.createElement("p");
+  titulek.className = "m-0 font-semibold";
+  titulek.textContent = nadpis;
+  blok.append(titulek);
+
+  const seznam = document.createElement("dl");
+  seznam.className = "m-0 mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1";
+  for (const [popisek, hodnota] of udaje) {
+    const text = (hodnota ?? "").trim();
+    if (!text) continue;
+    const dt = document.createElement("dt");
+    dt.className = "m-0 text-popisek";
+    dt.textContent = popisek;
+    const dd = document.createElement("dd");
+    dd.className = "m-0";
+    dd.textContent = text;
+    seznam.append(dt, dd);
+  }
+  blok.append(seznam);
+  return blok;
 }
 
 function sklonujPrihlasky(pocet: number): string {
