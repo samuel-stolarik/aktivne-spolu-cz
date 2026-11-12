@@ -47,7 +47,25 @@ export async function zaradAPosli(
   const postaId: string | null = odlozeno?.id ?? null;
 
   if (pres === 'nikdo') {
-    console.log('Zpráva čeká v odchozí poště, funkce nemá nastavené odesílání.');
+    // Odesílá scénář v Make: z webhooku si vezme JEN `posta_id`, zprávu si
+    // přečte z `odchozi_posta` servisním klíčem a pošle ji, když je ve stavu
+    // `ceka`. Text zprávy přes veřejný webhook nikdy nejde.
+    const webhook = (Deno.env.get('MAKE_WEBHOOK_URL') ?? '').trim();
+    if (postaId && webhook) {
+      try {
+        const o = await fetch(webhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ posta_id: postaId }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!o.ok) console.error(`Make odpověděl ${o.status}, zpráva ${postaId} čeká ve frontě.`);
+      } catch (e) {
+        console.error(`Make se nepovedlo zavolat, zpráva ${postaId} čeká ve frontě.`, e);
+      }
+    } else {
+      console.log('Zpráva čeká v odchozí poště, odesílání není nastavené.');
+    }
     return { odeslano: false, postaId, pres };
   }
 
