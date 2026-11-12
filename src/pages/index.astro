@@ -44,8 +44,11 @@ import Zasobnik from "../components/aktualni/Zasobnik.astro";
 import Registrace from "../components/aktualni/Registrace.astro";
 import KeStazeni from "../components/aktualni/KeStazeni.astro";
 
+// Název projektu stojí na začátku: lidé ho hledají jménem („aktivně spolu")
+// a vyhledávače váží slova na začátku titulku víc než na konci. Do 60 znaků,
+// ať ho Google neusekne.
 const titulek =
-  "Propojujeme generace — Mezinárodní den seniorů | aktivně spolu";
+  "Mezigeneračně aktivně spolu — Mezinárodní den seniorů 2026";
 const popis =
   "Zorganizujte přátelské mezigenerační setkání ve svém okolí a oslavte " +
   "Mezinárodní den seniorů v týdnu kolem 1. 10. Registrace pro školy, " +
@@ -95,6 +98,40 @@ const strukturovanaData = {
         addressLocality: "Praha",
         postalCode: "120 00",
         addressCountry: "CZ",
+      },
+    },
+    {
+      "@type": "Event",
+      "@id": adresaStranky + "#kampan-2026",
+      name: "Mezigeneračně aktivně spolu — Mezinárodní den seniorů 2026",
+      description:
+        "Celostátní kampaň k Mezinárodnímu dni seniorů. Školy, firmy, neziskovky i jednotlivci pořádají v týdnu kolem 1. října mezigenerační setkání ve svém okolí.",
+      // Týden kolem 1. 10. 2026 (čtvrtek). Když se termín kampaně změní,
+      // musí se přepsat i tady — vyhledávače podle toho rozhodují, jestli
+      // akci ještě zobrazit.
+      startDate: "2026-09-28",
+      endDate: "2026-10-04",
+      eventStatus: "https://schema.org/EventScheduled",
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      location: {
+        "@type": "Place",
+        name: "Celá Česká republika",
+        address: { "@type": "PostalAddress", addressCountry: "CZ" },
+      },
+      organizer: { "@id": adresaStranky + "#vydavatel" },
+      image: adresaStranky + "obrazky/og-image.jpg",
+      url: adresaStranky,
+      inLanguage: "cs",
+      isAccessibleForFree: false,
+      // Bez `availability`: Seznam z hodnoty InStock dělal „Skladem"
+      // jako u zboží v e-shopu, což u registrace na akci působí divně.
+      offers: {
+        "@type": "Offer",
+        name: "Registrační poplatek",
+        price: "500",
+        priceCurrency: "CZK",
+        url: adresaStranky,
+        validFrom: "2026-06-16",
       },
     },
   ],
