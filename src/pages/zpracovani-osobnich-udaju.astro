@@ -2,13 +2,13 @@
 /**
  * Zpracování osobních údajů.
  *
- * Zástupný obsah. Skutečné znění dodá zadavatel — viz [DOPLNIT] níž.
- * Na tuhle stránku odkazuje povinné zaškrtávací pole ve formuláři,
- * takže musí existovat i před doplněním finálního textu.
+ * Znění účinné od 31. 8. 2026. Lhůty a zpracovatelé odpovídají provozu: data drží
+ * Supabase (EU), web běží na Webglobe, Google Analytics jen po souhlasu.
+ * Návrh, ne právní posudek — před dalším ročníkem by mělo projít právníkem.
  *
- * Pod kapitolami je schválně vypsané, jaké údaje formulář opravdu sbírá.
- * Tahle část odpovídá skutečnosti a nemá čekat na právníka — člověk, který
- * uděluje souhlas, má vidět, co konkrétně odesílá.
+ * `text` je HTML a vykresluje se přes set:html, aby šly použít odstavce,
+ * seznamy a odkazy. Odkaz v textu má třídu `text-tyrkys underline` —
+ * `podtrzeni` je dekorativní proužek (48×5 px, display:block), ne styl odkazu.
  */
 import Layout from "../layouts/Layout.astro";
 import Sekce from "../components/Sekce.astro";
@@ -19,27 +19,27 @@ import Ikona from "../components/Ikona.astro";
 const kapitoly = [
   {
     nadpis: "1. Kdo údaje zpracovává",
-    text: "Správcem osobních údajů je Právě teď! o.p.s., se sídlem Fügnerovo náměstí 1808/3, 120 00 Praha 2, IČ: 29154901. Práva týkající se osobních údajů (viz kapitola 6) lze uplatnit na e-mailu info@prave-ted-ops.cz.",
+    text: "<p class=\"mt-3\">Správcem osobních údajů je Právě teď! o.p.s., se sídlem Fügnerovo náměstí 1808/3, 120 00 Praha 2, IČ: 29154901. Práva týkající se osobních údajů (viz kapitola 6) lze uplatnit na e-mailu info@prave-ted-ops.cz.</p>",
   },
   {
     nadpis: "2. Proč údaje zpracováváme",
-    text: "[DOPLNIT: úplné znění — účel zpracování, tedy evidence přihlášek, vystavení dokladu o platbě a komunikace s pořadateli setkání.]",
+    text: "<p class=\"mt-3\">Osobní údaje zpracováváme jen pro to, bez čeho se kampaň neobejde:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li><strong>Evidence přihlášek</strong> — abychom věděli, kdo se do kampaně zapojil, kde se setkání uskuteční a mohli akci zobrazit v Mapě akcí.</li><li><strong>Platba a doklad</strong> — spárování registračního poplatku a vystavení faktury těm, kdo o ni požádají.</li><li><strong>Komunikace s pořadateli</strong> — potvrzení registrace, organizační informace k průběhu kampaně a vyzvání ke sdílení výstupů do Zásobníku nápadů.</li><li><strong>Provoz a bezpečnost webu</strong> — technické zajištění, ochrana proti zneužití formuláře a anonymní statistika návštěvnosti.</li></ul><p class=\"mt-3\">Údaje nepoužíváme k profilování, k automatizovanému rozhodování ani je neprodáváme. Obchodní sdělení nesouvisející s kampaní nerozesíláme.</p>",
   },
   {
     nadpis: "3. Na jakém základě",
-    text: "[DOPLNIT: úplné znění — právní titul zpracování, souhlas a plnění smlouvy.]",
+    text: "<p class=\"mt-3\">Každý účel má svůj právní základ podle článku 6 odst. 1 obecného nařízení o ochraně osobních údajů (GDPR):</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li><strong>Plnění smlouvy</strong> (čl. 6 odst. 1 písm. b) — evidence přihlášky, komunikace k jejímu vyřízení a zajištění účasti v kampani. Bez těchto údajů registraci nelze přijmout.</li><li><strong>Plnění právní povinnosti</strong> (čl. 6 odst. 1 písm. c) — vystavení a uchování účetních a daňových dokladů.</li><li><strong>Souhlas</strong> (čl. 6 odst. 1 písm. a) — zveřejnění popisu a fotografií z uskutečněného setkání v Zásobníku nápadů a v Mapě akcí a použití analytických cookies. Souhlas je dobrovolný a lze jej kdykoli odvolat, aniž by to mělo vliv na účast v kampani.</li><li><strong>Oprávněný zájem</strong> (čl. 6 odst. 1 písm. f) — zabezpečení webu a ochrana registračního formuláře před zneužitím.</li></ul><p class=\"mt-3\">Odvolání souhlasu i uplatnění dalších práv stačí poslat e-mailem na <a class=\"text-tyrkys underline\" href=\"mailto:info@prave-ted-ops.cz\">info@prave-ted-ops.cz</a>.</p>",
   },
   {
     nadpis: "4. Jak dlouho údaje uchováváme",
-    text: "[DOPLNIT: úplné znění — doba uchování, u účetních dokladů podle zákona o účetnictví.]",
+    text: "<p class=\"mt-3\">Údaje nedržíme déle, než je potřeba:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li><strong>Účetní a daňové doklady</strong> — po dobu stanovenou zákonem č. 563/1991 Sb., o účetnictví, nejdéle 10 let od konce účetního období, kterého se týkají.</li><li><strong>Kontaktní a registrační údaje</strong> — 3 roky od skončení ročníku kampaně, do kterého se pořadatel přihlásil. Umožňuje nám to oslovit ho s dalším ročníkem.</li><li><strong>Obsah vložený do Zásobníku nápadů</strong> — po dobu, po kterou trvá udělený souhlas, nejdéle však do jeho odvolání.</li><li><strong>Analytické údaje</strong> — po dobu nastavenou v použitém analytickém nástroji, nejdéle 14 měsíců.</li></ul><p class=\"mt-3\">Po uplynutí těchto lhůt údaje mažeme, případně anonymizujeme tak, aby už podle nich nebylo možné nikoho identifikovat.</p>",
   },
   {
     nadpis: "5. Komu se údaje předávají",
-    text: "[DOPLNIT: úplné znění — zpracovatelé, tedy poskytovatel databáze, e-mailové a fakturační služby.]",
+    text: "<p class=\"mt-3\">Údaje nepředáváme nikomu, kdo by je používal pro sebe. Podílejí se na nich pouze zpracovatelé, kteří pro nás zajišťují provoz kampaně a jsou vázáni mlčenlivostí a smlouvou o zpracování:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li><strong>Supabase</strong> — databáze registrací a serverové funkce, které formulář zpracovávají. Data jsou uložena v datovém centru v Evropské unii.</li><li><strong>Webglobe, s.r.o.</strong> — hosting webových stránek projektu (Česká republika).</li><li><strong>Google Ireland Limited</strong> — služba Google Analytics pro měření návštěvnosti, a to pouze tehdy, udělíte-li souhlas s analytickými cookies.</li><li><strong>Poskytovatel e-mailových a fakturačních služeb</strong> — rozesílání potvrzení registrace a vystavení dokladů.</li></ul><p class=\"mt-3\">Při ověřování fakturačních údajů podle IČ se dotazujeme veřejného registru ARES provozovaného Ministerstvem financí ČR. Osobní údaje se do něj neodesílají.</p><p class=\"mt-3\">Údaje dále předáváme, pokud nám to ukládá zákon — například orgánům finanční správy. Mimo Evropskou unii údaje nepředáváme.</p>",
   },
   {
     nadpis: "6. Jaká máte práva",
-    text: "[DOPLNIT: úplné znění — přístup, oprava, výmaz, omezení zpracování, námitka, odvolání souhlasu a stížnost u Úřadu pro ochranu osobních údajů.]",
+    text: "<p class=\"mt-3\">Ve vztahu ke svým osobním údajům máte podle GDPR tato práva:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li><strong>Přístup</strong> — dozvědět se, jaké údaje o vás vedeme, a získat jejich kopii.</li><li><strong>Oprava</strong> — nechat opravit údaje, které jsou nepřesné nebo neúplné.</li><li><strong>Výmaz</strong> — nechat údaje smazat, pominul-li důvod, proč je zpracováváme. Netýká se údajů, které musíme uchovat kvůli účetním povinnostem.</li><li><strong>Omezení zpracování</strong> — dočasně údaje „zmrazit“, například po dobu, kdy prověřujeme jejich přesnost.</li><li><strong>Přenositelnost</strong> — dostat údaje ve strojově čitelném formátu a předat je jinému správci.</li><li><strong>Námitka</strong> — vznést námitku proti zpracování založenému na oprávněném zájmu.</li><li><strong>Odvolání souhlasu</strong> — kdykoli odvolat souhlas tam, kde jsme o něj žádali. Zpracování do okamžiku odvolání zůstává zákonné.</li></ul><p class=\"mt-3\">Uplatnit je můžete e-mailem na <a class=\"text-tyrkys underline\" href=\"mailto:info@prave-ted-ops.cz\">info@prave-ted-ops.cz</a>. Vyřídíme je bez zbytečného odkladu, nejpozději do jednoho měsíce.</p><p class=\"mt-3\">Máte-li za to, že s vašimi údaji nakládáme nesprávně, můžete podat stížnost u dozorového úřadu, kterým je <strong>Úřad pro ochranu osobních údajů</strong>, Pplk. Sochora 27, 170 00 Praha 7, <a class=\"text-tyrkys underline\" href=\"https://www.uoou.cz\">uoou.cz</a>.</p>",
   },
 ];
 
@@ -55,12 +55,23 @@ const sbiraneUdaje = [
   "Zvolená forma platby",
   "Fakturační údaje — název dle obchodního rejstříku, adresa, IČ, DIČ (jen při volbě převodu s fakturou)",
 ];
+
+const drobeckyData = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Úvod", item: "https://aktivne-spolu.cz/" },
+    { "@type": "ListItem", position: 2, name: "Zpracování osobních údajů", item: "https://aktivne-spolu.cz/zpracovani-osobnich-udaju/" },
+  ],
+};
 ---
 
 <Layout
   titulek="Zpracování osobních údajů — Mezigeneračně aktivně spolu"
   popis="Informace o zpracování osobních údajů při registraci do projektu Mezigeneračně aktivně spolu."
 >
+  <script type="application/ld+json" set:html={JSON.stringify(drobeckyData)} slot="hlava" />
+
   <Sekce id="zpracovani-osobnich-udaju">
     <NadpisSekce uroven="h1" poradi={0}>Zpracování osobních údajů</NadpisSekce>
 
@@ -69,10 +80,7 @@ const sbiraneUdaje = [
       data-poradi="1"
     >
       <Ikona jmeno="alert-circle" velikost={24} />
-      <p class="m-0">
-        Toto je pracovní verze. Závazné znění dodá pořadatel před spuštěním
-        registrací.
-      </p>
+      <p class="m-0">Tyto zásady zpracování osobních údajů jsou účinné od 31. srpna 2026.</p>
     </div>
 
     <div class="mt-10 max-w-[760px] space-y-8">
@@ -82,7 +90,7 @@ const sbiraneUdaje = [
             <h2 class="text-[length:var(--text-nadpis-sekce)]">
               {kapitola.nadpis}
             </h2>
-            <p class="mt-3">{kapitola.text}</p>
+            <Fragment set:html={kapitola.text} />
           </section>
         ))
       }
@@ -91,9 +99,7 @@ const sbiraneUdaje = [
         <h2 class="text-[length:var(--text-nadpis-sekce)]">
           Jaké údaje formulář sbírá
         </h2>
-        <p class="mt-3">
-          Registrační formulář odesílá výhradně tyto údaje:
-        </p>
+        <p class="mt-3">Registrační formulář odesílá výhradně tyto údaje:</p>
         <ul class="mt-4 space-y-2">
           {
             sbiraneUdaje.map((udaj) => (

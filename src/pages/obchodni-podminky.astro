@@ -2,8 +2,13 @@
 /**
  * Obchodní podmínky.
  *
- * Zástupný obsah. Skutečné znění dodá zadavatel — viz [DOPLNIT] níž.
- * Struktura je připravená tak, aby stačilo vyměnit texty odstavců.
+ * Znění účinné od 31. 8. 2026. Údaje o zápisu ověřené v ARES a ve veřejném
+ * rejstříku (Městský soud v Praze, oddíl O, vložka 1075).
+ * Návrh, ne právní posudek — před dalším ročníkem by mělo projít právníkem.
+ *
+ * `text` je HTML a vykresluje se přes set:html, aby šly použít odstavce,
+ * seznamy a odkazy. Odkaz v textu má třídu `text-tyrkys underline` —
+ * `podtrzeni` je dekorativní proužek (48×5 px, display:block), ne styl odkazu.
  */
 import Layout from "../layouts/Layout.astro";
 import Sekce from "../components/Sekce.astro";
@@ -14,35 +19,46 @@ import Ikona from "../components/Ikona.astro";
 const kapitoly = [
   {
     nadpis: "1. Základní údaje o pořadateli",
-    text: "Pořadatelem projektu je Právě teď! o.p.s., se sídlem Fügnerovo náměstí 1808/3, 120 00 Praha 2, IČ: 29154901, zapsaná v rejstříku obecně prospěšných společností. Kontakt pro dotazy a připomínky: info@prave-ted-ops.cz. [DOPLNIT: spisová značka zápisu v rejstříku.]",
+    text: "<p class=\"mt-3\">Pořadatelem projektu <em>Mezigeneračně aktivně spolu</em> je <strong>Právě teď! o.p.s.</strong>, se sídlem Fügnerovo náměstí 1808/3, Nové Město, 120 00 Praha 2, IČ: 29154901, zapsaná v rejstříku obecně prospěšných společností vedeném Městským soudem v Praze, oddíl O, vložka 1075. Právě teď! o.p.s. není plátcem DPH.</p><p class=\"mt-3\">Kontakt pro dotazy, připomínky i pro uplatnění práv z těchto podmínek: <a class=\"text-tyrkys underline\" href=\"mailto:info@prave-ted-ops.cz\">info@prave-ted-ops.cz</a>.</p><p class=\"mt-3\">Tyto obchodní podmínky upravují vztah mezi pořadatelem projektu a osobou, která se do projektu přihlásí prostřednictvím registračního formuláře na webu <a class=\"text-tyrkys underline\" href=\"https://aktivne-spolu.cz\">aktivne-spolu.cz</a> (dále jen „účastník“). Odesláním registračního formuláře účastník potvrzuje, že se s podmínkami seznámil a souhlasí s nimi.</p>",
   },
   {
     nadpis: "2. Předmět registrace",
-    text: "[DOPLNIT: úplné znění — co se registrací sjednává, tedy přihlášení pořadatele mezigeneračního setkání do projektu.]",
+    text: "<p class=\"mt-3\">Registrací se účastník přihlašuje do celostátní kampaně k Mezinárodnímu dni seniorů a zavazuje se uspořádat vlastní mezigenerační setkání ve svém okolí, zpravidla v týdnu kolem 1. října. Setkání pořádá účastník vlastním jménem, na vlastní odpovědnost a na vlastní náklady.</p><p class=\"mt-3\">Pořadatel projektu se registrací zavazuje poskytnout účastníkovi:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li>zařazení do celostátní kampaně a její propagace,</li><li>přístup k informačním a metodickým materiálům, včetně informačního letáku,</li><li>možnost zveřejnit vlastní akci v Mapě akcí,</li><li>možnost vložit popis a fotografie z uskutečněného setkání do veřejně přístupného Zásobníku nápadů,</li><li>organizační podporu a komunikaci po dobu konání kampaně.</li></ul><p class=\"mt-3\">Registrace vzniká odesláním vyplněného formuláře a je dokončena připsáním registračního poplatku na účet pořadatele projektu. Pořadatel projektu si vyhrazuje právo registraci nepřijmout, zejména je-li v rozporu s účelem projektu; v takovém případě se uhrazený poplatek vrací v plné výši.</p>",
   },
   {
     nadpis: "3. Registrační poplatek a platební podmínky",
-    text: "[DOPLNIT: úplné znění — výše poplatku 500 Kč, splatnost, způsoby úhrady, vystavení faktury. Právě teď! o.p.s. je neplátce DPH.]",
+    text: "<p class=\"mt-3\">Registrační poplatek činí <strong>500 Kč</strong> za jednu přihlášku. Právě teď! o.p.s. není plátcem DPH, uvedená částka je tedy konečná.</p><p class=\"mt-3\">Poplatek je splatný do <strong>14 dnů</strong> od odeslání registrace, nejpozději však do dne konání přihlášeného setkání. Uhradit jej lze:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li>naskenováním QR kódu zobrazeného po odeslání formuláře,</li><li>běžným bankovním převodem podle údajů uvedených tamtéž.</li></ul><p class=\"mt-3\">Platba je spárována podle variabilního symbolu, který účastník obdrží spolu s platebními údaji. Účastníkům, kteří to v registračním formuláři zvolí, systém automaticky vystaví fakturu pro potřeby účetnictví školy či organizace; fakturační údaje se přebírají z registračního formuláře. Doklad je zasílán elektronicky na e-mail uvedený v registraci.</p><p class=\"mt-3\">Poplatek slouží výhradně k pokrytí nákladů na organizaci a koordinaci kampaně, provoz webu a Zásobníku nápadů a další nezbytné provozní náklady. Není úplatou za zisk.</p>",
   },
   {
     nadpis: "4. Odstoupení a vrácení poplatku",
-    text: "[DOPLNIT: úplné znění — za jakých podmínek lze registraci zrušit a zda se poplatek vrací.]",
+    text: "<p class=\"mt-3\">Účastník může svou registraci kdykoli zrušit e-mailem na <a class=\"text-tyrkys underline\" href=\"mailto:info@prave-ted-ops.cz\">info@prave-ted-ops.cz</a>. Uhrazený registrační poplatek se v takovém případě <strong>nevrací</strong> — je určen na náklady kampaně, které vznikají průběžně bez ohledu na to, zda se konkrétní setkání nakonec uskuteční.</p><p class=\"mt-3\">Poplatek se naopak <strong>vrací v plné výši</strong>, pokud:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li>pořadatel projektu kampaň nebo její ročník zruší,</li><li>pořadatel projektu registraci nepřijme podle článku 2,</li><li>k úhradě došlo omylem, dvakrát nebo v nesprávné výši.</li></ul><p class=\"mt-3\">Vrácení proběhne bezhotovostně na účet, ze kterého byla platba odeslána, nejpozději do 30 dnů ode dne, kdy důvod pro vrácení nastal.</p><p class=\"mt-3\">Je-li účastníkem <strong>spotřebitel</strong> (tedy fyzická osoba, která se neregistruje v rámci své podnikatelské činnosti), má podle občanského zákoníku právo odstoupit od smlouvy uzavřené distančním způsobem do 14 dnů bez udání důvodu. Toto právo se neuplatní u služeb v oblasti využití volného času, které se pořadatel zavazuje poskytnout v určeném termínu (§ 1837 občanského zákoníku) — což je případ setkání vázaného na termín kampaně. Uplatnit je lze na e-mailu uvedeném výše.</p>",
   },
   {
     nadpis: "5. Práva a povinnosti pořadatele setkání",
-    text: "[DOPLNIT: úplné znění — odpovědnost za průběh a bezpečnost vlastní akce.]",
+    text: "<p class=\"mt-3\">Setkání pořádá účastník samostatně, vlastním jménem a na vlastní odpovědnost. Pořadatel projektu není spolupořadatelem jednotlivých akcí, neúčastní se jejich přípravy ani průběhu a <strong>neodpovídá za škodu ani újmu, která při nich vznikne</strong>.</p><p class=\"mt-3\">Účastník zejména odpovídá za to, že:</p><ul class=\"mt-3 list-disc space-y-1 pl-5\"><li>zajistí bezpečnost účastníků svého setkání a vhodnost prostor,</li><li>dodrží právní předpisy vztahující se k jeho akci, včetně předpisů o ochraně zdraví a o péči o nezletilé,</li><li>má souhlas osob zachycených na fotografiích, které vloží do Zásobníku nápadů, a u nezletilých souhlas jejich zákonných zástupců,</li><li>vložený obsah neporušuje práva třetích osob a není v rozporu s dobrými mravy.</li></ul><p class=\"mt-3\">Vložením popisu a fotografií do Zásobníku nápadů uděluje účastník pořadateli projektu bezúplatné, nevýhradní a časově neomezené oprávnění tento obsah zveřejnit na webu projektu a použít jej k propagaci kampaně. Toto oprávnění lze odvolat e-mailem; obsah pak bude odstraněn.</p><p class=\"mt-3\">Pořadatel projektu si vyhrazuje právo odstranit vložený obsah, který odporuje účelu projektu nebo těmto podmínkám.</p>",
   },
   {
     nadpis: "6. Závěrečná ustanovení",
-    text: "[DOPLNIT: úplné znění — účinnost podmínek, rozhodné právo.]",
+    text: "<p class=\"mt-3\">Tyto obchodní podmínky jsou účinné od <strong>31. srpna 2026</strong> a vztahují se na všechny registrace odeslané od tohoto dne.</p><p class=\"mt-3\">Vztahy těmito podmínkami neupravené se řídí právním řádem České republiky, zejména zákonem č. 89/2012 Sb., občanský zákoník. Je-li účastníkem spotřebitel, nejsou tímto dotčena jeho práva vyplývající z právních předpisů na ochranu spotřebitele. K mimosoudnímu řešení spotřebitelských sporů je příslušná Česká obchodní inspekce (<a class=\"text-tyrkys underline\" href=\"https://www.coi.cz\">coi.cz</a>).</p><p class=\"mt-3\">Pořadatel projektu může podmínky změnit; na již odeslané registrace se vztahuje znění účinné ke dni jejich odeslání. Aktuální znění je vždy dostupné na této stránce.</p><p class=\"mt-3\">Zpracování osobních údajů je popsáno v samostatném dokumentu <a class=\"text-tyrkys underline\" href=\"/zpracovani-osobnich-udaju/\">Zpracování osobních údajů</a>.</p>",
   },
 ];
+
+const drobeckyData = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Úvod", item: "https://aktivne-spolu.cz/" },
+    { "@type": "ListItem", position: 2, name: "Obchodní podmínky", item: "https://aktivne-spolu.cz/obchodni-podminky/" },
+  ],
+};
 ---
 
 <Layout
   titulek="Obchodní podmínky — Mezigeneračně aktivně spolu"
   popis="Obchodní podmínky registrace do projektu Mezigeneračně aktivně spolu."
 >
+  <script type="application/ld+json" set:html={JSON.stringify(drobeckyData)} slot="hlava" />
+
   <Sekce id="obchodni-podminky">
     <NadpisSekce uroven="h1" poradi={0}>Obchodní podmínky</NadpisSekce>
 
@@ -51,10 +67,7 @@ const kapitoly = [
       data-poradi="1"
     >
       <Ikona jmeno="alert-circle" velikost={24} />
-      <p class="m-0">
-        Toto je pracovní verze. Závazné znění obchodních podmínek dodá pořadatel
-        před spuštěním registrací.
-      </p>
+      <p class="m-0">Tyto obchodní podmínky jsou účinné od 31. srpna 2026.</p>
     </div>
 
     <div class="mt-10 max-w-[760px] space-y-8">
@@ -64,7 +77,7 @@ const kapitoly = [
             <h2 class="text-[length:var(--text-nadpis-sekce)]">
               {kapitola.nadpis}
             </h2>
-            <p class="mt-3">{kapitola.text}</p>
+            <Fragment set:html={kapitola.text} />
           </section>
         ))
       }
