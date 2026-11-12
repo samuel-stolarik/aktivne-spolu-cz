@@ -221,6 +221,8 @@ import "../../styles/global.css";
             <table class="w-full border-collapse text-popisek">
               <thead>
                 <tr class="bg-plocha-tyrkys text-left">
+                  {/* Detail první a přilepený: vpravo byl mimo obrazovku. */}
+                  <th class="sticky left-0 z-10 bg-plocha-tyrkys px-3 py-3 font-semibold">Detail</th>
                   <th class="px-3 py-3 font-semibold">Přihlášeno</th>
                   <th class="px-3 py-3 font-semibold">Pořadatel</th>
                   <th class="px-3 py-3 font-semibold">Kontaktní osoba</th>
@@ -233,7 +235,6 @@ import "../../styles/global.css";
                   <th class="px-3 py-3 font-semibold">Variabilní symbol</th>
                   <th class="px-3 py-3 font-semibold">Stav platby</th>
                   <th class="px-3 py-3 font-semibold">Na mapce</th>
-                  <th class="px-3 py-3 font-semibold">Detail</th>
                 </tr>
               </thead>
               <tbody id="telo-prihlasek"></tbody>

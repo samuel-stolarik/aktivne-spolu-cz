@@ -8,7 +8,7 @@
  * Všechno jde přes Edge Funkci `admin-obsah`, která si ověří, že volá správce.
  */
 import { zavolej } from "./klient";
-import { sHlasenim, ukazStav } from "./stav";
+import { sHlasenim, ukazStav, type DruhStavu } from "./stav";
 
 interface Prihlaska {
   id: string;
@@ -57,6 +57,20 @@ interface Prihlaska {
  * pokaždé, když se v hledání změní písmeno.
  */
 const rozbalene = new Set<string>();
+
+/**
+ * Hláška, která musí přežít překreslení tabulky.
+ *
+ * Když má přihláška otevřený detail, je rozhodnutí o mapce vidět na dvou
+ * místech — v řádku i v detailu. Změna na jednom místě proto překreslí
+ * celou tabulku, aby se obě nerozešla. Překreslení ale postaví buňky znovu
+ * a výsledek („Uloženo", „Souřadnice se nenašly") by zmizel dřív, než si
+ * ho správce přečte. Tady počká, než si ho nové buňky vyzvednou.
+ */
+const cekajiciHlasky = new Map<
+  string,
+  { druh: DruhStavu; text: string; dohledatZnovu?: string }
+>();
 
 /** Názvy stavů tak, jak je uvidí správce. V databázi jsou bez diakritiky. */
 const NAZVY_STAVU: Record<string, string> = {
@@ -336,7 +350,12 @@ function vykresliSouradnice(
 }
 
 /** Buňka „Na mapce" — rozhodnutí, tlačítka a informace o souřadnicích. */
-function bunkaSMapou(prihlaska: Prihlaska): HTMLTableCellElement {
+/**
+ * @param poZmene  Zadá se, když je přihláška vidět na dvou místech (řádek
+ *                 a otevřený detail). Po rozhodnutí se pak překreslí celá
+ *                 tabulka, aby obě místa ukazovala totéž.
+ */
+function bunkaSMapou(prihlaska: Prihlaska, poZmene?: () => void): HTMLTableCellElement {
   const td = document.createElement("td");
   td.className = "px-3 py-3 align-top";
 
@@ -350,6 +369,26 @@ function bunkaSMapou(prihlaska: Prihlaska): HTMLTableCellElement {
   hlaska.className = "admin-hlaska mt-2";
 
   const souradnice = document.createElement("div");
+
+  /** Výsledek rovnou tady, nebo — když se tabulka překresluje — v nových buňkách. */
+  const oznam = (druh: DruhStavu, text: string, dohledatZnovu?: string): void => {
+    if (poZmene) {
+      cekajiciHlasky.set(prihlaska.id, { druh, text, dohledatZnovu });
+      poZmene();
+      return;
+    }
+    ukazHlasku(druh, text, dohledatZnovu);
+  };
+
+  function ukazHlasku(druh: DruhStavu, text: string, dohledatZnovu?: string): void {
+    ukazStav(
+      hlaska,
+      druh,
+      text,
+      dohledatZnovu ? { popis: dohledatZnovu, spust: () => void dohledej() } : undefined,
+    );
+    if (druh === "hotovo") window.setTimeout(() => ukazStav(hlaska, "nic"), 4000);
+  }
 
   /** Nové hledání souřadnic u už schválené akce. */
   const dohledej = async (): Promise<void> => {
@@ -374,18 +413,16 @@ function bunkaSMapou(prihlaska: Prihlaska): HTMLTableCellElement {
     // Hledání sice proběhlo, ale nemuselo najít. Hláška musí říct, jak to
     // dopadlo — „hotovo" u nenalezeného města by bylo zavádějící.
     if (vysledek.lat !== null) {
-      ukazStav(hlaska, "hotovo", `Souřadnice města ${prihlaska.mesto} jsou dohledané.`);
-      window.setTimeout(() => ukazStav(hlaska, "nic"), 4000);
+      oznam("hotovo", `Souřadnice města ${prihlaska.mesto} jsou dohledané.`);
     } else {
-      ukazStav(
-        hlaska,
+      oznam(
         "chyba",
         vysledek.souradnice_duvod ?? "Souřadnice se nepodařilo dohledat.",
-        { popis: "Zkusit znovu", spust: () => void dohledej() },
+        "Zkusit znovu",
       );
     }
 
-    vykresliSouradnice(souradnice, prihlaska, () => void dohledej());
+    if (!poZmene) vykresliSouradnice(souradnice, prihlaska, () => void dohledej());
   };
 
   /** Uloží rozhodnutí a překreslí buňku. */
@@ -418,18 +455,16 @@ function bunkaSMapou(prihlaska: Prihlaska): HTMLTableCellElement {
     // Schválení PLATÍ i tehdy, když se souřadnice nenašly. Je ale potřeba to
     // říct rovnou, jinak by se Hana marně divila, proč akce na mapce není.
     if (nove === "schvaleno" && vysledek.lat === null) {
-      ukazStav(
-        hlaska,
+      oznam(
         "chyba",
         `Schváleno, ale na mapce akce zatím není. ${vysledek.souradnice_duvod ?? "Souřadnice města se nepodařilo dohledat."}`,
-        { popis: "Dohledat znovu", spust: () => void dohledej() },
+        "Dohledat znovu",
       );
     } else {
-      ukazStav(hlaska, "hotovo", `Uloženo: ${NAZVY_SCHVALENI[nove] ?? nove}.`);
-      window.setTimeout(() => ukazStav(hlaska, "nic"), 4000);
+      oznam("hotovo", `Uloženo: ${NAZVY_SCHVALENI[nove] ?? nove}.`);
     }
 
-    prekresli();
+    if (!poZmene) prekresli();
   };
 
   /** Popisek stavu a sada tlačítek podle toho, kde přihláška zrovna je. */
@@ -461,6 +496,10 @@ function bunkaSMapou(prihlaska: Prihlaska): HTMLTableCellElement {
   }
 
   prekresli();
+
+  const cekajici = cekajiciHlasky.get(prihlaska.id);
+  if (cekajici) ukazHlasku(cekajici.druh, cekajici.text, cekajici.dohledatZnovu);
+
   td.append(popis, tlacitka, hlaska, souradnice);
   return td;
 }
@@ -502,7 +541,16 @@ function vykresliTabulku(): void {
     const tr = document.createElement("tr");
     tr.className = "border-t border-merunka-tlumena";
 
+    // S otevřeným detailem je rozhodnutí o mapce na dvou místech. Změna
+    // na jednom pak překreslí tabulku, aby se nerozešla s druhým.
+    const otevreno = rozbalene.has(prihlaska.id);
+    const poZmene = otevreno ? vykresliTabulku : undefined;
+
     tr.append(
+      // Detail je PRVNÍ sloupec. Dřív byl třináctý, úplně vpravo za okrajem
+      // obrazovky, a správce musel u každé přihlášky sjet pod tabulku,
+      // posunout ji do strany, rozkliknout a pak ji posouvat zpátky.
+      bunkaSDetailem(prihlaska),
       bunka(ceskeDatum(prihlaska.vytvoreno), "whitespace-nowrap"),
       bunka(
         `${prihlaska.nazev_poradatele} (${NAZVY_PORADATELU[prihlaska.typ_poradatele] ?? prihlaska.typ_poradatele})`,
@@ -537,21 +585,44 @@ function vykresliTabulku(): void {
       bunka(NAZVY_PLATEB[prihlaska.forma_platby] ?? prihlaska.forma_platby),
       bunka(String(prihlaska.variabilni_symbol), "whitespace-nowrap"),
       bunkaSeStavem(prihlaska),
-      bunkaSMapou(prihlaska),
-      bunkaSDetailem(prihlaska),
+      bunkaSMapou(prihlaska, poZmene),
     );
 
     telo.append(tr);
 
     // Detail jde hned pod svůj řádek, aby bylo vidět, ke komu patří.
-    if (rozbalene.has(prihlaska.id)) telo.append(radekDetailu(prihlaska));
+    if (otevreno) telo.append(radekDetailu(prihlaska, poZmene));
   }
+
+  // Hlášky si už vyzvedly nově postavené buňky.
+  cekajiciHlasky.clear();
+  srovnejDetaily();
+}
+
+/**
+ * Detail se roztahuje přes všech 13 sloupců, tedy přes celou šířku tabulky —
+ * mnohem víc, než je na obrazovce vidět. Obsah detailu je proto přilepený
+ * k levému okraji viditelné části (sticky) a široký přesně jako okno tabulky:
+ * ať je tabulka odscrollovaná kamkoli, detail je celý vidět.
+ */
+function srovnejDetaily(): void {
+  const okno = document
+    .getElementById("telo-prihlasek")
+    ?.closest<HTMLElement>(".overflow-x-auto");
+  if (!okno) return;
+  // 24 px = vnitřní okraj buňky (px-3) zleva i zprava.
+  const sirka = Math.max(okno.clientWidth - 24, 280);
+  document.querySelectorAll<HTMLElement>("[data-detail-obal]").forEach((obal) => {
+    obal.style.width = `${sirka}px`;
+  });
 }
 
 /** Tlačítko, které detail otevře a zavře. */
 function bunkaSDetailem(prihlaska: Prihlaska): HTMLTableCellElement {
   const td = document.createElement("td");
-  td.className = "px-3 py-3 align-top";
+  // Přilepená k levému okraji — tlačítko zůstane vidět, i když je tabulka
+  // odscrollovaná doprava. Bílé pozadí, jinak by pod ní prosvítaly buňky.
+  td.className = "sticky left-0 z-10 bg-white px-3 py-3 align-top";
 
   const tlacitko = document.createElement("button");
   tlacitko.type = "button";
@@ -579,7 +650,7 @@ function bunkaSDetailem(prihlaska: Prihlaska): HTMLTableCellElement {
  * z databáze stahoval, ale nikde se neukazoval; byl jen v exportu do
  * Excelu, kvůli kterému by se musel stahovat celý soubor.
  */
-function radekDetailu(prihlaska: Prihlaska): HTMLTableRowElement {
+function radekDetailu(prihlaska: Prihlaska, poZmene?: () => void): HTMLTableRowElement {
   const tr = document.createElement("tr");
   tr.className = "border-t border-merunka-tlumena bg-merunka-svetla/40";
 
@@ -587,8 +658,10 @@ function radekDetailu(prihlaska: Prihlaska): HTMLTableRowElement {
   td.colSpan = 13;
   td.className = "px-3 py-4";
 
+  // Přilepený k viditelné části tabulky, šířku mu dopočítá srovnejDetaily().
   const obal = document.createElement("div");
-  obal.className = "grid gap-4 md:grid-cols-2";
+  obal.className = "sticky left-3 grid gap-4 md:grid-cols-2";
+  obal.dataset.detailObal = "";
 
   // ── Popis akce ────────────────────────────────────────────────────
   // Nejdůležitější věc na celém detailu, proto stojí první a přes celou
@@ -610,10 +683,33 @@ function radekDetailu(prihlaska: Prihlaska): HTMLTableRowElement {
   }
   popis.append(popisNadpis, popisText);
 
-  obal.append(popis, blokUdaju("Akce", [
+  // ── Na mapce ──────────────────────────────────────────────────────
+  // Rozhoduje se podle popisu hned nad tím, takže ovládání patří sem.
+  // V řádku by bylo až ve dvanáctém sloupci, zase mimo obrazovku.
+  // Je to stejné ovládání jako v řádku: buňka se postaví a její obsah
+  // (i s obsluhou tlačítek) se přesune do detailu.
+  const mapa = document.createElement("div");
+  const mapaNadpis = document.createElement("p");
+  mapaNadpis.className = "m-0 font-semibold";
+  mapaNadpis.textContent = "Na mapce";
+  mapa.append(mapaNadpis, ...Array.from(bunkaSMapou(prihlaska, poZmene).childNodes));
+
+  obal.append(popis, mapa, blokUdaju("Akce", [
     ["Datum konání", ceskyDenAkce(prihlaska.datum_akce)],
     ["Město", `${prihlaska.mesto}, ${prihlaska.kraj}`],
     ["Přihlášeno", ceskeDatum(prihlaska.vytvoreno)],
+  ]));
+
+  // ── Kontakt ───────────────────────────────────────────────────────
+  // I kontakty jsou v řádku daleko vpravo; tady jsou po ruce k popisu.
+  obal.append(blokUdaju("Kontakt", [
+    [
+      "Pořadatel",
+      `${prihlaska.nazev_poradatele} (${NAZVY_PORADATELU[prihlaska.typ_poradatele] ?? prihlaska.typ_poradatele})`,
+    ],
+    ["Kontaktní osoba", prihlaska.kontaktni_osoba],
+    ["E-mail", prihlaska.email],
+    ["Telefon", prihlaska.telefon],
   ]));
 
   // ── Platba a doklad ───────────────────────────────────────────────
@@ -807,4 +903,5 @@ export function pripravPrihlasky(): void {
     void nactiPrihlasky();
   });
   prvek<HTMLButtonElement>("tlacitko-csv")?.addEventListener("click", stahniCsv);
+  window.addEventListener("resize", srovnejDetaily);
 }
