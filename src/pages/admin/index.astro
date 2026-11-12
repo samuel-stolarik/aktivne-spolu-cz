@@ -152,6 +152,9 @@ import "../../styles/global.css";
           <button type="button" class="admin-zalozka" data-zalozka="obrazky" role="tab">
             Nahrané obrázky
           </button>
+          <button type="button" class="admin-zalozka" data-zalozka="zasobnik" role="tab">
+            Zásobník nápadů
+          </button>
         </div>
 
         {/* --- Přihlášky ------------------------------------------------- */}
@@ -359,6 +362,133 @@ import "../../styles/global.css";
             id="seznam-obrazku"
             class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
+          </div>
+        </section>
+
+        {/* --- Zásobník nápadů ------------------------------------------ */}
+        <section data-panel="zasobnik" class="pt-6" hidden>
+          <h2 class="mt-0 text-xl">Zásobník nápadů</h2>
+          <p class="max-w-[860px] text-popisek">
+            Pořadatelé posílají zápisy po akci přes osobní odkaz z e-mailu.
+            Na webu je vidět jen zápis, který tady schválíte. Vrácený zápis
+            dostane pořadatel zpátky e-mailem i s vaším důvodem a novým
+            odkazem.
+          </p>
+
+          <div class="admin-prepinac mt-4" role="group" aria-label="Část Zásobníku">
+            <button type="button" data-cast-zasobniku="zapisy" aria-pressed="true">
+              Zápisy ke kontrole
+            </button>
+            <button type="button" data-cast-zasobniku="vyzvy" aria-pressed="false">
+              Výzvy pořadatelům
+            </button>
+          </div>
+
+          {/* --- Fronta zápisů --- */}
+          <div data-zasobnik="zapisy" class="mt-6">
+            <div class="flex flex-wrap items-end gap-4">
+              <div>
+                <label class="admin-popisek" for="filtr-zapisu">Zobrazit</label>
+                <select id="filtr-zapisu" class="admin-pole w-[240px]">
+                  <option value="ceka">Čekají na kontrolu</option>
+                  <option value="vraceno">Vrácené k úpravě</option>
+                  <option value="schvaleno">Schválené (na webu)</option>
+                  <option value="zamitnuto">Zamítnuté</option>
+                  <option value="vse">Všechny</option>
+                </select>
+              </div>
+              <button type="button" id="tlacitko-nacist-zapisy" class="admin-tlacitko-vedlejsi">
+                Načíst znovu
+              </button>
+              <a href="/zasobnik/" target="_blank" rel="noopener" class="admin-tlacitko-vedlejsi">
+                Otevřít Zásobník na webu
+              </a>
+            </div>
+            <p id="hlaska-zapisy" class="admin-hlaska mt-4"></p>
+            <p id="pocet-zapisu" class="mt-2 text-popisek"></p>
+            <div id="seznam-zapisu" class="mt-4 grid max-w-[980px] gap-4"></div>
+          </div>
+
+          {/* --- Výzvy --- */}
+          <div data-zasobnik="vyzvy" class="mt-6" hidden>
+            <p class="max-w-[860px] text-popisek">
+              Výzva je e-mail s osobním odkazem na formulář zápisu. Odkaz platí
+              60 dní a novější výzva starší odkaz zruší. Než pošlete výzvy
+              všem, pošlete si <strong>zkušební e-mail</strong> na svou adresu.
+            </p>
+
+            <div class="mt-5 flex flex-wrap items-end gap-4">
+              <div>
+                <label class="admin-popisek" for="filtr-vyzev">Zobrazit</label>
+                <select id="filtr-vyzev" class="admin-pole w-[260px]">
+                  <option value="bez-vyzvy">Ještě bez výzvy</option>
+                  <option value="bez-zapisu">S výzvou, ale bez zápisu</option>
+                  <option value="vse">Všechny přihlášky</option>
+                </select>
+              </div>
+              <div>
+                <label class="admin-popisek" for="filtr-vyzev-stav">Stav platby</label>
+                <select id="filtr-vyzev-stav" class="admin-pole w-[220px]">
+                  <option value="nezrusene">Kromě zrušených</option>
+                  <option value="zaplaceno">Jen zaplacené</option>
+                  <option value="vse">Všechny</option>
+                </select>
+              </div>
+              <button type="button" id="tlacitko-nacist-vyzvy" class="admin-tlacitko-vedlejsi">
+                Načíst znovu
+              </button>
+            </div>
+
+            <div class="admin-karta mt-5 max-w-[860px]">
+              <h3 class="mt-0 text-lg">Zkušební e-mail</h3>
+              <p class="text-popisek">
+                Pošle výzvu k první vybrané přihlášce, ale na adresu níže.
+                Odkaz v e-mailu je funkční a platí jeden den. Ostré odkazy neruší.
+              </p>
+              <div class="mt-3 flex flex-wrap items-end gap-3">
+                <div class="min-w-[260px] flex-1">
+                  <label class="admin-popisek" for="pole-zkusebni-email">Poslat na adresu</label>
+                  <input type="email" id="pole-zkusebni-email" class="admin-pole" autocomplete="email" />
+                </div>
+                <button type="button" id="tlacitko-zkusebni-vyzva" class="admin-tlacitko-vedlejsi">
+                  Poslat zkušební e-mail
+                </button>
+              </div>
+              <p id="hlaska-zkusebni" class="admin-hlaska mt-3"></p>
+            </div>
+
+            <div class="mt-5 flex flex-wrap items-center gap-3">
+              <button type="button" id="tlacitko-poslat-vyzvy" class="admin-tlacitko" disabled>
+                Poslat výzvu vybraným
+              </button>
+              <span id="pocet-vybranych" class="text-popisek"></span>
+            </div>
+            <div id="potvrzeni-vyzev" class="admin-karta mt-3 max-w-[860px]" hidden></div>
+            <p id="hlaska-vyzvy" class="admin-hlaska mt-3"></p>
+            <p id="pocet-vyzev" class="mt-2 text-popisek"></p>
+
+            <div class="mt-3 overflow-x-auto rounded-xl border border-merunka-tlumena bg-white">
+              <table class="w-full border-collapse text-popisek">
+                <thead>
+                  <tr class="bg-plocha-tyrkys text-left">
+                    <th class="px-3 py-3">
+                      <label class="admin-zaskrtavatko">
+                        <input type="checkbox" id="vybrat-vse" />
+                        <span class="sr-only">Vybrat všechny zobrazené</span>
+                      </label>
+                    </th>
+                    <th class="px-3 py-3 font-semibold">Pořadatel</th>
+                    <th class="px-3 py-3 font-semibold">Kontakt</th>
+                    <th class="px-3 py-3 font-semibold">Město</th>
+                    <th class="px-3 py-3 font-semibold">Platba</th>
+                    <th class="px-3 py-3 font-semibold">Výzva</th>
+                    <th class="px-3 py-3 font-semibold">Zápis</th>
+                    <th class="px-3 py-3 font-semibold">Akce</th>
+                  </tr>
+                </thead>
+                <tbody id="telo-vyzev"></tbody>
+              </table>
+            </div>
           </div>
         </section>
       </div>
@@ -750,7 +880,70 @@ import "../../styles/global.css";
         vertical-align: middle;
       }
 
-      .admin-puvodni {
+/* --- Zásobník nápadů --------------------------------------------- */
+      .admin-stitek-ceka,
+      .admin-stitek-vraceno {
+        background-color: var(--color-merunka);
+      }
+
+      .admin-stitek-schvaleno {
+        background-color: #e6f4ec;
+        color: #174a34;
+      }
+
+      .admin-stitek-zamitnuto {
+        background-color: #fdecec;
+        color: var(--color-chyba);
+      }
+
+      .admin-vzkaz {
+        margin: 0 0 1rem;
+        padding: 0.75rem 1rem;
+        border-left: 4px solid var(--color-merunka);
+        border-radius: 0.5rem;
+        background-color: #fbf1dc;
+        font-size: var(--text-popisek);
+      }
+
+      .admin-galerie {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .admin-galerie img {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: 0.5rem;
+        background-color: var(--color-plocha-tyrkys);
+      }
+
+      .admin-popis-zapisu {
+        max-width: 72ch;
+        margin: 0;
+        white-space: pre-line;
+      }
+
+      .admin-udaje {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 0 1.25rem;
+        margin: 1rem 0 0;
+      }
+
+      @media (max-width: 40rem) {
+        .admin-udaje {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .admin-nebezpeci {
+        border-color: var(--color-chyba) !important;
+        color: var(--color-chyba) !important;
+      }
+
+            .admin-puvodni {
         margin: 0.5rem 0 0;
         color: var(--color-text);
         font-size: var(--text-popisek);

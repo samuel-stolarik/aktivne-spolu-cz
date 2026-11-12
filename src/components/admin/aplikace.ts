@@ -16,11 +16,15 @@ import {
 import { nactiPrihlasky, pripravPrihlasky } from "./prihlasky";
 import { nactiTexty, pripravTexty } from "./texty";
 import { nactiObrazky, pripravObrazky } from "./obrazky";
+import { nactiZasobnik, pripravZasobnik } from "./zasobnik";
 import { sHlasenim, ukazStav } from "./stav";
 
 function prvek<T extends HTMLElement>(id: string): T | null {
   return document.getElementById(id) as T | null;
 }
+
+/** Přihlašovací adresa správce. Předvyplní se do zkušebního e-mailu. */
+let emailSpravce = "";
 
 /** Které záložky se už načetly, ať se data netahají pokaždé znovu. */
 const nactene = new Set<string>();
@@ -47,6 +51,7 @@ function prepniZalozku(nazev: string): void {
   if (nazev === "prihlasky") void nactiPrihlasky();
   if (nazev === "texty") void nactiTexty();
   if (nazev === "obrazky") void nactiObrazky();
+  if (nazev === "zasobnik") nactiZasobnik();
 }
 
 // ---------------------------------------------------------------------------
@@ -68,8 +73,10 @@ function ukazAdministraci(email: string): void {
   const radek = prvek("radek-uctu")!;
   radek.hidden = false;
   prvek("jmeno-uctu")!.textContent = email;
+  emailSpravce = email;
 
-  prepniZalozku("prihlasky");
+  // Upozornění na nový zápis vede rovnou do záložky Zásobník (/admin/#zasobnik).
+  prepniZalozku(location.hash === "#zasobnik" ? "zasobnik" : "prihlasky");
 }
 
 /**
@@ -191,6 +198,7 @@ export async function spustAdministraci(): Promise<void> {
   pripravPrihlasky();
   pripravTexty();
   pripravObrazky();
+  pripravZasobnik(() => emailSpravce);
 
   // Když přihlášení vyprší uprostřed práce, vrátíme se na přihlašovací
   // formulář. Jinak by tlačítka přestala fungovat a nebylo by jasné proč.
