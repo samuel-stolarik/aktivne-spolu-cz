@@ -1,0 +1,110 @@
+---
+/**
+ * Souhlas s analytickými cookies.
+ *
+ * Google Analytics se načte až po kliknutí na Souhlasím. Analytické cookies
+ * jsou podle § 89 odst. 3 zákona č. 127/2005 Sb. na souhlas předem, takže
+ * měřicí kód nesmí být ve stránce dřív, než návštěvník klikne.
+ *
+ * Volba se pamatuje v localStorage pod klíčem `as-souhlas-analytika`.
+ * Odvolat ji jde tlačítkem s id `as-zmenit-souhlas` na stránce
+ * /zpracovani-osobnich-udaju/ — odvolání musí být stejně snadné jako souhlas.
+ *
+ * Patří do <head>. Je na dvou místech (Layout.astro a index.astro), protože
+ * úvodní stránka má vlastní hlavičku a Layout nepoužívá.
+ */
+---
+
+{/* Google Analytics — měřicí kód G-FCCK990ZVV dodala organizace Právě teď! o.p.s. */}
+<script is:inline>
+  (function () {
+    var ID = "G-FCCK990ZVV",
+      KLIC = "as-souhlas-analytika";
+
+    function nactiAnalytiku() {
+      if (window.__asAnalytikaNactena) return;
+      window.__asAnalytikaNactena = true;
+      var s = document.createElement("script");
+      s.async = true;
+      s.src = "https://www.googletagmanager.com/gtag/js?id=" + ID;
+      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () {
+        window.dataLayer.push(arguments);
+      };
+      window.gtag("js", new Date());
+      window.gtag("config", ID, { anonymize_ip: true });
+    }
+
+    function precti() {
+      try { return localStorage.getItem(KLIC); } catch (e) { return null; }
+    }
+    function zapis(v) {
+      try { localStorage.setItem(KLIC, v); } catch (e) {}
+    }
+
+    function postavListu() {
+      if (document.getElementById("as-cookies")) return;
+
+      var css = document.createElement("style");
+      css.textContent =
+        "#as-cookies{position:fixed;left:0;right:0;bottom:0;z-index:9999;display:flex;justify-content:center;padding:12px;font-family:inherit;animation:as-vjezd .28s ease-out}" +
+        "@keyframes as-vjezd{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}" +
+        "@media (prefers-reduced-motion:reduce){#as-cookies{animation:none}}" +
+        "#as-cookies .as-karta{background:#fff;color:#123;max-width:640px;width:100%;border:1px solid #d7e6ea;border-radius:14px;box-shadow:0 8px 30px rgba(14,84,96,.18);padding:16px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}" +
+        "#as-cookies p{margin:0;flex:1 1 260px;font-size:.94rem;line-height:1.5}" +
+        "#as-cookies a{color:#12707f;text-decoration:underline}" +
+        "#as-cookies .as-akce{display:flex;gap:8px;flex:0 0 auto}" +
+        "#as-cookies button{font:inherit;font-size:.92rem;font-weight:600;cursor:pointer;border-radius:9px;padding:9px 16px;border:1px solid #12707f;transition:filter .15s}" +
+        "#as-cookies button:hover{filter:brightness(1.08)}" +
+        "#as-cookies button:focus-visible{outline:3px solid #12707f;outline-offset:2px}" +
+        "#as-ano{background:#12707f;color:#fff}" +
+        "#as-ne{background:#fff;color:#0e5460}" +
+        "@media (max-width:520px){#as-cookies .as-akce{width:100%}#as-cookies button{flex:1}}";
+      document.head.appendChild(css);
+
+      var box = document.createElement("div");
+      box.id = "as-cookies";
+      box.setAttribute("role", "dialog");
+      box.setAttribute("aria-live", "polite");
+      box.setAttribute("aria-label", "Souhlas s analytickými cookies");
+      box.innerHTML =
+        '<div class="as-karta">' +
+        "<p>Rádi bychom měřili anonymní návštěvnost webu, abychom věděli, co lidem pomáhá. " +
+        "Pomůžete nám tím? Bez souhlasu se nic neměří. " +
+        '<a href="/zpracovani-osobnich-udaju/">Více o zpracování údajů</a></p>' +
+        '<div class="as-akce">' +
+        '<button type="button" id="as-ne">Odmítnout</button>' +
+        '<button type="button" id="as-ano">Souhlasím</button>' +
+        "</div></div>";
+      document.body.appendChild(box);
+
+      document.getElementById("as-ano").addEventListener("click", function () {
+        zapis("ano"); box.remove(); nactiAnalytiku();
+      });
+      document.getElementById("as-ne").addEventListener("click", function () {
+        zapis("ne"); box.remove();
+      });
+    }
+
+    function napojPrepinac() {
+      var b = document.getElementById("as-zmenit-souhlas");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        try { localStorage.removeItem(KLIC); } catch (e) {}
+        window.__asAnalytikaNactena = false;
+        postavListu();
+      });
+    }
+
+    function start() {
+      var v = precti();
+      if (v === "ano") nactiAnalytiku();
+      else if (v !== "ne") postavListu();
+      napojPrepinac();
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+    else start();
+  })();
+</script>
