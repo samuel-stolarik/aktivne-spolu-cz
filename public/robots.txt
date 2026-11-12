@@ -4,5 +4,6 @@
 # takže by se robot stejně nedostal dál, a nemá smysl na ni v indexu ukazovat.
 User-agent: *
 Disallow: /admin/
+Disallow: /zapis/
 
 Sitemap: https://aktivne-spolu.cz/sitemap-index.xml

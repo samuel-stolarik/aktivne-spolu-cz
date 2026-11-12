@@ -24,7 +24,12 @@ export default defineConfig({
     sitemap({
       // /admin/ ven ze sitemapy stejně jako z robots.txt — je zamčená
       // přihlášením a nemá smysl na ni googlu ukazovat.
-      filter: (adresa) => !adresa.includes("/admin/"),
+      // /zapis/ je jen pro osobní odkazy z e-mailu. /zasobnik/ je venku
+      // ze sitemapy, dokud ho zadavatelka neodsouhlasí naostro.
+      filter: (adresa) =>
+        !adresa.includes("/admin/") &&
+        !adresa.includes("/zapis/") &&
+        !adresa.includes("/zasobnik/"),
     }),
   ],
 });

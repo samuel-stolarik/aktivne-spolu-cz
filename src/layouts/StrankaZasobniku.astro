@@ -1,0 +1,79 @@
+---
+/**
+ * Obal podstránek Zásobníku nápadů: /zasobnik/ a /zapis/.
+ *
+ * Vypadá jako hlavní stránka (stejná hlavička, patička, písmo a barvy),
+ * jen bez scrollovacích efektů hlavní stránky. Společný Layout.astro se
+ * nepoužívá, protože má starší menu; hlavní stránka už jede na
+ * aktualni/Hlavicka.astro.
+ *
+ * `skryta`: stránka dostane noindex. Zápis po akci je vždycky skrytý,
+ * protože se na něj chodí jen z osobního odkazu. Zásobník je skrytý jen
+ * do doby, než ho zadavatelka odsouhlasí naostro.
+ */
+import "../styles/global.css";
+import "../styles/aktualni.css";
+import "../styles/zasobnik.css";
+
+import SouhlasCookies from "../components/SouhlasCookies.astro";
+import Hlavicka from "../components/aktualni/Hlavicka.astro";
+import Paticka from "../components/Paticka.astro";
+
+interface Props {
+  titulek: string;
+  popis: string;
+  skryta?: boolean;
+}
+
+const { titulek, popis, skryta = false } = Astro.props;
+---
+
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulek}</title>
+    <meta name="description" content={popis} />
+    {skryta && <meta name="robots" content="noindex, nofollow" />}
+    {/* Osobní odkaz se nesmí dostat do hlavičky Referer na cizí weby. */}
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonty/source-sans-3-latin-ext.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <meta property="og:title" content={titulek} />
+    <meta property="og:description" content={popis} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="cs_CZ" />
+    <SouhlasCookies />
+  </head>
+
+  <body class="stranka-fable z-stranka">
+    <a
+      href="#obsah"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded focus:bg-tyrkys focus:px-4 focus:py-2 focus:text-white"
+    >
+      Přeskočit na obsah
+    </a>
+
+    <Hlavicka naHlavniStrance={false} />
+
+    <main id="obsah" class="z-obsah" tabindex="-1">
+      <slot />
+    </main>
+
+    <Paticka />
+  </body>
+</html>

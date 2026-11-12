@@ -1,0 +1,46 @@
+---
+/**
+ * Zásobník nápadů — veřejný přehled schválených zápisů po akci.
+ *
+ * Data dodává Edge Funkce `verejne-napady` (jen schválené zápisy a jen
+ * veřejná pole). Filtry běží v prohlížeči nad celým seznamem.
+ *
+ * Detail nápadu je na stejné stránce: /zasobnik/?napad=<id>. Web je
+ * statický, takže pro každý nápad nemůže existovat vlastní soubor.
+ *
+ * SKRYTÁ dokud ji zadavatelka neodsouhlasí naostro: noindex a mimo
+ * sitemapu (viz astro.config.mjs). Po odsouhlasení se `skryta` smaže.
+ *
+ * Skript: src/components/zasobnik/prehled.ts
+ */
+import StrankaZasobniku from "../../layouts/StrankaZasobniku.astro";
+---
+
+<StrankaZasobniku
+  titulek="Zásobník nápadů — mezigenerační akce | aktivně spolu"
+  popis="Ověřené nápady na mezigenerační akce od škol, spolků a firem z celé republiky. Vyberte si a uspořádejte podobnou."
+  skryta
+>
+  <div id="z-prehled">
+    <p class="f-obor">Zásobník nápadů</p>
+    <h1 class="z-nadpis">Nápady na společné akce</h1>
+    <p class="z-uvod">
+      Ověřené nápady od škol, spolků, firem i jednotlivců, kteří se zapojili
+      do kampaně Mezigeneračně aktivně spolu. Vyberte, co hledáte, a seznam
+      se hned zúží.
+    </p>
+
+    <div class="z-filtry" id="z-filtry" hidden></div>
+    <div id="z-pocet" class="z-pocet" aria-live="polite"></div>
+    <div id="z-seznam">
+      <p class="z-nacitani">Načítáme nápady…</p>
+    </div>
+  </div>
+
+  <article id="z-detail" hidden tabindex="-1"></article>
+</StrankaZasobniku>
+
+<script>
+  import { spustPrehled } from "../../components/zasobnik/prehled";
+  spustPrehled();
+</script>

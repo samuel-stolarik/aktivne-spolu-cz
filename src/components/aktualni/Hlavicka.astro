@@ -25,6 +25,23 @@
  */
 import Tlacitko from "../Tlacitko.astro";
 
+interface Props {
+  /**
+   * Hlavička stojí i na podstránkách (Zásobník nápadů, zápis po akci).
+   * Tam kotvy musí vést zpátky na hlavní stránku: „#mapa" → „/#mapa".
+   */
+  naHlavniStrance?: boolean;
+}
+
+const { naHlavniStrance = true } = Astro.props;
+const predpona = naHlavniStrance ? "" : "/";
+
+/**
+ * Tlačítko vpravo nahoře. Na ostrém webu zatím vede na registraci.
+ * Výměna za „Zásobník nápadů" přijde až po odsouhlasení zadavatelkou.
+ */
+const tlacitko = { odkaz: `${predpona}#registrace`, text: "Chci se zapojit" };
+
 const odkazy = [
   { cil: "#proc-se-zapojit", popis: "Proč se zapojit" },
   { cil: "#jak-to-funguje", popis: "Jak to funguje" },
@@ -37,7 +54,11 @@ const odkazy = [
 
 <header class="f-hlavicka" id="f-hlavicka">
   <div class="mx-auto flex max-w-obsah items-center gap-4 px-5 py-3">
-    <a href="#obsah" class="shrink-0" aria-label="Mezigeneračně aktivně spolu">
+    <a
+      href={naHlavniStrance ? "#obsah" : "/"}
+      class="shrink-0"
+      aria-label={naHlavniStrance ? "Mezigeneračně aktivně spolu" : "Mezigeneračně aktivně spolu, hlavní stránka"}
+    >
       <img
         src="/obrazky/logo.png"
         alt="Mezigeneračně aktivně spolu"
@@ -71,7 +92,7 @@ const odkazy = [
       {
         odkazy.map((odkaz) => (
           <a
-            href={odkaz.cil}
+            href={predpona + odkaz.cil}
             data-kotva={odkaz.cil}
             class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys"
           >
@@ -83,14 +104,14 @@ const odkazy = [
       {/* Tlačítko v otevřeném menu. Nad lg ho CSS skryje — tam stojí
           samostatně vpravo v liště (níž). */}
       <div class="f-menu-cta">
-        <Tlacitko odkaz="#registrace" trida="w-full justify-center px-5 py-3">
-          Chci se zapojit
+        <Tlacitko odkaz={tlacitko.odkaz} trida="w-full justify-center px-5 py-3">
+          {tlacitko.text}
         </Tlacitko>
       </div>
     </nav>
 
     <div class="hidden shrink-0 lg:block">
-      <Tlacitko odkaz="#registrace" trida="px-5 py-2">Chci se zapojit</Tlacitko>
+      <Tlacitko odkaz={tlacitko.odkaz} trida="px-5 py-2">{tlacitko.text}</Tlacitko>
     </div>
   </div>
 </header>

@@ -1,0 +1,615 @@
+/* ==========================================================================
+   ZÁSOBNÍK NÁPADŮ — stránky /zasobnik/ a /zapis/
+   ==========================================================================
+
+   Pravidla ovládání (zadání):
+     - text aspoň 18 px, ovládací prvky aspoň 56 px na výšku,
+     - viditelný fokus,
+     - červená jen na hlavní tlačítko (komponenta Tlacitko / .z-hlavni),
+     - chyba vždy řekne, co udělat; potvrzení začíná „Hotovo…" a ukáže se
+       u místa, kde člověk klikl.
+
+   Barvy jen z palety v global.css a odvozených odstínů v aktualni.css
+   (.stranka-fable). Žádné nové odstíny.
+   ========================================================================== */
+
+.z-stranka {
+  --z-cil: 3.5rem; /* 56 px */
+  --z-ramecek: #d9d4ca;
+  --z-zaobleni: 16px;
+}
+
+.z-obsah {
+  max-width: var(--spacing-obsah);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 5rem;
+}
+
+.z-obsah:focus {
+  outline: none;
+}
+
+.z-nadpis {
+  margin: 0.5rem 0 0.75rem;
+  font-size: clamp(2rem, 4.4vw, 2.9rem);
+  letter-spacing: -0.015em;
+  line-height: 1.12;
+}
+
+.z-uvod {
+  max-width: 46rem;
+  margin: 0 0 1.5rem;
+  font-size: 1.25rem;
+}
+
+.z-obsah h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.6rem;
+}
+
+.z-obsah h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tlačítka
+   -------------------------------------------------------------------------- */
+.z-tlacitko {
+  display: inline-flex;
+  min-height: var(--z-cil);
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.4rem;
+  border: 2px solid var(--color-tyrkys);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-tyrkys);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+
+.z-tlacitko:hover {
+  background: var(--color-plocha-tyrkys);
+}
+
+/* Jediné místo s červenou: hlavní akce obrazovky. */
+.z-tlacitko.z-hlavni {
+  border-color: var(--color-tlacitko);
+  background: var(--color-tlacitko);
+  color: #fff;
+}
+
+.z-tlacitko.z-hlavni:hover {
+  border-color: var(--color-tlacitko-hover);
+  background: var(--color-tlacitko-hover);
+}
+
+.z-tlacitko:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+/* Zaklikávací volba (filtr, výběr ve formuláři). */
+.z-volba {
+  display: inline-flex;
+  min-height: var(--z-cil);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.1rem;
+  border: 2px solid var(--z-ramecek);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.z-volba:hover {
+  border-color: var(--color-tyrkys);
+}
+
+.z-volba[aria-pressed="true"],
+.z-volba:has(input:checked) {
+  border-color: var(--f-inkoust);
+  background: var(--f-inkoust);
+  color: #fff;
+}
+
+/* Zaškrtnutí je vidět i bez barvy (pro barvoslepé a v černobílém tisku). */
+.z-volba[aria-pressed="true"]::before,
+.z-volba:has(input:checked)::before {
+  content: "✓";
+  font-weight: 600;
+}
+
+/* Volby ve formuláři jsou skutečné inputy; schované, ale dostupné. */
+.z-volba input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.z-volba:has(input:focus-visible) {
+  outline: 3px solid var(--color-tyrkys);
+  outline-offset: 3px;
+}
+
+.z-volby {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  border: 0;
+}
+
+.z-rada {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.5rem 0 0;
+}
+
+/* --------------------------------------------------------------------------
+   Zprávy
+   -------------------------------------------------------------------------- */
+.z-ok,
+.z-chyba,
+.z-info {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1.1rem;
+  border: 2px solid;
+  border-radius: var(--z-zaobleni);
+  font-weight: 600;
+}
+
+.z-ok {
+  border-color: var(--color-potvrzeni);
+  background: #e6f4ec;
+  color: #174a34;
+}
+
+.z-chyba {
+  border-color: var(--color-chyba);
+  background: #fdecec;
+  color: var(--color-chyba);
+}
+
+.z-chyba::before {
+  content: "! ";
+}
+
+.z-info {
+  border-color: var(--color-merunka);
+  background: var(--f-merunka-mlha);
+  color: var(--color-text);
+  font-weight: 400;
+}
+
+.z-tlumene {
+  color: #6b6a63;
+  font-size: 1.05rem;
+}
+
+/* --------------------------------------------------------------------------
+   Filtry Zásobníku
+   -------------------------------------------------------------------------- */
+.z-filtry {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.z-skupina {
+  border: 2px solid var(--z-ramecek);
+  border-radius: var(--z-zaobleni);
+  background: #fff;
+}
+
+.z-skupina > summary {
+  display: flex;
+  min-height: var(--z-cil);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.1rem;
+  color: var(--color-tyrkys);
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.z-skupina > summary::-webkit-details-marker {
+  display: none;
+}
+
+.z-skupina > summary::after {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 150ms ease-out;
+}
+
+.z-skupina[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+.z-skupina .z-volby {
+  margin: 0;
+  padding: 0 1.1rem 1rem;
+}
+
+.z-stitek {
+  display: inline-block;
+  padding: 0.1rem 0.7rem;
+  border-radius: 999px;
+  background: var(--color-plocha-tyrkys);
+  color: var(--f-inkoust);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.z-stitek-merunka {
+  background: var(--f-merunka-mlha);
+}
+
+.z-pocet {
+  margin: 0.5rem 0 1rem;
+  font-size: 1.15rem;
+}
+
+/* --------------------------------------------------------------------------
+   Karty nápadů
+   -------------------------------------------------------------------------- */
+.z-mrizka {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 1.25rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.z-karta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid var(--z-ramecek);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--f-stin);
+}
+
+.z-karta-foto {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--color-plocha-tyrkys);
+}
+
+.z-karta-zastupce {
+  display: flex;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  align-items: center;
+  justify-content: center;
+  background: var(--f-merunka-mlha);
+  color: var(--f-inkoust);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.z-karta-telo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.15rem 1.15rem;
+}
+
+.z-karta-telo p {
+  margin: 0;
+}
+
+.z-karta .z-tlacitko {
+  margin-top: auto;
+}
+
+.z-stitky {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* --------------------------------------------------------------------------
+   Detail nápadu
+   -------------------------------------------------------------------------- */
+.z-galerie {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.z-galerie img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 14px;
+  background: var(--color-plocha-tyrkys);
+}
+
+.z-udaje {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.z-udaje dt {
+  font-weight: 600;
+}
+
+.z-udaje dd {
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .z-udaje {
+    grid-template-columns: 1fr;
+  }
+
+  .z-udaje dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.z-popis p {
+  max-width: 46rem;
+  white-space: pre-line;
+}
+
+.z-kontakt {
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--z-zaobleni);
+  background: var(--color-plocha-tyrkys);
+}
+
+.z-kontakt p {
+  margin: 0.25rem 0;
+}
+
+/* --------------------------------------------------------------------------
+   Formulář zápisu
+   -------------------------------------------------------------------------- */
+.z-panel {
+  max-width: 48rem;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  border: 2px solid var(--z-ramecek);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: var(--f-stin);
+}
+
+.z-krok {
+  margin: 0 0 0.25rem;
+  color: var(--color-tyrkys);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.z-ukazatel {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0 0 1.25rem;
+}
+
+.z-ukazatel span {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-merunka-tlumena);
+}
+
+.z-ukazatel span.je-hotovo {
+  background: var(--color-merunka);
+}
+
+.z-pole {
+  margin: 0 0 1.25rem;
+}
+
+.z-pole > label,
+.z-pole > legend,
+.z-pole .z-popisek {
+  display: block;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+.z-pole fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.z-napoveda {
+  margin: 0.25rem 0 0.5rem;
+  color: #6b6a63;
+  font-size: 1.05rem;
+}
+
+.z-pole input[type="text"],
+.z-pole input[type="email"],
+.z-pole input[type="tel"],
+.z-pole input[type="date"],
+.z-pole select,
+.z-pole textarea {
+  width: 100%;
+  min-height: var(--z-cil);
+  padding: 0.6rem 0.9rem;
+  border: 2px solid #8a877d;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.15rem;
+}
+
+.z-pole textarea {
+  min-height: 12rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.z-pole input:focus-visible,
+.z-pole select:focus-visible,
+.z-pole textarea:focus-visible {
+  border-color: var(--color-tyrkys);
+  outline: 3px solid var(--color-tyrkys);
+  outline-offset: 1px;
+}
+
+.z-pole[data-chyba] input,
+.z-pole[data-chyba] select,
+.z-pole[data-chyba] textarea {
+  border-color: var(--color-chyba);
+}
+
+.z-pole .z-chyba {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.8rem;
+  font-size: 1.05rem;
+}
+
+.z-pocitadlo {
+  margin: 0.35rem 0 0;
+  font-size: 1.05rem;
+}
+
+.z-pocitadlo[data-stav="malo"] {
+  color: var(--color-chyba);
+}
+
+.z-pocitadlo[data-stav="ok"] {
+  color: var(--color-potvrzeni);
+}
+
+.z-dvojice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0 1rem;
+}
+
+.z-zaskrtnuti,
+.z-pole > label.z-zaskrtnuti {
+  display: flex;
+  min-height: var(--z-cil);
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin: 0.75rem 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.z-kontakt-hodnota {
+  font-weight: 400;
+}
+
+.z-zaskrtnuti input {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--f-inkoust);
+}
+
+/* Fotky */
+.z-fotky {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.z-fotka {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.z-fotka img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--color-plocha-tyrkys);
+}
+
+.z-fotka .z-tlacitko {
+  min-height: 3rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+}
+
+.z-nahrat {
+  position: relative;
+}
+
+.z-nahrat input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.z-nahrat:has(input:focus-visible) .z-tlacitko {
+  outline: 3px solid var(--color-tyrkys);
+  outline-offset: 3px;
+}
+
+.z-souhrn {
+  margin: 1rem 0;
+  padding: 1rem 1.2rem;
+  border-radius: var(--z-zaobleni);
+  background: var(--f-merunka-mlha);
+}
+
+.z-souhrn p {
+  margin: 0.2rem 0;
+}
+
+.z-nacitani {
+  padding: 2rem 0;
+  font-size: 1.2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .z-stranka * {
+    transition: none !important;
+  }
+}

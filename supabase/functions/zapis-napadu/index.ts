@@ -218,15 +218,23 @@ async function nacti(req: Request, klient: Klient, o: Overeno): Promise<Response
       .eq('id', o.vyzvaId);
   }
 
-  // Náhledy už nahraných fotek. Bucket je soukromý, proto podepsané adresy.
-  let fotky: { cesta: string; nahled: string }[] = [];
-  const cesty = (zapis?.fotky as string[] | undefined) ?? [];
-  if (cesty.length) {
+  // Náhledy všech fotek ve složce přihlášky, tedy i těch nahraných do
+  // rozepsaného zápisu, který ještě nebyl odeslaný. Bucket je soukromý,
+  // proto podepsané adresy.
+  const nahrane: { cesta: string; nahled: string }[] = [];
+  const soubory = (await souboryVeSlozce(klient, p.id)) ?? [];
+  if (soubory.length) {
     const { data: podepsane } = await klient.storage
       .from(BUCKET)
-      .createSignedUrls(cesty, PLATNOST_NAHLEDU_S);
-    fotky = cesty.map((cesta, i) => ({ cesta, nahled: podepsane?.[i]?.signedUrl ?? '' }));
+      .createSignedUrls(soubory, PLATNOST_NAHLEDU_S);
+    for (const a of podepsane ?? []) {
+      if (a.path && a.signedUrl) nahrane.push({ cesta: a.path, nahled: a.signedUrl });
+    }
   }
+  const nahled = new Map(nahrane.map((f) => [f.cesta, f.nahled]));
+  const fotky = ((zapis?.fotky as string[] | undefined) ?? [])
+    .filter((c) => nahled.has(c))
+    .map((cesta) => ({ cesta, nahled: nahled.get(cesta)! }));
 
   const stav = (zapis?.stav as string | undefined) ?? 'novy';
 
@@ -248,6 +256,7 @@ async function nacti(req: Request, klient: Klient, o: Overeno): Promise<Response
       napad_na_aktivitu: p.napad_na_aktivitu,
     },
     zapis: zapis ? { ...zapis, fotky } : null,
+    nahrane,
   });
 }
 
