@@ -6,8 +6,8 @@ k Mezinárodnímu dni seniorů.
 Školy, firemní týmy, neziskovky a jednotlivci se tu přihlásí, že v týdnu kolem
 1. října uspořádají mezigenerační setkání se seniory. Za registraci zaplatí
 500 Kč. Po akci vyplní rozšířený formulář a z toho v listopadu vznikne veřejná
-databáze inspirace — Zásobník mezigeneračních aktivit, který staví kroužek
-na ZŠ Magic Hill. Zásobník **není** součástí tohoto webu.
+databáze inspirace — **Zásobník nápadů** na `/zasobnik/`. Popis, jak
+funguje a jak se nasazuje, je v [docs/zasobnik.md](docs/zasobnik.md).
 
 Pořadatel: **Právě teď! o.p.s.** (IČO 29154901), neplátce DPH, ve spolupráci
 se ZŠ Magic Hill.
@@ -270,10 +270,10 @@ Dokud se tak nestane, e-maily mohou padat do spamu.
 
 ---
 
-## Co se doplní v další fázi
+## Zásobník nápadů
 
-- **Zásobník mezigeneračních aktivit** — samostatná aplikace, kterou staví
-  kroužek na ZŠ Magic Hill. Spouští se 1. listopadu.
+Zápisy po akci, jejich schvalování a veřejný výpis. Celý popis
+v [docs/zasobnik.md](docs/zasobnik.md).
 
 ---
 
