@@ -26,6 +26,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { najdiSouradnice, type KlientProFrontu } from '../_shared/nominatim.ts';
+import { posliVyzvy, prehledVyzev, rozhodniNapad, seznamNapadu, type Vysledek } from './zasobnik.ts';
 
 // ---------------------------------------------------------------------------
 // NASTAVENÍ
@@ -139,6 +140,11 @@ function odpoved(req: Request, telo: unknown, stav = 200): Response {
       'Cache-Control': 'no-store',
     },
   });
+}
+
+/** Odpověď z výsledku akcí Zásobníku (zasobnik.ts). */
+function zVysledku(req: Request, v: Vysledek): Response {
+  return odpoved(req, v.telo, v.stav);
 }
 
 /**
@@ -746,6 +752,15 @@ Deno.serve(async (req) => {
     // jestli má účet vůbec přístup.
     case 'kdo-jsem':
       return odpoved(req, { email: overeni.spravce.email });
+    // --- Zásobník nápadů (viz zasobnik.ts) ---
+    case 'napady':
+      return zVysledku(req, await seznamNapadu(klient));
+    case 'rozhodni-napad':
+      return zVysledku(req, await rozhodniNapad(klient, telo, overeni.spravce));
+    case 'vyzvy':
+      return zVysledku(req, await prehledVyzev(klient));
+    case 'posli-vyzvy':
+      return zVysledku(req, await posliVyzvy(klient, telo, overeni.spravce));
     default:
       return chyba(req, `Neznámý požadavek „${akce}".`, 400);
   }

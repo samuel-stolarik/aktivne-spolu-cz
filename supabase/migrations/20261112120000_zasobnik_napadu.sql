@@ -42,6 +42,14 @@ create table if not exists public.vyzvy_k_zapisu (
   -- Přihlašovací adresa správce, který výzvu poslal. Jen pro dohledání.
   odeslal text,
 
+  -- Na jakou adresu e-mail šel. U ostré výzvy e-mail z přihlášky,
+  -- u zkušební adresa správce.
+  prijemce text not null,
+
+  -- Zkušební výzva jde na adresu správce, ne pořadateli. Neruší platnost
+  -- ostrých odkazů a v přehledu výzev se nepočítá jako odeslaná.
+  zkusebni boolean not null default false,
+
   -- Řádek odchozí pošty s e-mailem. Podle něj administrace ukáže,
   -- jestli e-mail opravdu odešel.
   posta_id uuid references public.odchozi_posta (id) on delete set null,

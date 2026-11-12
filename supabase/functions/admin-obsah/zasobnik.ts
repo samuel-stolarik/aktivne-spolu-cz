@@ -1,0 +1,359 @@
+// Administrace Zásobníku nápadů: fronta zápisů, schvalování a výzvy k zápisu.
+//
+// Volá se jen z `index.ts` této funkce, AŽ PO ověření správce. Funkce tady
+// vracejí `{ stav, telo }` a odpověď z nich skládá `index.ts`, aby se CORS
+// a hlavičky řešily na jednom místě.
+
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { emailVraceni, emailVyzvy, emailZverejneni } from '../_shared/emaily-zasobniku.ts';
+import { zaradAPosli } from '../_shared/fronta-posty.ts';
+import { novyToken, otiskTokenu } from '../_shared/token.ts';
+
+// deno-lint-ignore no-explicit-any
+type Klient = SupabaseClient<any, any, any>;
+
+export interface Vysledek {
+  stav: number;
+  telo: unknown;
+}
+
+interface Spravce {
+  id: string;
+  email: string;
+}
+
+const BUCKET = 'napady-fotky';
+const PLATNOST_NAHLEDU_S = 3600;
+
+/** Jak dlouho platí osobní odkaz (dny). */
+const PLATNOST_DNI = Number(Deno.env.get('VYZVA_PLATNOST_DNI') ?? '60');
+
+/** Zkušební odkaz platí jen den. Slouží k prohlédnutí e-mailu a formuláře. */
+const PLATNOST_ZKUSEBNI_DNI = 1;
+
+/** Kolik výzev jde odeslat jedním požadavkem. Víc posílá administrace po dávkách. */
+const DAVKA_MAX = 25;
+
+function chyba(veta: string, stav: number): Vysledek {
+  return { stav, telo: { chyba: veta } };
+}
+
+function ok(telo: unknown): Vysledek {
+  return { stav: 200, telo };
+}
+
+function jeUuid(h: unknown): h is string {
+  return typeof h === 'string' && /^[0-9a-f-]{36}$/i.test(h);
+}
+
+function jeEmail(h: string): boolean {
+  return h.length <= 254 && /^[^\s@,;]+@[^\s@,;.]+(\.[^\s@,;.]+)+$/.test(h);
+}
+
+function zaDni(dni: number): Date {
+  return new Date(Date.now() + dni * 24 * 3600 * 1000);
+}
+
+/**
+ * Založí výzvu s novým tokenem. U ostré výzvy zkrátí platnost dřívějších
+ * ostrých odkazů téže přihlášky, aby v oběhu byl vždycky jen jeden.
+ */
+async function zalozVyzvu(
+  klient: Klient,
+  prihlaskaId: string,
+  prijemce: string,
+  spravce: Spravce,
+  zkusebni: boolean,
+): Promise<{ id: string; token: string; platnostDo: Date } | null> {
+  const token = novyToken();
+  const platnostDo = zaDni(zkusebni ? PLATNOST_ZKUSEBNI_DNI : PLATNOST_DNI);
+
+  const { data, error } = await klient
+    .from('vyzvy_k_zapisu')
+    .insert({
+      prihlaska_id: prihlaskaId,
+      token_hash: await otiskTokenu(token),
+      platnost_do: platnostDo.toISOString(),
+      odeslal: spravce.email,
+      prijemce,
+      zkusebni,
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    console.error('Výzvu se nepodařilo založit:', error?.message);
+    return null;
+  }
+
+  if (!zkusebni) {
+    await klient
+      .from('vyzvy_k_zapisu')
+      .update({ platnost_do: new Date().toISOString() })
+      .eq('prihlaska_id', prihlaskaId)
+      .eq('zkusebni', false)
+      .neq('id', data.id)
+      .gt('platnost_do', new Date().toISOString());
+  }
+
+  return { id: data.id as string, token, platnostDo };
+}
+
+// ---------------------------------------------------------------------------
+// FRONTA ZÁPISŮ
+// ---------------------------------------------------------------------------
+
+/** Všechny zápisy, nejnovější nahoře, s náhledy fotek. */
+export async function seznamNapadu(klient: Klient): Promise<Vysledek> {
+  const { data, error } = await klient
+    .from('napady')
+    .select('*')
+    .order('vytvoreno', { ascending: false });
+
+  if (error) {
+    console.error('Zápisy se nepodařilo načíst:', error.message);
+    return chyba('Zápisy se nepodařilo načíst. Zkuste to prosím znovu.', 503);
+  }
+
+  const radky = (data ?? []) as Record<string, unknown>[];
+  const cesty = radky.flatMap((r) => (Array.isArray(r.fotky) ? (r.fotky as string[]) : []));
+  const adresy = new Map<string, string>();
+  if (cesty.length) {
+    const { data: podepsane } = await klient.storage.from(BUCKET).createSignedUrls(cesty, PLATNOST_NAHLEDU_S);
+    for (const a of podepsane ?? []) if (a.path && a.signedUrl) adresy.set(a.path, a.signedUrl);
+  }
+
+  return ok({
+    napady: radky.map((r) => ({
+      ...r,
+      fotky: ((r.fotky as string[]) ?? []).map((c) => ({ cesta: c, adresa: adresy.get(c) ?? '' })),
+    })),
+  });
+}
+
+const ROZHODNUTI = {
+  schvalit: 'schvaleno',
+  vratit: 'vraceno',
+  zamitnout: 'zamitnuto',
+} as const;
+
+/** Schválí, vrátí k úpravě, nebo zamítne zápis. */
+export async function rozhodniNapad(
+  klient: Klient,
+  telo: Record<string, unknown>,
+  spravce: Spravce,
+): Promise<Vysledek> {
+  const id = telo.id;
+  const rozhodnuti = String(telo.rozhodnuti ?? '') as keyof typeof ROZHODNUTI;
+  const duvod = typeof telo.duvod === 'string' ? telo.duvod.trim() : '';
+
+  if (!jeUuid(id)) return chyba('Chybí, o který zápis jde. Obnovte prosím stránku.', 400);
+  if (!(rozhodnuti in ROZHODNUTI)) return chyba('Neznámé rozhodnutí. Obnovte prosím stránku.', 400);
+  if (rozhodnuti === 'vratit' && !duvod) {
+    return chyba('Napište prosím pořadateli, co má v zápisu upravit.', 422);
+  }
+  if (duvod.length > 1000) return chyba('Zkraťte prosím důvod na 1000 znaků.', 422);
+
+  const { data: napad, error } = await klient
+    .from('napady')
+    .select('id, prihlaska_id, nazev_akce, email, kontaktni_osoba, stav, schvaleno_kdy')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) return chyba('Zápis se nepodařilo načíst. Zkuste to prosím znovu.', 503);
+  if (!napad) return chyba('Tenhle zápis už neexistuje. Obnovte prosím seznam.', 404);
+
+  const ted = new Date().toISOString();
+  const zmena: Record<string, unknown> = {
+    stav: ROZHODNUTI[rozhodnuti],
+    duvod: rozhodnuti === 'schvalit' ? null : duvod || null,
+    rozhodl: spravce.email,
+    rozhodnuto_kdy: ted,
+  };
+  const poprveSchvaleno = rozhodnuti === 'schvalit' && !napad.schvaleno_kdy;
+  if (poprveSchvaleno) zmena.schvaleno_kdy = ted;
+
+  const { error: chybaZmeny } = await klient.from('napady').update(zmena).eq('id', id);
+  if (chybaZmeny) {
+    console.error('Rozhodnutí se nepodařilo uložit:', chybaZmeny.message);
+    return chyba('Rozhodnutí se nepodařilo uložit. Zkuste to prosím znovu.', 503);
+  }
+
+  // E-mail pořadateli. Neúspěch odeslání rozhodnutí nevrací zpátky,
+  // jen se o něm administrace dozví.
+  let email: { odeslano: boolean; pres: string } | null = null;
+  const p = { email: String(napad.email), kontaktni_osoba: String(napad.kontaktni_osoba) };
+
+  if (rozhodnuti === 'vratit') {
+    const vyzva = await zalozVyzvu(klient, String(napad.prihlaska_id), p.email, spravce, false);
+    if (vyzva) {
+      const vysl = await zaradAPosli(
+        klient,
+        emailVraceni(p, String(napad.nazev_akce), duvod, vyzva.token, vyzva.platnostDo),
+        String(napad.prihlaska_id),
+      );
+      await klient.from('vyzvy_k_zapisu').update({ posta_id: vysl.postaId }).eq('id', vyzva.id);
+      email = { odeslano: vysl.odeslano, pres: vysl.pres };
+    }
+  } else if (poprveSchvaleno) {
+    const vysl = await zaradAPosli(
+      klient,
+      emailZverejneni(p, String(napad.nazev_akce), String(napad.id)),
+      String(napad.prihlaska_id),
+    );
+    email = { odeslano: vysl.odeslano, pres: vysl.pres };
+  }
+
+  return ok({ id, stav: ROZHODNUTI[rozhodnuti], email });
+}
+
+// ---------------------------------------------------------------------------
+// VÝZVY K ZÁPISU
+// ---------------------------------------------------------------------------
+
+/** Přihlášky s tím, jestli dostaly výzvu a jestli poslaly zápis. */
+export async function prehledVyzev(klient: Klient): Promise<Vysledek> {
+  const [prihlasky, vyzvy, napady] = await Promise.all([
+    klient
+      .from('prihlasky')
+      .select('id, vytvoreno, typ_poradatele, nazev_poradatele, kontaktni_osoba, email, mesto, kraj, datum_akce, stav, schvaleno')
+      .order('vytvoreno', { ascending: false }),
+    klient
+      .from('vyzvy_k_zapisu')
+      .select('id, prihlaska_id, vytvoreno, platnost_do, otevreno_kdy, pouzito_kdy, posta_id, prijemce')
+      .eq('zkusebni', false)
+      .order('vytvoreno', { ascending: false }),
+    klient.from('napady').select('prihlaska_id, stav'),
+  ]);
+
+  if (prihlasky.error || vyzvy.error || napady.error) {
+    console.error('Přehled výzev selhal:', prihlasky.error ?? vyzvy.error ?? napady.error);
+    return chyba('Přehled se nepodařilo načíst. Zkuste to prosím znovu.', 503);
+  }
+
+  // Stav odeslání e-mailů z odchozí pošty.
+  const postaIds = (vyzvy.data ?? []).map((v) => v.posta_id).filter(Boolean) as string[];
+  const stavPosty = new Map<string, string>();
+  if (postaIds.length) {
+    const { data } = await klient.from('odchozi_posta').select('id, stav').in('id', postaIds);
+    for (const r of data ?? []) stavPosty.set(r.id as string, r.stav as string);
+  }
+
+  const posledni = new Map<string, Record<string, unknown>>();
+  const pocet = new Map<string, number>();
+  for (const v of vyzvy.data ?? []) {
+    const pid = v.prihlaska_id as string;
+    pocet.set(pid, (pocet.get(pid) ?? 0) + 1);
+    if (!posledni.has(pid)) posledni.set(pid, v);
+  }
+  // Otevření a použití se počítá ze všech výzev přihlášky, ne jen z poslední.
+  const otevreno = new Set((vyzvy.data ?? []).filter((v) => v.otevreno_kdy).map((v) => v.prihlaska_id));
+  const stavZapisu = new Map((napady.data ?? []).map((n) => [n.prihlaska_id as string, n.stav as string]));
+
+  return ok({
+    prihlasky: (prihlasky.data ?? []).map((p) => {
+      const v = posledni.get(p.id as string);
+      return {
+        ...p,
+        vyzva: v
+          ? {
+            odeslano_kdy: v.vytvoreno,
+            platnost_do: v.platnost_do,
+            prijemce: v.prijemce,
+            stav_posty: v.posta_id ? (stavPosty.get(v.posta_id as string) ?? null) : null,
+            pocet: pocet.get(p.id as string) ?? 1,
+          }
+          : null,
+        otevreno: otevreno.has(p.id),
+        zapis: stavZapisu.get(p.id as string) ?? null,
+      };
+    }),
+  });
+}
+
+/**
+ * Pošle výzvu k zápisu vybraným přihláškám.
+ *
+ * `zkusebne: true` pošle e-mail k JEDNÉ přihlášce na adresu správce
+ * (nebo na `prijemce`). Odkaz v něm je funkční, ale platí jen den a ostré
+ * odkazy neruší.
+ */
+export async function posliVyzvy(
+  klient: Klient,
+  telo: Record<string, unknown>,
+  spravce: Spravce,
+): Promise<Vysledek> {
+  const ids = Array.isArray(telo.prihlasky) ? [...new Set(telo.prihlasky.filter(jeUuid))] : [];
+  const zkusebne = telo.zkusebne === true;
+
+  if (!ids.length) return chyba('Vyberte prosím aspoň jednu přihlášku.', 400);
+  if (ids.length > DAVKA_MAX) {
+    return chyba(`Najednou jde poslat nejvýš ${DAVKA_MAX} výzev. Administrace je posílá po dávkách.`, 400);
+  }
+
+  let prijemceZkousky = '';
+  if (zkusebne) {
+    if (ids.length !== 1) return chyba('Zkušební e-mail jde poslat jen k jedné přihlášce.', 400);
+    prijemceZkousky = typeof telo.prijemce === 'string' && telo.prijemce.trim()
+      ? telo.prijemce.trim()
+      : spravce.email;
+    if (!jeEmail(prijemceZkousky)) return chyba('Zkontrolujte prosím adresu pro zkušební e-mail.', 422);
+  }
+
+  const { data: prihlasky, error } = await klient
+    .from('prihlasky')
+    .select('id, email, kontaktni_osoba, nazev_poradatele, stav')
+    .in('id', ids);
+  if (error) return chyba('Přihlášky se nepodařilo načíst. Zkuste to prosím znovu.', 503);
+
+  const { data: schvalene } = await klient
+    .from('napady')
+    .select('prihlaska_id')
+    .in('prihlaska_id', ids)
+    .eq('stav', 'schvaleno');
+  const maSchvaleny = new Set((schvalene ?? []).map((n) => n.prihlaska_id as string));
+
+  const vysledky: { id: string; vysledek: 'odeslano' | 'ceka' | 'preskoceno' | 'chyba'; veta: string }[] = [];
+
+  for (const id of ids) {
+    const p = (prihlasky ?? []).find((x) => x.id === id);
+    if (!p) {
+      vysledky.push({ id, vysledek: 'chyba', veta: 'Přihláška neexistuje.' });
+      continue;
+    }
+    if (!zkusebne && maSchvaleny.has(id)) {
+      vysledky.push({ id, vysledek: 'preskoceno', veta: 'Zápis už je schválený, výzva není potřeba.' });
+      continue;
+    }
+
+    const prijemce = zkusebne ? prijemceZkousky : String(p.email);
+    const vyzva = await zalozVyzvu(klient, id, prijemce, spravce, zkusebne);
+    if (!vyzva) {
+      vysledky.push({ id, vysledek: 'chyba', veta: 'Výzvu se nepodařilo založit.' });
+      continue;
+    }
+
+    const zprava = emailVyzvy(
+      { email: String(p.email), kontaktni_osoba: String(p.kontaktni_osoba) },
+      vyzva.token,
+      vyzva.platnostDo,
+      prijemce,
+    );
+    if (zkusebne) zprava.predmet = `[ZKOUŠKA] ${zprava.predmet}`;
+
+    const vysl = await zaradAPosli(klient, zprava, id);
+    await klient.from('vyzvy_k_zapisu').update({ posta_id: vysl.postaId }).eq('id', vyzva.id);
+
+    vysledky.push({
+      id,
+      vysledek: vysl.odeslano ? 'odeslano' : vysl.postaId ? 'ceka' : 'chyba',
+      veta: vysl.odeslano
+        ? `Odesláno na ${prijemce}.`
+        : vysl.postaId
+        ? 'E-mail čeká ve frontě odchozí pošty.'
+        : 'E-mail se nepodařilo připravit.',
+    });
+  }
+
+  return ok({ vysledky });
+}
