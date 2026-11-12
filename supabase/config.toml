@@ -466,3 +466,12 @@ verify_jwt = false
 [functions.verejne-akce]
 enabled = true
 verify_jwt = false
+
+# Zásobník nápadů. Pořadatel se prokazuje tokenem z odkazu, ne JWT.
+[functions.zapis-napadu]
+enabled = true
+verify_jwt = false
+
+[functions.verejne-napady]
+enabled = true
+verify_jwt = false

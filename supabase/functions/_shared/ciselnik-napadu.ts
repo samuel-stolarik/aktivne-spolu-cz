@@ -135,6 +135,21 @@ export const LIMITY = {
   fotkaBajtuMax: 5 * 1024 * 1024,
 } as const;
 
+/**
+ * Znění souhlasů ve formuláři. Server ho ukládá ke každému zápisu
+ * (`napady.souhlas_zneni`), aby bylo doložené, s čím kdo souhlasil.
+ *
+ * NÁVRH. Čeká na schválení provozovatelem, než se nasadí.
+ */
+export const SOUHLAS = {
+  zpracovani:
+    'Souhlasím se zpracováním osobních údajů z tohoto formuláře pro účely Zásobníku nápadů ' +
+    'a se zveřejněním vybraného kontaktu u mého nápadu, aby se mi mohli ozvat zájemci.',
+  foto:
+    'Prohlašuji, že všichni vyfocení souhlasí se zveřejněním fotek. ' +
+    'U dětí mám souhlas jejich rodičů.',
+} as const;
+
 export function nazevVolby(seznam: Volba[], klic: string): string {
   return seznam.find((v) => v.klic === klic)?.nazev ?? klic;
 }
