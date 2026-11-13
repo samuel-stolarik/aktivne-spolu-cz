@@ -55,7 +55,10 @@ const SOUBORU_MAX = 25;
 const WEB = (Deno.env.get('WEB_URL') ?? 'https://aktivne-spolu.cz').replace(/\/+$/, '');
 
 /** Komu jde upozornění na nový zápis. Když chybí, upozornění se přeskočí. */
-const UPOZORNENI_EMAIL = Deno.env.get('ZASOBNIK_UPOZORNENI_EMAIL') ?? '';
+// Kam jde upozornění na nový zápis. Bez vlastní adresy jde na kontaktní
+// e-mail Právě teď! (DODAVATEL_EMAIL).
+const UPOZORNENI_EMAIL =
+  Deno.env.get('ZASOBNIK_UPOZORNENI_EMAIL') || Deno.env.get('DODAVATEL_EMAIL') || '';
 
 const KONTAKT_EMAIL = Deno.env.get('DODAVATEL_EMAIL') ?? '';
 
@@ -374,7 +377,9 @@ function zkontroluj(
 
   const nazev_akce = text(v.nazev_akce);
   if (!nazev_akce) ch.nazev_akce = 'Napište prosím, jak se akce jmenovala.';
-  else if (delka(nazev_akce) > LIMITY.nazevMax) {
+  else if (delka(nazev_akce) < LIMITY.nazevMin) {
+    ch.nazev_akce = `Název je krátký. Napište prosím aspoň ${LIMITY.nazevMin} znaků.`;
+  } else if (delka(nazev_akce) > LIMITY.nazevMax) {
     ch.nazev_akce = `Zkraťte prosím název na ${LIMITY.nazevMax} znaků.`;
   }
 
@@ -398,7 +403,8 @@ function zkontroluj(
   if (typeof v.pomucky_potreba !== 'boolean') ch.pomucky_potreba = 'Vyberte prosím, jestli byly potřeba pomůcky.';
   let pomucky_jake: string | null = text(v.pomucky_jake) || null;
   if (!pomucky_potreba) pomucky_jake = null;
-  else if (pomucky_jake && delka(pomucky_jake) > LIMITY.pomuckyMax) {
+  else if (!pomucky_jake) ch.pomucky_jake = 'Napište prosím, jaké pomůcky byly potřeba.';
+  else if (delka(pomucky_jake) > LIMITY.pomuckyMax) {
     ch.pomucky_jake = `Zkraťte prosím seznam pomůcek na ${LIMITY.pomuckyMax} znaků.`;
   }
 
@@ -429,6 +435,9 @@ function zkontroluj(
       !Number.isNaN(new Date(`${datum_akce}T12:00:00Z`).getTime());
     if (!ok) {
       ch.datum_akce = 'Zadejte prosím datum ve tvaru den. měsíc. rok, nebo pole nechte prázdné.';
+      datum_akce = null;
+    } else if (datum_akce > dnesVPraze()) {
+      ch.datum_akce = 'Datum je v budoucnosti. Zadejte prosím den, kdy akce proběhla, nebo pole nechte prázdné.';
       datum_akce = null;
     }
   }
@@ -571,6 +580,16 @@ async function uloz(
   return odpoved(req, { ok: true, stav: 'ceka' });
 }
 
+/** Dnešní datum v Praze jako RRRR-MM-DD (nezávisle na časové zóně serveru). */
+function dnesVPraze(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 async function upozorniSpravce(
   klient: Klient,
   prihlaskaId: string,
@@ -578,7 +597,7 @@ async function upozorniSpravce(
   predtim: string,
 ): Promise<void> {
   if (!UPOZORNENI_EMAIL) {
-    console.log('ZASOBNIK_UPOZORNENI_EMAIL není nastavený, upozornění se přeskočí.');
+    console.log('Adresa pro upozornění není nastavená (ZASOBNIK_UPOZORNENI_EMAIL ani DODAVATEL_EMAIL), upozornění se přeskočí.');
     return;
   }
 

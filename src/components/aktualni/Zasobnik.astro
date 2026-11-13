@@ -23,7 +23,8 @@
  * do sloupce, kde je každá karta čitelná celá bez jakékoli interakce.
  * Při zakázaném pohybu se nic neanimuje, jen se stavy mění okamžitě.
  *
- * TEXTY: odstavce doslova z podklady/texty.md, sekce 6. Obsah karet je
+ * TEXTY: odstavce z podklady/texty.md, sekce 6; „Od 1. listopadu vznikne
+ * databáze" je přepsané na přítomný čas, protože Zásobník už běží. Obsah karet je
  * ukázkový, ale pravdivý: názvy aktivit jsou z Tipů na aktivity
  * (podklady, sekce 4) a řádky odpovídají tomu, na co se po akci ptá
  * formulář — pro koho byla akce vhodná, náročnost, pomůcky.
@@ -117,11 +118,23 @@ const karty = [
         <p class="f-najezd mt-0 mb-0 max-w-[52ch]" data-poradi="3">
           Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce
           (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly
-          potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne veřejně
-          přístupná databáze plná ověřené inspirace pro organizátory podobných
-          akcí z celé ČR.
+          potřeba) a nahrajete fotografie. Vzniká tak veřejně přístupná
+          databáze plná ověřené inspirace pro organizátory podobných akcí
+          z celé ČR.
         </p>
       </div>
+
+      {/* Vedlejší tlačítko: hlavní červené je na obrazovce jen jedno
+          (v hlavičce). Na tmavé ploše má bílý rámeček, tyrkysový by
+          na inkoustu zanikl. */}
+      <p class="f-najezd mt-8 mb-0" data-poradi="4">
+        <a
+          href="/zasobnik/"
+          class="tlacitko-pohyb inline-flex min-h-16 items-center justify-center rounded-2xl border-2 border-white px-7 py-3 font-semibold text-white no-underline hover:bg-white/10"
+        >
+          Prohlédnout Zásobník nápadů
+        </a>
+      </p>
     </div>
 
     {/* Vějíř ukázkových záznamů. Paralaxní obal je zvlášť, aby se nepral

@@ -3,10 +3,12 @@
  * Zásobník nápadů — veřejný přehled schválených zápisů po akci.
  *
  * Data dodává Edge Funkce `verejne-napady` (jen schválené zápisy a jen
- * veřejná pole). Filtry běží v prohlížeči nad celým seznamem.
+ * veřejná pole). Výběr běží v prohlížeči nad celým seznamem.
  *
- * Detail nápadu je na stejné stránce: /zasobnik/?napad=<id>. Web je
+ * Detail nápadu je na stejné stránce: /zasobnik/?id=<id>. Web je
  * statický, takže pro každý nápad nemůže existovat vlastní soubor.
+ * Nadpis a pruh „Co tady můžete udělat" mění skript podle toho, jestli
+ * je vidět přehled, nebo detail.
  *
  * SKRYTÁ dokud ji zadavatelka neodsouhlasí naostro: noindex a mimo
  * sitemapu (viz astro.config.mjs). Po odsouhlasení se `skryta` smaže.
@@ -21,23 +23,27 @@ import StrankaZasobniku from "../../layouts/StrankaZasobniku.astro";
   popis="Ověřené nápady na mezigenerační akce od škol, spolků a firem z celé republiky. Vyberte si a uspořádejte podobnou."
   skryta
 >
-  <div id="z-prehled">
-    <p class="f-obor">Zásobník nápadů</p>
-    <h1 class="z-nadpis">Nápady na společné akce</h1>
-    <p class="z-uvod">
-      Ověřené nápady od škol, spolků, firem i jednotlivců, kteří se zapojili
-      do kampaně Mezigeneračně aktivně spolu. Vyberte, co hledáte, a seznam
-      se hned zúží.
-    </p>
+  <h1 class="z-nadpis" id="z-nadpis">Zásobník nápadů</h1>
 
-    <div class="z-filtry" id="z-filtry" hidden></div>
-    <div id="z-pocet" class="z-pocet" aria-live="polite"></div>
+  <div class="z-co-delat">
+    <span class="z-co-delat-ikona" aria-hidden="true">i</span>
+    <p>
+      <strong>Co tady můžete udělat:</strong>{" "}<span id="z-co-delat">
+        Vyberte, jakou aktivitu hledáte. Ukážeme ověřené nápady od pořadatelů
+        z celé republiky.
+      </span>
+    </p>
+  </div>
+
+  <div id="z-prehled">
+    <div class="z-vyber" id="z-vyber" hidden></div>
+    <div id="z-stav" aria-live="polite"></div>
     <div id="z-seznam">
       <p class="z-nacitani">Načítáme nápady…</p>
     </div>
   </div>
 
-  <article id="z-detail" hidden tabindex="-1"></article>
+  <article id="z-detail" class="z-detail" hidden tabindex="-1"></article>
 </StrankaZasobniku>
 
 <script>

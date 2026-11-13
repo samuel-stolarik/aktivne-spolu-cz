@@ -2,13 +2,16 @@
  * Záložka „Zásobník nápadů" v administraci.
  *
  * Dvě části:
- *   1. Zápisy ke kontrole: celý zápis s fotkami, vzkazem a souhlasy;
- *      tlačítka Schválit / Vrátit k úpravě / Zamítnout.
- *   2. Výzvy pořadatelům: přehled přihlášek, zkušební e-mail na vlastní
- *      adresu a hromadné odeslání výzev po dávkách.
+ *   1. Zápisy ke kontrole: meruňkový pruh „Čeká na vás", každý zápis jako
+ *      rozbalovací řádek se vším (fotky, údaje, celý popis, souhlasy,
+ *      neveřejný vzkaz) a tlačítky Schválit a zveřejnit / Vrátit k úpravě
+ *      (s důvodem) / Zamítnout.
+ *   2. Výzvy pořadatelům: stav u každé přihlášky (Neodesláno / Odesláno
+ *      dne / Zápis vyplněný), výzva jednotlivě i hromadně a zkušební
+ *      e-mail na vlastní adresu.
  *
- * Žádné confirm(): u hromadného odeslání a zamítnutí se potvrzuje
- * tlačítkem přímo na místě. Výsledek se vždy ukáže větou u tlačítka.
+ * Žádné confirm(): odeslání výzev a zamítnutí se potvrzuje tlačítkem
+ * přímo na místě. Výsledek se vždy ukáže větou začínající „Hotovo!".
  */
 import { zavolej } from "./klient";
 import { sHlasenim, ukazStav } from "./stav";
@@ -130,8 +133,25 @@ function datumCas(iso: string | null): string {
 }
 
 // ===========================================================================
+// SKLOŇOVÁNÍ
+// ===========================================================================
+
+/** 1 zápis, 2–4 zápisy, 0 a 5+ zápisů. */
+function sklonuj(n: number, jeden: string, dva: string, pet: string): string {
+  if (n === 1) return `${n} ${jeden}`;
+  if (n >= 2 && n <= 4) return `${n} ${dva}`;
+  return `${n} ${pet}`;
+}
+
+const zapisu = (n: number) => sklonuj(n, "zápis", "zápisy", "zápisů");
+const fotek = (n: number) => sklonuj(n, "fotka", "fotky", "fotek");
+
+// ===========================================================================
 // FRONTA ZÁPISŮ
 // ===========================================================================
+
+/** Nejkratší důvod vrácení k úpravě. Musí sedět se serverem. */
+const DUVOD_MIN = 5;
 
 let zapisy: Zapis[] = [];
 
@@ -148,140 +168,163 @@ export async function nactiZapisy(): Promise<void> {
   vykresliZapisy();
 }
 
+function vykresliPruh(): void {
+  const pruh = el("pruh-cekajicich");
+  const cekaji = zapisy.filter((z) => z.stav === "ceka").length;
+  pruh.hidden = false;
+  if (cekaji) {
+    pruh.removeAttribute("data-nic");
+    pruh.textContent = `Čeká na vás: ${zapisu(cekaji)}.`;
+  } else {
+    pruh.setAttribute("data-nic", "");
+    pruh.textContent = "Nic nečeká na kontrolu.";
+  }
+}
+
 function vykresliZapisy(): void {
   const filtr = el<HTMLSelectElement>("filtr-zapisu").value;
   const seznam = el("seznam-zapisu");
   const vybrane = zapisy.filter((z) => filtr === "vse" || z.stav === filtr);
-  const cekaji = zapisy.filter((z) => z.stav === "ceka").length;
 
-  el("pocet-zapisu").textContent =
-    `Zobrazeno ${vybrane.length} z ${zapisy.length}. Na kontrolu čeká ${cekaji}.`;
+  vykresliPruh();
+  el("pocet-zapisu").textContent = filtr === "ceka"
+    ? ""
+    : `Zobrazeno ${vybrane.length} z ${zapisy.length}.`;
 
   seznam.innerHTML = "";
   if (!vybrane.length) {
-    seznam.append(vytvor("p", "admin-karta text-popisek", "Tady teď nic není."));
+    seznam.append(vytvor("p", "admin-karta text-popisek", "Tady teď žádný zápis není."));
     return;
   }
-  for (const z of vybrane) seznam.append(kartaZapisu(z));
+  for (const z of vybrane) seznam.append(radekZapisu(z));
 }
 
 function radekUdaju(dl: HTMLDListElement, nazev: string, hodnota: string): void {
   if (!hodnota) return;
-  dl.append(vytvor("dt", "font-semibold", nazev), vytvor("dd", "m-0 mb-2", hodnota));
+  dl.append(vytvor("dt", "font-semibold", nazev), vytvor("dd", "", hodnota));
 }
 
-function kartaZapisu(z: Zapis): HTMLElement {
-  const karta = vytvor("details", "admin-karta");
-  karta.dataset.id = z.id;
-  karta.open = z.stav === "ceka";
+function radekZapisu(z: Zapis): HTMLElement {
+  const radek = vytvor("details", "admin-zapis");
+  radek.dataset.id = z.id;
 
-  const souhrn = vytvor("summary", "cursor-pointer");
-  souhrn.append(vytvor("strong", "text-lg text-tyrkys", z.nazev_akce));
-  souhrn.append(document.createTextNode(` · ${z.nazev_poradatele} · ${z.mesto} · `));
-  souhrn.append(vytvor("span", `admin-stitek admin-stitek-${z.stav}`, STAV_ZAPISU[z.stav] ?? z.stav));
-  souhrn.append(vytvor("span", "text-popisek", ` · přišlo ${datumCas(z.upraveno)}`));
-  karta.append(souhrn);
+  // --- Souhrn: název, kdo a odkud, počet fotek; vpravo „Otevřít". ---
+  const souhrn = vytvor("summary");
+  const hlavicka = vytvor("span", "admin-zapis-hlavicka");
+  hlavicka.append(vytvor("span", "admin-zapis-nazev", z.nazev_akce));
+  const kdo = vytvor("span", "admin-zapis-kdo", `${z.nazev_poradatele} · ${z.mesto} · ${fotek(z.fotky.length)}`);
+  if (z.stav !== "ceka") {
+    kdo.append(" ", vytvor("span", `admin-stitek admin-stitek-${z.stav}`, STAV_ZAPISU[z.stav] ?? z.stav));
+  }
+  hlavicka.append(kdo);
+  souhrn.append(hlavicka, vytvor("span", "admin-zapis-otevrit", "Otevřít celý zápis"));
+  radek.append(souhrn);
 
-  const telo = vytvor("div", "mt-4");
+  const telo = vytvor("div", "admin-zapis-telo");
 
   if (z.stav !== "ceka" && z.rozhodl) {
     telo.append(
       vytvor(
         "p",
-        "text-popisek",
-        `${STAV_ZAPISU[z.stav]}: ${z.rozhodl}, ${datumCas(z.rozhodnuto_kdy)}.` +
+        "mt-4 mb-0 text-popisek",
+        `${STAV_ZAPISU[z.stav]}: ${z.rozhodl}${z.rozhodnuto_kdy ? `, ${datumCas(z.rozhodnuto_kdy)}` : ""}.` +
           (z.duvod ? ` Důvod: ${z.duvod}` : ""),
       ),
     );
   }
 
-  if (z.vzkaz) {
-    const vzkaz = vytvor("div", "admin-vzkaz");
-    vzkaz.append(vytvor("strong", "", "Vzkaz pro vás (neveřejný): "), document.createTextNode(z.vzkaz));
-    telo.append(vzkaz);
+  // --- Fotky ---
+  if (z.fotky.length) {
+    const galerie = vytvor("div", "admin-galerie");
+    z.fotky.forEach((f, i) => {
+      const odkaz = vytvor("a");
+      odkaz.href = f.adresa;
+      odkaz.target = "_blank";
+      odkaz.rel = "noopener";
+      const img = vytvor("img");
+      img.src = f.adresa;
+      img.alt = `Fotka ${i + 1} z ${z.fotky.length}${i === 0 ? ", titulní" : ""}. Otevře se ve velkém.`;
+      img.loading = "lazy";
+      odkaz.append(img);
+      galerie.append(odkaz);
+    });
+    telo.append(galerie);
+  } else {
+    telo.append(vytvor("p", "admin-varovani", "Pozor: zápis nemá žádné fotky."));
   }
 
-  // Fotky
-  const galerie = vytvor("div", "admin-galerie");
-  z.fotky.forEach((f, i) => {
-    const odkaz = vytvor("a");
-    odkaz.href = f.adresa;
-    odkaz.target = "_blank";
-    odkaz.rel = "noopener";
-    const img = vytvor("img");
-    img.src = f.adresa;
-    img.alt = `Fotka ${i + 1}${i === 0 ? ", titulní" : ""}. Otevře se ve velkém.`;
-    img.loading = "lazy";
-    odkaz.append(img);
-    galerie.append(odkaz);
-  });
-  telo.append(galerie);
-
-  // Popis
-  telo.append(vytvor("h3", "mt-4 mb-1 text-base", "Popis akce"));
-  telo.append(vytvor("p", "admin-popis-zapisu", z.popis));
-
-  // Údaje
+  // --- Údaje ---
   const typ = TYPY.find((t) => t.klic === z.typ)?.nazev ?? z.typ;
-  const podtyp = z.podtyp === "jine" ? `Jiné: ${z.podtyp_jine ?? ""}` : nazevPodtypu(z.typ, z.podtyp);
-  const dl = vytvor("dl", "admin-udaje text-popisek");
+  const podtyp = z.podtyp === "jine" ? `jiné: ${z.podtyp_jine ?? ""}` : nazevPodtypu(z.typ, z.podtyp).toLowerCase();
+  const dl = vytvor("dl", "admin-udaje");
   radekUdaju(dl, "Typ", `${typ} – ${podtyp}`);
   radekUdaju(dl, "Náročnost", nazevVolby(NAROCNOST, z.narocnost));
-  radekUdaju(dl, "Délka", nazevVolby(DELKA, z.delka));
   radekUdaju(
     dl,
     "Pomůcky",
     z.pomucky_potreba ? `Jsou potřeba${z.pomucky_jake ? `: ${z.pomucky_jake}` : ""}` : "Nejsou potřeba",
   );
-  radekUdaju(dl, "Věk", z.vek.map((v) => nazevVolby(VEK, v)).join(", "));
+  radekUdaju(dl, "Pro koho – věk", z.vek.map((v) => nazevVolby(VEK, v)).join(", "));
   radekUdaju(dl, "Zdatnost", z.zdatnost.map((v) => nazevVolby(ZDATNOST, v)).join(", "));
-  radekUdaju(dl, "Datum akce", datum(z.datum_akce) || "neuvedeno");
-  radekUdaju(dl, "Pořadatel", `${z.nazev_poradatele}, ${z.mesto}, ${z.kraj}`);
+  radekUdaju(dl, "Délka", nazevVolby(DELKA, z.delka));
+  radekUdaju(dl, "Kde", `${z.mesto}, ${z.kraj}`);
+  radekUdaju(dl, "Kdy proběhlo", datum(z.datum_akce) || "Neuvedeno");
+  radekUdaju(dl, "Pořadatel", z.nazev_poradatele);
   radekUdaju(dl, "Kontaktní osoba", `${z.kontaktni_osoba}, ${z.email}${z.telefon ? `, ${z.telefon}` : ""}`);
-  radekUdaju(
-    dl,
-    "Zveřejnit kontakt",
-    z.verejny_kontakt
-      .map((k) => `${nazevVolby(VEREJNY_KONTAKT, k)} (${k === "email" ? z.email : z.telefon})`)
-      .join(", "),
-  );
-  radekUdaju(dl, "Souhlasy", z.souhlas_zneni);
+  radekUdaju(dl, "Zápis přišel", datumCas(z.upraveno));
   telo.append(dl);
 
+  // --- Celý popis ---
+  telo.append(vytvor("h3", "mt-6 mb-2 text-xl", "Jak akce proběhla"));
+  telo.append(vytvor("p", "admin-popis-zapisu", z.popis));
+
+  // --- Souhlasy ---
+  const souhlasy = vytvor("div", "mt-6");
+  const foto = vytvor("p", "my-1");
+  foto.append(vytvor("strong", "", "Souhlas se zveřejněním fotek: "), "Ano, potvrzeno");
+  const kontakt = vytvor("p", "my-1");
+  const zverejni = z.verejny_kontakt
+    .map((k) => `${nazevVolby(VEREJNY_KONTAKT, k).toLowerCase()} ${k === "email" ? z.email : z.telefon ?? ""}`)
+    .join(" a ");
+  kontakt.append(
+    vytvor("strong", "", "Souhlas se zveřejněním kontaktu: "),
+    zverejni ? `Ano, u nápadu bude ${zverejni}` : "Ne, kontakt se nezveřejní",
+  );
+  souhlasy.append(foto, kontakt);
+  if (z.souhlas_zneni) souhlasy.append(vytvor("p", "mt-2 mb-0 text-popisek", `Znění souhlasu: ${z.souhlas_zneni}`));
+  telo.append(souhlasy);
+
+  // --- Neveřejný vzkaz ---
+  if (z.vzkaz) {
+    const vzkaz = vytvor("div", "admin-vzkaz");
+    vzkaz.append(vytvor("strong", "", "Vzkaz organizátorům kampaně (neveřejné): "), z.vzkaz);
+    telo.append(vzkaz);
+  }
+
   telo.append(ovladaniRozhodnuti(z));
-  karta.append(telo);
-  return karta;
+  radek.append(telo);
+  return radek;
 }
 
+const HOTOVO_ROZHODNUTI = {
+  schvalit: "Hotovo! Zápis je zveřejněný v Zásobníku nápadů.",
+  vratit: "Hotovo! Zápis je vrácený k úpravě. Pořadatel dostane e-mail s vaším důvodem a odkazem na úpravu.",
+  zamitnout: "Hotovo! Zápis je zamítnutý a na webu se neukáže.",
+} as const;
+
 function ovladaniRozhodnuti(z: Zapis): HTMLElement {
-  const obal = vytvor("div", "mt-5 border-t border-merunka-tlumena pt-4");
+  const obal = vytvor("div", "admin-rozhodnuti");
   const hlaska = vytvor("p", "admin-hlaska mb-3");
   const rada = vytvor("div", "flex flex-wrap gap-3");
 
-  const pole = vytvor("textarea", "admin-pole mt-2");
-  pole.rows = 3;
-  pole.maxLength = 1000;
-  pole.id = `duvod-${z.id}`;
-  const popisek = vytvor("label", "admin-popisek mt-3", "Důvod pro pořadatele (u vrácení povinný)");
-  popisek.htmlFor = pole.id;
-  if (z.duvod) pole.value = z.duvod;
-
-  async function rozhodni(rozhodnuti: "schvalit" | "vratit" | "zamitnout", tlacitko: HTMLButtonElement) {
-    const duvod = pole.value.trim();
-    if (rozhodnuti === "vratit" && !duvod) {
-      ukazStav(hlaska, "chyba", "Napište prosím do pole níž, co má pořadatel upravit.");
-      pole.focus();
-      return;
-    }
-    const hotovo = {
-      schvalit: "Hotovo. Zápis je schválený a je vidět v Zásobníku na webu.",
-      vratit: "Hotovo. Zápis je vrácený a pořadatel dostane e-mail s důvodem a novým odkazem.",
-      zamitnout: "Hotovo. Zápis je zamítnutý a na webu se neukáže.",
-    }[rozhodnuti];
-
+  async function rozhodni(
+    rozhodnuti: keyof typeof HOTOVO_ROZHODNUTI,
+    tlacitko: HTMLButtonElement,
+    duvod = "",
+  ): Promise<boolean> {
     const v = await sHlasenim(
       hlaska,
-      { probiha: "Ukládám rozhodnutí…", hotovo },
+      { probiha: "Ukládám rozhodnutí…", hotovo: HOTOVO_ROZHODNUTI[rozhodnuti] },
       () =>
         zavolej<{ stav: Zapis["stav"]; email: { odeslano: boolean; pres: string } | null }>("rozhodni-napad", {
           id: z.id,
@@ -290,68 +333,125 @@ function ovladaniRozhodnuti(z: Zapis): HTMLElement {
         }),
       { tlacitko },
     );
-    if (!v) return;
+    if (!v) return false;
 
     z.stav = v.stav;
     z.duvod = rozhodnuti === "schvalit" ? null : duvod || null;
     z.rozhodnuto_kdy = new Date().toISOString();
-    if (v.email && !v.email.odeslano) {
-      ukazStav(
-        hlaska,
-        "hotovo",
-        `${hotovo} E-mail pořadateli zatím čeká ve frontě odchozí pošty.`,
-      );
-    }
-    // Souhrn karty se přepíše, karta zůstane otevřená s hláškou.
-    const stitek = obal.closest("details")?.querySelector(".admin-stitek");
-    if (stitek) {
-      stitek.className = `admin-stitek admin-stitek-${z.stav}`;
-      stitek.textContent = STAV_ZAPISU[z.stav];
-    }
+
+    // Hláška patří k sekci: řádek se po rozhodnutí z fronty přesune.
+    const sekce = el("hlaska-zapisy");
+    const fronta = v.email && !v.email.odeslano ? " E-mail pořadateli čeká ve frontě odchozí pošty." : "";
+    vykresliZapisy();
+    ukazStav(sekce, "hotovo", HOTOVO_ROZHODNUTI[rozhodnuti] + fronta);
+    sekce.scrollIntoView({ block: "center", behavior: "smooth" });
+    sekce.focus({ preventScroll: true });
+    return true;
   }
 
+  // --- Schválit ---
   const schvalit = vytvor("button", "admin-tlacitko", "Schválit a zveřejnit");
   schvalit.type = "button";
   schvalit.addEventListener("click", () => void rozhodni("schvalit", schvalit));
 
+  // --- Vrátit k úpravě: pole s důvodem přímo na místě ---
   const vratit = vytvor("button", "admin-tlacitko-vedlejsi", "Vrátit k úpravě");
   vratit.type = "button";
-  vratit.addEventListener("click", () => void rozhodni("vratit", vratit));
+  vratit.setAttribute("aria-expanded", "false");
 
-  // Zamítnutí je nevratné vůči pořadateli (formulář se mu zavře), proto
-  // se potvrzuje druhým tlačítkem přímo na místě.
-  const zamitnout = vytvor("button", "admin-tlacitko-vedlejsi", "Zamítnout");
+  const mistoVraceni = vytvor("div", "admin-potvrzeni-misto");
+  mistoVraceni.hidden = true;
+  const pole = vytvor("textarea", "admin-pole mt-2");
+  pole.id = `duvod-${z.id}`;
+  pole.rows = 3;
+  pole.maxLength = 1000;
+  pole.placeholder = "Přidejte prosím ještě 2 fotky.";
+  const popisek = vytvor("label", "admin-popisek", "Co má pořadatel upravit? (krátce, uvidí to)");
+  popisek.htmlFor = pole.id;
+  const chybaDuvodu = vytvor("p", "admin-hlaska mt-2");
+  chybaDuvodu.id = `chyba-duvodu-${z.id}`;
+  pole.setAttribute("aria-describedby", chybaDuvodu.id);
+  const radaVraceni = vytvor("div", "mt-3 flex flex-wrap gap-3");
+  const vratitSDuvodem = vytvor("button", "admin-tlacitko-vedlejsi", "Vrátit s tímto důvodem");
+  vratitSDuvodem.type = "button";
+  const zrusitVraceni = vytvor("button", "admin-tlacitko-vedlejsi", "Zrušit");
+  zrusitVraceni.type = "button";
+  radaVraceni.append(vratitSDuvodem, zrusitVraceni);
+  mistoVraceni.append(popisek, pole, chybaDuvodu, radaVraceni);
+
+  vratit.addEventListener("click", () => {
+    zavriZamitnuti();
+    mistoVraceni.hidden = false;
+    vratit.setAttribute("aria-expanded", "true");
+    pole.focus();
+  });
+  zrusitVraceni.addEventListener("click", () => {
+    mistoVraceni.hidden = true;
+    vratit.setAttribute("aria-expanded", "false");
+    ukazStav(chybaDuvodu, "nic");
+    pole.removeAttribute("aria-invalid");
+    vratit.focus();
+  });
+  pole.addEventListener("input", () => {
+    ukazStav(chybaDuvodu, "nic");
+    pole.removeAttribute("aria-invalid");
+  });
+  vratitSDuvodem.addEventListener("click", async () => {
+    const duvod = pole.value.trim();
+    if (duvod.length < DUVOD_MIN) {
+      ukazStav(
+        chybaDuvodu,
+        "chyba",
+        `Napište prosím krátce, co má pořadatel upravit. Stačí aspoň ${DUVOD_MIN} znaků.`,
+      );
+      pole.setAttribute("aria-invalid", "true");
+      pole.focus();
+      return;
+    }
+    await rozhodni("vratit", vratitSDuvodem, duvod);
+  });
+
+  // --- Zamítnout: potvrzení přímo na místě, bez confirm() ---
+  const zamitnout = vytvor("button", "admin-tlacitko-vedlejsi admin-nebezpeci", "Zamítnout");
   zamitnout.type = "button";
+  const mistoZamitnuti = vytvor("div", "admin-potvrzeni-misto");
+  mistoZamitnuti.hidden = true;
+  mistoZamitnuti.append(
+    vytvor(
+      "p",
+      "mt-0 font-semibold",
+      `Opravdu zamítnout zápis „${z.nazev_akce}“? Na webu se neukáže a pořadatel ho už nebude moct upravit.`,
+    ),
+  );
+  const radaZamitnuti = vytvor("div", "flex flex-wrap gap-3");
   const potvrdit = vytvor("button", "admin-tlacitko-vedlejsi admin-nebezpeci", "Ano, zamítnout");
   potvrdit.type = "button";
-  potvrdit.hidden = true;
-  const zpet = vytvor("button", "admin-tlacitko-vedlejsi", "Nezamítat");
-  zpet.type = "button";
-  zpet.hidden = true;
+  const nezamitat = vytvor("button", "admin-tlacitko-vedlejsi", "Nezamítat");
+  nezamitat.type = "button";
+  radaZamitnuti.append(potvrdit, nezamitat);
+  mistoZamitnuti.append(radaZamitnuti);
+
+  function zavriZamitnuti() {
+    mistoZamitnuti.hidden = true;
+  }
   zamitnout.addEventListener("click", () => {
-    zamitnout.hidden = true;
-    potvrdit.hidden = false;
-    zpet.hidden = false;
-    ukazStav(hlaska, "rozepsano", "Opravdu zamítnout? Pořadatel pak zápis nebude moct upravit.");
+    mistoVraceni.hidden = true;
+    vratit.setAttribute("aria-expanded", "false");
+    mistoZamitnuti.hidden = false;
     potvrdit.focus();
   });
-  zpet.addEventListener("click", () => {
-    zamitnout.hidden = false;
-    potvrdit.hidden = true;
-    zpet.hidden = true;
-    ukazStav(hlaska, "nic");
+  nezamitat.addEventListener("click", () => {
+    zavriZamitnuti();
     zamitnout.focus();
   });
   potvrdit.addEventListener("click", async () => {
-    await rozhodni("zamitnout", potvrdit);
-    zamitnout.hidden = false;
-    potvrdit.hidden = true;
-    zpet.hidden = true;
+    if (!(await rozhodni("zamitnout", potvrdit))) return;
   });
 
   if (z.stav !== "schvaleno") rada.append(schvalit);
-  rada.append(vratit, zamitnout, potvrdit, zpet);
-  obal.append(hlaska, rada, popisek, pole);
+  if (z.stav !== "vraceno") rada.append(vratit);
+  if (z.stav !== "zamitnuto") rada.append(zamitnout);
+  obal.append(hlaska, rada, mistoVraceni, mistoZamitnuti);
   return obal;
 }
 
@@ -387,15 +487,94 @@ function zobrazene(): PrihlaskaSVyzvou[] {
   });
 }
 
-function popisVyzvy(p: PrihlaskaSVyzvou): string {
-  if (!p.vyzva) return "Neposlána";
-  const posta = p.vyzva.stav_posty === "odeslano"
-    ? "odešla"
-    : p.vyzva.stav_posty === "chyba"
-    ? "NEODEŠLA"
-    : "čeká ve frontě";
-  const kolik = p.vyzva.pocet > 1 ? ` (${p.vyzva.pocet}×)` : "";
-  return `${datum(p.vyzva.odeslano_kdy)}${kolik}, ${posta}${p.otevreno ? ", odkaz otevřen" : ""}`;
+/** Sloupec Stav: Neodesláno / Odesláno dne / Zápis vyplněný. */
+function bunkaStavu(p: PrihlaskaSVyzvou): HTMLTableCellElement {
+  const td = vytvor("td", "px-3 py-3");
+  if (p.zapis) {
+    td.append(vytvor("span", "admin-stav-vyzvy", "Zápis vyplněný"));
+    td.append(vytvor("span", `admin-stitek admin-stitek-${p.zapis}`, STAV_ZAPISU[p.zapis] ?? p.zapis));
+    return td;
+  }
+  if (!p.vyzva) {
+    td.append(vytvor("span", "admin-stav-vyzvy", "Neodesláno"));
+    return td;
+  }
+  td.append(vytvor("span", "admin-stav-vyzvy", `Odesláno ${datum(p.vyzva.odeslano_kdy)}`));
+  const poznamky: string[] = [];
+  if (p.vyzva.stav_posty === "chyba") poznamky.push("e-mail neodešel, pošlete ho znovu");
+  else if (p.vyzva.stav_posty !== "odeslano") poznamky.push("e-mail čeká ve frontě");
+  if (p.vyzva.pocet > 1) poznamky.push(`posláno ${p.vyzva.pocet}×`);
+  if (p.otevreno) poznamky.push("odkaz otevřen");
+  if (poznamky.length) {
+    const t = poznamky.join(", ");
+    td.append(vytvor("span", "admin-stav-vyzvy-pozn", t.charAt(0).toUpperCase() + t.slice(1) + "."));
+  }
+  return td;
+}
+
+/** Tlačítko „Poslat výzvu k zápisu" u jedné přihlášky s potvrzením na místě. */
+function bunkaOdeslani(p: PrihlaskaSVyzvou): HTMLTableCellElement {
+  const td = vytvor("td", "px-3 py-3");
+  const hlaska = vytvor("p", "admin-hlaska mt-2");
+  if (p.zapis === "schvaleno") {
+    td.append(vytvor("span", "text-popisek", "Zápis je na webu."));
+    return td;
+  }
+
+  const poslat = vytvor(
+    "button",
+    "admin-tlacitko-vedlejsi admin-maly",
+    p.vyzva ? "Poslat výzvu znovu" : "Poslat výzvu k zápisu",
+  );
+  poslat.type = "button";
+
+  const potvrzeni = vytvor("div", "admin-potvrzeni-misto");
+  potvrzeni.hidden = true;
+  potvrzeni.append(vytvor("p", "mt-0 font-semibold", `Poslat výzvu na ${p.email}?`));
+  const rada = vytvor("div", "flex flex-wrap gap-3");
+  const ano = vytvor("button", "admin-tlacitko-vedlejsi admin-maly", "Ano, poslat");
+  ano.type = "button";
+  const ne = vytvor("button", "admin-tlacitko-vedlejsi admin-maly", "Zpět");
+  ne.type = "button";
+  rada.append(ano, ne);
+  potvrzeni.append(rada);
+
+  poslat.addEventListener("click", () => {
+    poslat.hidden = true;
+    potvrzeni.hidden = false;
+    ano.focus();
+  });
+  ne.addEventListener("click", () => {
+    potvrzeni.hidden = true;
+    poslat.hidden = false;
+    poslat.focus();
+  });
+  ano.addEventListener("click", async () => {
+    ne.disabled = true;
+    const v = await sHlasenim(
+      hlaska,
+      { probiha: "Posílám…", hotovo: "Hotovo!" },
+      () => posliDavku([p.id], false),
+      { tlacitko: ano },
+    );
+    ne.disabled = false;
+    potvrzeni.hidden = true;
+    poslat.hidden = false;
+    if (!v) return;
+    if (v[0]?.vysledek === "chyba") {
+      ukazStav(hlaska, "chyba", v[0]?.veta ?? "Výzvu se nepodařilo poslat. Zkuste to prosím znovu.");
+      poslat.focus();
+      return;
+    }
+    // Tabulka se po odeslání překreslí, proto hláška patří k sekci.
+    ukazStav(hlaska, "nic");
+    ukazStav(el("hlaska-vyzvy"), "hotovo", `Hotovo! Výzva pro ${p.nazev_poradatele}: ${v[0]?.veta ?? ""}`);
+    await obnovPoOdeslani();
+    el("hlaska-vyzvy").scrollIntoView({ block: "center", behavior: "smooth" });
+  });
+
+  td.append(poslat, potvrzeni, hlaska);
+  return td;
 }
 
 function vykresliVyzvy(): void {
@@ -414,37 +593,18 @@ function vykresliVyzvy(): void {
     const tr = vytvor("tr", "border-t border-merunka-tlumena align-top");
 
     const tdVyber = vytvor("td", "px-3 py-3");
-    const zaskrt = vytvor("input");
-    zaskrt.type = "checkbox";
-    zaskrt.checked = vybrane.has(p.id);
-    zaskrt.setAttribute("aria-label", `Vybrat ${p.nazev_poradatele}`);
-    zaskrt.addEventListener("change", () => {
-      if (zaskrt.checked) vybrane.add(p.id);
-      else vybrane.delete(p.id);
-      aktualizujVyber();
-    });
-    tdVyber.append(zaskrt);
-
-    const tdAkce = vytvor("td", "px-3 py-3");
-    const hlaska = vytvor("p", "admin-hlaska mt-2");
     if (p.zapis !== "schvaleno") {
-      const poslat = vytvor("button", "admin-tlacitko-vedlejsi", p.vyzva ? "Poslat znovu" : "Poslat výzvu");
-      poslat.type = "button";
-      poslat.addEventListener("click", async () => {
-        const v = await sHlasenim(
-          hlaska,
-          { probiha: "Posílám…", hotovo: "Hotovo." },
-          () => posliDavku([p.id], false),
-          { tlacitko: poslat },
-        );
-        if (v) {
-          ukazStav(hlaska, v[0]?.vysledek === "chyba" ? "chyba" : "hotovo", `Hotovo. ${v[0]?.veta ?? ""}`);
-          void obnovPoOdeslani();
-        }
+      const zaskrt = vytvor("input");
+      zaskrt.type = "checkbox";
+      zaskrt.checked = vybrane.has(p.id);
+      zaskrt.setAttribute("aria-label", `Vybrat ${p.nazev_poradatele}`);
+      zaskrt.addEventListener("change", () => {
+        if (zaskrt.checked) vybrane.add(p.id);
+        else vybrane.delete(p.id);
+        aktualizujVyber();
       });
-      tdAkce.append(poslat);
+      tdVyber.append(zaskrt);
     }
-    tdAkce.append(hlaska);
 
     tr.append(
       tdVyber,
@@ -452,9 +612,8 @@ function vykresliVyzvy(): void {
       vytvor("td", "px-3 py-3", `${p.kontaktni_osoba}, ${p.email}`),
       vytvor("td", "px-3 py-3", p.mesto),
       vytvor("td", "px-3 py-3", STAV_PLATBY[p.stav] ?? p.stav),
-      vytvor("td", "px-3 py-3", popisVyzvy(p)),
-      vytvor("td", "px-3 py-3", p.zapis ? STAV_ZAPISU[p.zapis] : "Zatím ne"),
-      tdAkce,
+      bunkaStavu(p),
+      bunkaOdeslani(p),
     );
     telo.append(tr);
   }
@@ -553,7 +712,7 @@ function ukazPotvrzeniHromadne(): void {
     ukazStav(
       hlaska,
       chyby ? "chyba" : "hotovo",
-      `Hotovo. Odesláno ${odeslano}` +
+      `Hotovo! Odesláno ${odeslano}` +
         (ceka ? `, ve frontě čeká ${ceka}` : "") +
         (preskoceno ? `, přeskočeno ${preskoceno} (už mají schválený zápis)` : "") +
         (chyby ? `, nepovedlo se ${chyby}. Těm pošlete výzvu znovu.` : "."),
@@ -580,7 +739,7 @@ async function posliZkusebni(): Promise<void> {
   const p = prihlasky.find((x) => x.id === prvni);
   const v = await sHlasenim(
     hlaska,
-    { probiha: "Posílám zkušební e-mail…", hotovo: "Hotovo." },
+    { probiha: "Posílám zkušební e-mail…", hotovo: "Hotovo!" },
     () => posliDavku([prvni], true, adresa),
     { tlacitko: el<HTMLButtonElement>("tlacitko-zkusebni-vyzva") },
   );
@@ -588,7 +747,7 @@ async function posliZkusebni(): Promise<void> {
     ukazStav(
       hlaska,
       v[0]?.vysledek === "chyba" ? "chyba" : "hotovo",
-      `Hotovo. Zkušební výzva k přihlášce „${p?.nazev_poradatele ?? ""}“: ${v[0]?.veta ?? ""}`,
+      `Hotovo! Zkušební výzva k přihlášce „${p?.nazev_poradatele ?? ""}“: ${v[0]?.veta ?? ""}`,
     );
   }
 }

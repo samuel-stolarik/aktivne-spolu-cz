@@ -111,7 +111,7 @@ export const KATALOG: PolozkaObsahu[] = [
     klic: 'hero.tlacitko-hlavni',
     skupina: 'Úvodní obrazovka',
     popis:
-      'Nápis na červeném tlačítku. Je nahoře v liště i pod úvodním odstavcem — změní se na obou místech.',
+      'Nápis na červeném tlačítku pod úvodním odstavcem.',
     typ: 'text',
     vychozi: 'Chci se zapojit',
   },
@@ -455,7 +455,7 @@ export const KATALOG: PolozkaObsahu[] = [
     popis: 'Druhý odstavec',
     typ: 'dlouhy',
     vychozi:
-      'Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly potřeba) a nahrajete fotografie. Od 1. listopadu tak vznikne veřejně přístupná databáze plná ověřené inspirace pro organizátory podobných akcí z celé ČR.',
+      'Po realizaci vaší akce vyplníte jednoduchý formulář s popisem akce (pro koho byla akce vhodná, jaká byla náročnost, jaké pomůcky byly potřeba) a nahrajete fotografie. Vzniká tak veřejně přístupná databáze plná ověřené inspirace pro organizátory podobných akcí z celé ČR.',
   },
   // --- Registrace a poplatek ----------------------------------------------
   {

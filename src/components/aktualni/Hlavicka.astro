@@ -37,10 +37,10 @@ const { naHlavniStrance = true } = Astro.props;
 const predpona = naHlavniStrance ? "" : "/";
 
 /**
- * Tlačítko vpravo nahoře. Na ostrém webu zatím vede na registraci.
- * Výměna za „Zásobník nápadů" přijde až po odsouhlasení zadavatelkou.
+ * Tlačítko vpravo nahoře (na počítači i v otevřeném menu). Registrace
+ * na ročník skončila, hlavní cestou webu je teď Zásobník nápadů.
  */
-const tlacitko = { odkaz: `${predpona}#registrace`, text: "Chci se zapojit" };
+const tlacitko = { odkaz: "/zasobnik/", text: "Zásobník nápadů" };
 
 const odkazy = [
   { cil: "#proc-se-zapojit", popis: "Proč se zapojit" },

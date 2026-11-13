@@ -1,37 +1,53 @@
 /**
- * Formulář zápisu po akci (/zapis/).
+ * Formulář zápisu po akci (/zapis/). Průvodce o 8 krocích.
  *
  * Mluví jen s Edge Funkcí `zapis-napadu`. Pořadatel se prokazuje tokenem
  * z osobního odkazu. Fotky jdou z prohlížeče rovnou do úložiště na
  * jednorázovou podepsanou adresu, kterou funkce vydá po ověření tokenu.
  *
- * FOTKY se před nahráním zmenší na delší stranu 1600 px a uloží jako JPEG.
- * Překreslením přes canvas zmizí EXIF i poloha GPS.
+ * FOTKY se před nahráním zmenší na delší stranu 1600 px a uloží jako JPEG
+ * (kvalita 0,8). Překreslením přes canvas zmizí EXIF i poloha GPS.
  *
  * ROZEPSANÝ ZÁPIS se průběžně ukládá do localStorage tohoto prohlížeče
  * (klíč podle tokenu), aby se po obnovení stránky neztratil. Když
  * localStorage nejde, formulář funguje dál, jen si nic nepamatuje.
+ *
+ * UKÁZKA (PUBLIC_ZASOBNIK_UKAZKA=1, jen náhled pro zadavatelku): bez
+ * osobního odkazu se formulář otevře s vymyšlenými údaji. Fotky se jen
+ * zmenší a ukážou, nic se nenahrává, neukládá ani neodesílá.
  */
 import { createClient } from "@supabase/supabase-js";
-import { LIMITY } from "../../lib/ciselnikNapadu";
+import {
+  DELKA,
+  LIMITY,
+  NAROCNOST,
+  SOUHLAS,
+  TYPY,
+  VEK,
+  VEREJNY_KONTAKT,
+  ZDATNOST,
+  nazevPodtypu,
+  nazevVolby,
+} from "../../lib/ciselnikNapadu";
 
 const ADRESA = import.meta.env.PUBLIC_SUPABASE_URL ?? "";
 const KLIC = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "";
 const FUNKCE = `${ADRESA}/functions/v1/zapis-napadu`;
+const UKAZKA_POVOLENA = import.meta.env.PUBLIC_ZASOBNIK_UKAZKA === "1";
 
-const KROKU = 7;
+const KROKU = 8;
 const DELSI_STRANA = 1600;
-const KVALITA_JPEG = 0.85;
+const KVALITA_JPEG = 0.8;
 
 /** Ve kterém kroku které pole je. Podle toho se po chybě ze serveru skočí. */
 const KROK_POLE: Record<string, number> = {
-  nazev_poradatele: 1, kontaktni_osoba: 1, email: 1, telefon: 1, mesto: 1, kraj: 1,
-  nazev_akce: 2, datum_akce: 2, typ: 2, podtyp: 2, podtyp_jine: 2,
-  vek: 3, zdatnost: 3,
+  nazev_poradatele: 1, kontaktni_osoba: 1, email: 1, telefon: 1,
+  nazev_akce: 2, datum_akce: 2, mesto: 2, kraj: 2,
+  typ: 3, podtyp: 3, podtyp_jine: 3,
   narocnost: 4, delka: 4, pomucky_potreba: 4, pomucky_jake: 4,
-  popis: 5,
-  fotky: 6,
-  verejny_kontakt: 7, souhlas_zpracovani: 7, souhlas_foto: 7, vzkaz: 7,
+  vek: 5, zdatnost: 5,
+  popis: 6, vzkaz: 6,
+  fotky: 7, souhlas_foto: 7, verejny_kontakt: 7, souhlas_zpracovani: 7,
 };
 
 interface Fotka {
@@ -49,10 +65,6 @@ interface Odpoved {
 // Pomocné
 // ---------------------------------------------------------------------------
 
-function $(id: string) {
-  return document.getElementById(id);
-}
-
 function el<T extends HTMLElement>(id: string): T {
   const prvek = document.getElementById(id);
   if (!prvek) throw new Error(`Chybí prvek #${id}`);
@@ -69,6 +81,36 @@ function zprava(misto: HTMLElement, druh: "ok" | "chyba" | "info", text: string)
 
 function znaku(t: string): number {
   return [...t.trim()].length;
+}
+
+/** 1 fotka, 2–4 fotky, 5 fotek. */
+function sklonuj(n: number, jedna: string, dve: string, pet: string): string {
+  if (n === 1) return `${n} ${jedna}`;
+  if (n >= 2 && n <= 4) return `${n} ${dve}`;
+  return `${n} ${pet}`;
+}
+
+/** Číslo s mezerou po tisících, jak se píše česky (1 000). */
+function cislo(n: number): string {
+  return n >= 1000 ? `${Math.floor(n / 1000)} ${String(n % 1000).padStart(3, "0")}` : String(n);
+}
+
+/** RRRR-MM-DD → „13. 11. 2026". */
+function datumCesky(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${Number(m[3])}. ${Number(m[2])}. ${m[1]}` : iso;
+}
+
+/** Dnešek v tomto prohlížeči jako RRRR-MM-DD. */
+function dnes(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function predDny(dni: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - dni);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function tokenZAdresy(): string {
@@ -143,6 +185,27 @@ async function zmensi(soubor: File): Promise<Blob> {
   );
 }
 
+/** Vymyšlená data pro ukázku. Tvar jako odpověď funkce na `nacti`. */
+function ukazkovaOdpoved(): Odpoved {
+  return {
+    stav: "novy",
+    lzeUpravit: true,
+    souhlas: { zpracovani: SOUHLAS.zpracovani },
+    predvyplneni: {
+      nazev_poradatele: "ZŠ Magic Hill",
+      kontaktni_osoba: "Jana Nováková",
+      email: "jana@example.cz",
+      telefon: "777 123 456",
+      mesto: "Říčany",
+      kraj: "Středočeský",
+      datum_akce: predDny(21),
+      napad_na_aktivitu: "Chceme se seniory z klubu zpívat lidové písničky.",
+    },
+    zapis: null,
+    nahrane: [],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Hlavní část
 // ---------------------------------------------------------------------------
@@ -151,23 +214,33 @@ export function spustZapis() {
   const stav = el<HTMLDivElement>("z-stav");
   const formular = el<HTMLFormElement>("z-formular");
   const token = tokenZAdresy();
+  const ukazka = UKAZKA_POVOLENA && !token;
 
-  if (!ADRESA || !KLIC) {
-    zprava(stav, "chyba", "Formulář teď nefunguje. Napište nám prosím a pošleme vám odkaz znovu.");
-    return;
+  if (ukazka) {
+    const pruh = document.createElement("p");
+    pruh.className = "zp-ukazka";
+    pruh.textContent = "Ukázka: nic se neukládá ani neodesílá.";
+    stav.before(pruh);
+  } else {
+    if (!ADRESA || !KLIC) {
+      zprava(stav, "chyba", "Formulář teď nefunguje. Napište nám prosím a pošleme vám odkaz znovu.");
+      return;
+    }
+    if (!token) {
+      zprava(
+        stav,
+        "chyba",
+        "V odkazu chybí váš osobní kód. Otevřete prosím formulář znovu přímo z e-mailu, který jsme vám poslali.",
+      );
+      return;
+    }
   }
-  if (!token) {
-    zprava(
-      stav,
-      "chyba",
-      "V odkazu chybí váš osobní kód. Otevřete prosím formulář znovu přímo z e-mailu, který jsme vám poslali.",
-    );
-    return;
-  }
-
-  void nacti();
 
   async function nacti() {
+    if (ukazka) {
+      pripravFormular(ukazkovaOdpoved());
+      return;
+    }
     const { stav: kod, data } = await zavolej("nacti", token);
     if (kod !== 200) {
       zprava(stav, "chyba", data.chyba ?? "Formulář se nepodařilo načíst. Zkuste to prosím za chvíli znovu.");
@@ -183,14 +256,15 @@ export function spustZapis() {
     const predvyplneni = (data.predvyplneni ?? {}) as Record<string, unknown>;
     const souhlas = (data.souhlas ?? {}) as { zpracovani?: string; foto?: string };
 
-    el("z-souhlas-zpracovani-text").textContent = souhlas.zpracovani ?? "";
-    el("z-souhlas-foto-text").textContent = souhlas.foto ?? "";
+    // Znění souhlasů posílá server: přesně tohle se pak uloží k zápisu.
+    el("z-souhlas-zpracovani-text").textContent = souhlas.zpracovani ?? SOUHLAS.zpracovani;
+    if (souhlas.foto) el("z-souhlas-foto-text").textContent = souhlas.foto;
 
     // Uzavřený zápis se jen oznámí, formulář se neukáže.
     if (!data.lzeUpravit) {
       if (stavZapisu === "schvaleno") {
         stav.innerHTML =
-          '<p class="z-ok">Hotovo. Váš zápis je schválený a najdete ho v Zásobníku nápadů.</p>' +
+          '<p class="z-ok">Hotovo! Váš zápis je schválený a najdete ho v Zásobníku nápadů.</p>' +
           '<p><a class="z-tlacitko" href="/zasobnik/">Otevřít Zásobník nápadů</a></p>';
       } else {
         zprava(stav, "info", "Tento zápis jsme se rozhodli nezveřejnit. Když k tomu máte otázku, napište nám.");
@@ -200,7 +274,15 @@ export function spustZapis() {
 
     stav.innerHTML = "";
     if (stavZapisu === "vraceno" && zapis?.duvod) {
-      zprava(stav, "info", `Prosíme o úpravu zápisu: ${String(zapis.duvod)}`);
+      const box = document.createElement("div");
+      box.className = "z-info zp-vraceno";
+      const nadpis = document.createElement("p");
+      nadpis.className = "zp-vraceno-nadpis";
+      nadpis.textContent = "Prosíme o úpravu zápisu:";
+      const duvod = document.createElement("p");
+      duvod.textContent = String(zapis.duvod);
+      box.append(nadpis, duvod);
+      stav.append(box);
     } else if (stavZapisu === "ceka") {
       zprava(
         stav,
@@ -246,6 +328,7 @@ export function spustZapis() {
       .map((cesta) => ({ cesta, nahled: nahrane.get(cesta)! }));
     vykresliFotky();
 
+    el<HTMLInputElement>("z-datum_akce").max = dnes();
     formular.hidden = false;
     ukazKrok(1, false);
   }
@@ -361,26 +444,29 @@ export function spustZapis() {
       volbaTelefonu.closest("label")?.toggleAttribute("hidden", !telefon);
     }
 
-    pocitadlo();
+    pocitadla();
   }
 
-  function pocitadlo() {
-    const p = el("z-popis-pocet");
+  function pocitadla() {
+    const popis = el("z-popis-pocet");
     const n = znaku(hodnota("popis"));
-    if (n < LIMITY.popisMin) {
-      p.textContent = `${n} znaků. Ještě aspoň ${LIMITY.popisMin - n}.`;
-      p.dataset.stav = "malo";
-    } else {
-      p.textContent = `${n} z ${LIMITY.popisMax} znaků.`;
-      p.dataset.stav = "ok";
-    }
+    popis.textContent = `Napsáno ${cislo(n)} z ${LIMITY.popisMin}–${cislo(LIMITY.popisMax)} znaků`;
+    popis.dataset.stav = n >= LIMITY.popisMin ? "ok" : n > 0 ? "malo" : "";
+
+    const vzkaz = el("z-vzkaz-pocet");
+    vzkaz.textContent = `Napsáno ${znaku(hodnota("vzkaz"))} z nejvýš ${LIMITY.vzkazMax} znaků`;
+
+    const pomucky = el("z-pomucky_jake-pocet");
+    pomucky.textContent = `Napsáno ${znaku(hodnota("pomucky_jake"))} z nejvýš ${LIMITY.pomuckyMax} znaků`;
   }
 
   formular.addEventListener("input", () => {
+    smazChyby();
     prekresliZavislosti();
     ulozRozepsany();
   });
   formular.addEventListener("change", () => {
+    smazChyby();
     prekresliZavislosti();
     ulozRozepsany();
   });
@@ -388,7 +474,7 @@ export function spustZapis() {
   // -------------------------------------------------------------------------
   // Rozepsaný zápis v tomto prohlížeči
   // -------------------------------------------------------------------------
-  const klicRozepsaneho = `as-zapis-${token.slice(0, 12)}`;
+  const klicRozepsaneho = ukazka ? "as-zapis-ukazka" : `as-zapis-${token.slice(0, 12)}`;
 
   function nactiRozepsany(): Record<string, unknown> | null {
     try {
@@ -426,6 +512,7 @@ export function spustZapis() {
   const tlacitkoZpet = el<HTMLButtonElement>("z-zpet");
   const tlacitkoDal = el<HTMLButtonElement>("z-dal");
   const zpravaFormulare = el("z-zprava-formulare");
+  const boxChyb = el<HTMLDivElement>("z-chyby");
 
   function ukazKrok(n: number, presunoutFokus = true) {
     krok = n;
@@ -439,33 +526,68 @@ export function spustZapis() {
     tlacitkoZpet.hidden = n === 1;
     tlacitkoDal.textContent = n === KROKU ? "Odeslat ke schválení" : `Pokračovat na krok ${n + 1}`;
     zpravaFormulare.innerHTML = "";
+    if (n === KROKU) vykresliShrnuti();
     if (presunoutFokus) {
       formular.scrollIntoView({ behavior: "smooth", block: "start" });
-      formular.querySelector<HTMLElement>(`[data-krok="${n}"] h2`)?.setAttribute("tabindex", "-1");
-      formular.querySelector<HTMLElement>(`[data-krok="${n}"] h2`)?.focus({ preventScroll: true });
+      const h2 = formular.querySelector<HTMLElement>(`[data-krok="${n}"] h2`);
+      h2?.setAttribute("tabindex", "-1");
+      h2?.focus({ preventScroll: true });
     }
   }
 
   function smazChyby() {
+    if (boxChyb.hidden && !formular.querySelector("[data-chyba]")) return;
+    boxChyb.hidden = true;
+    boxChyb.innerHTML = "";
     formular.querySelectorAll<HTMLElement>("[data-chyba]").forEach((p) => {
       p.removeAttribute("data-chyba");
-      p.querySelector(":scope > .z-chyba")?.remove();
+      p.querySelectorAll("[aria-invalid]").forEach((v) => v.removeAttribute("aria-invalid"));
     });
   }
 
-  function ukazChybu(jmeno: string, text: string) {
-    const misto = formular.querySelector<HTMLElement>(`[data-pole="${jmeno}"]:not([hidden])`) ??
-      formular.querySelector<HTMLElement>(`[data-pole="${jmeno}"]`);
-    if (!misto) return;
-    misto.dataset.chyba = "1";
-    const p = document.createElement("p");
-    p.className = "z-chyba";
-    p.id = `z-chyba-${jmeno}`;
-    p.textContent = text;
-    misto.append(p);
-    misto.querySelectorAll("input, select, textarea").forEach((v) => {
-      v.setAttribute("aria-describedby", `${v.getAttribute("aria-describedby") ?? ""} z-chyba-${jmeno}`.trim());
-    });
+  /** Červený box nad poli: co je špatně a co s tím udělat. */
+  function ukazChyby(chyby: Record<string, string>) {
+    boxChyb.innerHTML = "";
+    const texty = Object.values(chyby);
+    const nadpis = document.createElement("p");
+    nadpis.className = "zp-chyby-nadpis";
+    nadpis.textContent = texty.length === 1 ? "Ještě jedna věc:" : "Ještě pár věcí:";
+    boxChyb.append(nadpis);
+    if (texty.length === 1) {
+      const p = document.createElement("p");
+      p.textContent = texty[0];
+      boxChyb.append(p);
+    } else {
+      const ul = document.createElement("ul");
+      for (const t of texty) {
+        const li = document.createElement("li");
+        li.textContent = t;
+        ul.append(li);
+      }
+      boxChyb.append(ul);
+    }
+    boxChyb.hidden = false;
+
+    for (const jmeno of Object.keys(chyby)) {
+      const misto =
+        formular.querySelector<HTMLElement>(`[data-pole="${jmeno}"]:not([hidden])`) ??
+        formular.querySelector<HTMLElement>(`[data-pole="${jmeno}"]`);
+      if (!misto) continue;
+      misto.dataset.chyba = "1";
+      misto.querySelectorAll("input:not([type=hidden]), select, textarea").forEach((v) => {
+        v.setAttribute("aria-invalid", "true");
+      });
+    }
+
+    // Fokus na první chybné pole, ať se dá hned opravit. Box přečte
+    // čtečka sama (role="alert").
+    const prvni = formular.querySelector<HTMLElement>(
+      "[data-chyba]:not([hidden]) input:not([type=hidden]):not([type=file]):not(:disabled), " +
+        "[data-chyba]:not([hidden]) select, [data-chyba]:not([hidden]) textarea",
+    );
+    if (prvni) prvni.focus();
+    else boxChyb.focus();
+    boxChyb.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   /** Kontrola jednoho kroku v prohlížeči. Stejná pravidla jako na serveru. */
@@ -473,54 +595,58 @@ export function spustZapis() {
     const d = sesbirej();
     const ch: Record<string, string> = {};
     if (n === 1) {
-      if (!d.nazev_poradatele) ch.nazev_poradatele = "Vyplňte prosím, kdo akci pořádal.";
+      if (!d.nazev_poradatele) ch.nazev_poradatele = "Vyplňte prosím organizaci, která akci pořádala.";
       if (!d.kontaktni_osoba) ch.kontaktni_osoba = "Vyplňte prosím kontaktní osobu.";
       if (!/^[^\s@,;]+@[^\s@,;.]+(\.[^\s@,;.]+)+$/.test(String(d.email))) {
         ch.email = "Zkontrolujte prosím e-mail. Má tvar jmeno@domena.cz.";
       }
       const cislice = String(d.telefon).replace(/[\s\-/().]/g, "").replace(/^\+/, "");
       if (d.telefon && !/^[0-9]{9,15}$/.test(cislice)) ch.telefon = "Zkontrolujte prosím telefon. Stačí 9 číslic.";
+    }
+    if (n === 2) {
+      const z = znaku(String(d.nazev_akce));
+      if (!z) ch.nazev_akce = "Napište prosím, jak se akce jmenovala.";
+      else if (z < LIMITY.nazevMin) {
+        ch.nazev_akce = `Název je krátký. Napište prosím aspoň ${LIMITY.nazevMin} znaků.`;
+      }
+      if (d.datum_akce && String(d.datum_akce) > dnes()) {
+        ch.datum_akce = "Datum je v budoucnosti. Zadejte prosím den, kdy akce proběhla, nebo pole nechte prázdné.";
+      }
       if (!d.mesto) ch.mesto = "Vyplňte prosím město nebo obec.";
       if (!d.kraj) ch.kraj = "Vyberte prosím kraj.";
     }
-    if (n === 2) {
-      if (!d.nazev_akce) ch.nazev_akce = "Napište prosím, jak se akce jmenovala.";
-      if (!d.typ) ch.typ = "Vyberte prosím typ akce.";
-      else if (!d.podtyp) ch.podtyp = "Vyberte prosím, o co šlo.";
-      if (d.podtyp === "jine" && !d.podtyp_jine) ch.podtyp_jine = "Napište prosím, o jakou akci šlo.";
-    }
     if (n === 3) {
-      if (!(d.vek as string[]).length) ch.vek = "Vyberte prosím aspoň jednu věkovou skupinu.";
-      if (!(d.zdatnost as string[]).length) ch.zdatnost = "Vyberte prosím aspoň jednu možnost.";
+      if (!d.typ) ch.typ = "Vyberte prosím, jaký typ akce to byl.";
+      else if (!d.podtyp) ch.podtyp = "Upřesněte prosím, o jakou akci šlo.";
+      if (d.podtyp === "jine" && !d.podtyp_jine) ch.podtyp_jine = "Napište prosím, jaká akce to byla.";
     }
     if (n === 4) {
-      if (!d.narocnost) ch.narocnost = "Vyberte prosím náročnost.";
+      if (!d.narocnost) ch.narocnost = "Vyberte prosím organizační náročnost.";
       if (!d.delka) ch.delka = "Vyberte prosím, jak dlouho akce trvala.";
       if (d.pomucky_potreba === null) ch.pomucky_potreba = "Vyberte prosím, jestli byly potřeba pomůcky.";
+      else if (d.pomucky_potreba && !d.pomucky_jake) ch.pomucky_jake = "Napište prosím, jaké pomůcky byly potřeba.";
     }
     if (n === 5) {
-      const z = znaku(String(d.popis));
-      if (z < LIMITY.popisMin) ch.popis = `Popis má ${z} znaků. Napište prosím aspoň ${LIMITY.popisMin}.`;
+      if (!(d.vek as string[]).length) ch.vek = "Vyberte prosím aspoň jednu věkovou skupinu.";
+      if (!(d.zdatnost as string[]).length) ch.zdatnost = "Vyberte prosím aspoň jednu možnost u zdatnosti.";
     }
     if (n === 6) {
-      if (nahravaSe > 0) ch.fotky = "Počkejte prosím, až se fotky nahrají.";
-      else if (!fotky.length) ch.fotky = "Přidejte prosím aspoň jednu fotku.";
+      const z = znaku(String(d.popis));
+      if (z < LIMITY.popisMin) {
+        const zbyva = LIMITY.popisMin - z;
+        ch.popis = `Popis je krátký. Dopište ještě ${sklonuj(zbyva, "znak", "znaky", "znaků")}.`;
+      }
     }
     if (n === 7) {
+      if (nahravaSe > 0) ch.fotky = "Počkejte prosím, až se fotky nahrají.";
+      else if (fotky.length < LIMITY.fotekMin) ch.fotky = "Přidejte prosím aspoň jednu fotku z akce.";
+      if (!d.souhlas_foto) ch.souhlas_foto = "Bez souhlasu vyfocených fotky zveřejnit nemůžeme. Zaškrtněte ho prosím.";
       if (!(d.verejny_kontakt as string[]).length) {
         ch.verejny_kontakt = "Vyberte prosím, který kontakt můžeme u nápadu zveřejnit.";
       }
       if (!d.souhlas_zpracovani) ch.souhlas_zpracovani = "Bez souhlasu zápis uložit nemůžeme. Zaškrtněte ho prosím.";
-      if (!d.souhlas_foto) ch.souhlas_foto = "Bez tohoto prohlášení fotky zveřejnit nemůžeme. Zaškrtněte ho prosím.";
     }
     return ch;
-  }
-
-  function zamerNaPrvniChybu() {
-    const prvni = formular.querySelector<HTMLElement>(
-      "[data-chyba] input:not([type=hidden]), [data-chyba] select, [data-chyba] textarea, [data-chyba] .z-tlacitko",
-    );
-    prvni?.focus();
   }
 
   tlacitkoZpet.addEventListener("click", () => {
@@ -533,8 +659,7 @@ export function spustZapis() {
     smazChyby();
     const ch = chybyKroku(krok);
     if (Object.keys(ch).length) {
-      for (const [jmeno, text] of Object.entries(ch)) ukazChybu(jmeno, text);
-      zamerNaPrvniChybu();
+      ukazChyby(ch);
       return;
     }
     if (krok < KROKU) {
@@ -544,7 +669,110 @@ export function spustZapis() {
     await odesli();
   });
 
+  // -------------------------------------------------------------------------
+  // Shrnutí (krok 8)
+  // -------------------------------------------------------------------------
+  function vykresliShrnuti() {
+    const d = sesbirej();
+    const misto = el("z-shrnuti");
+    misto.innerHTML = "";
+
+    const typ = TYPY.find((t) => t.klic === d.typ);
+    const podtyp = d.podtyp === "jine"
+      ? String(d.podtyp_jine)
+      : nazevPodtypu(String(d.typ), String(d.podtyp)).toLowerCase();
+    const kontakty = (d.verejny_kontakt as string[]).map((k) => {
+      const h = k === "email" ? d.email : d.telefon;
+      return `${nazevVolby(VEREJNY_KONTAKT, k)} (${h})`;
+    });
+
+    const radky: [string, string][] = [
+      ["Organizace", String(d.nazev_poradatele)],
+      ["Kontaktní osoba", String(d.kontaktni_osoba)],
+      ["E-mail", String(d.email)],
+      ["Telefon", String(d.telefon || "Neuvedený")],
+      ["Název akce", String(d.nazev_akce)],
+      ["Kdy proběhla", d.datum_akce ? datumCesky(String(d.datum_akce)) : "Neuvedeno"],
+      ["Kde", `${d.mesto}, ${d.kraj}`],
+      ["Typ", `${typ?.nazev ?? ""} – ${podtyp}`],
+      ["Organizační náročnost", nazevVolby(NAROCNOST, String(d.narocnost))],
+      ["Časová náročnost", nazevVolby(DELKA, String(d.delka))],
+      ["Pomůcky", d.pomucky_potreba ? `Jsou potřeba: ${d.pomucky_jake}` : "Nejsou potřeba"],
+      ["Pro koho – věk", (d.vek as string[]).map((v) => nazevVolby(VEK, v)).join(", ")],
+      ["Zdatnost", (d.zdatnost as string[]).map((v) => nazevVolby(ZDATNOST, v)).join(", ")],
+      ["Fotky", sklonuj(fotky.length, "fotka", "fotky", "fotek")],
+      ["Zveřejněný kontakt", kontakty.join(", ")],
+      ["Souhlasy", "Ano, potvrzeno"],
+    ];
+
+    const dl = document.createElement("dl");
+    dl.className = "z-udaje zp-shrnuti";
+    for (const [nazev, h] of radky) {
+      const dt = document.createElement("dt");
+      dt.textContent = nazev;
+      const dd = document.createElement("dd");
+      dd.textContent = h;
+      dl.append(dt, dd);
+    }
+    misto.append(dl);
+
+    if (fotky.length) {
+      const ul = document.createElement("ul");
+      ul.className = "zp-fotky zp-fotky-shrnuti";
+      fotky.forEach((f, i) => {
+        const li = document.createElement("li");
+        li.className = "zp-fotka";
+        const img = document.createElement("img");
+        img.src = f.nahled;
+        img.alt = `Fotka ${i + 1}`;
+        li.append(img);
+        ul.append(li);
+      });
+      misto.append(ul);
+    }
+
+    const popisNadpis = document.createElement("h3");
+    popisNadpis.textContent = "Popis akce";
+    misto.append(popisNadpis);
+    const popis = document.createElement("div");
+    popis.className = "zp-text";
+    for (const odstavec of String(d.popis).split(/\n\s*\n/)) {
+      const p = document.createElement("p");
+      p.textContent = odstavec.trim();
+      popis.append(p);
+    }
+    misto.append(popis);
+
+    const vzkazNadpis = document.createElement("h3");
+    vzkazNadpis.textContent = "Vzkaz organizátorům kampaně (neveřejné)";
+    misto.append(vzkazNadpis);
+    const vzkaz = document.createElement("p");
+    vzkaz.className = "zp-text";
+    vzkaz.textContent = String(d.vzkaz) || "Bez vzkazu.";
+    misto.append(vzkaz);
+  }
+
+  // -------------------------------------------------------------------------
+  // Odeslání
+  // -------------------------------------------------------------------------
+  function hotovo() {
+    zahodRozepsany();
+    formular.hidden = true;
+    stav.innerHTML =
+      '<p class="z-ok" tabindex="-1" id="z-hotovo">Hotovo! Zápis jsme poslali správci ke kontrole. ' +
+      "Po schválení se objeví v Zásobníku.</p>" +
+      (ukazka
+        ? '<p><a class="z-tlacitko" href="">Projít ukázku znovu</a></p>'
+        : "<p>Zápis můžete do schválení upravit přes stejný odkaz z e-mailu.</p>");
+    el("z-hotovo").focus();
+    stav.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function odesli() {
+    if (ukazka) {
+      hotovo();
+      return;
+    }
     tlacitkoDal.disabled = true;
     tlacitkoDal.textContent = "Odesíláme…";
     const { stav: kod, data } = await zavolej("uloz", token, { zapis: sesbirej() });
@@ -552,23 +780,14 @@ export function spustZapis() {
     tlacitkoDal.textContent = "Odeslat ke schválení";
 
     if (kod === 200) {
-      zahodRozepsany();
-      formular.hidden = true;
-      stav.innerHTML =
-        '<p class="z-ok" tabindex="-1" id="z-hotovo">Hotovo. Zápis jsme přijali a co nejdřív ho zkontrolujeme. ' +
-        "Až ho schválíme, objeví se v Zásobníku nápadů. Kdyby bylo potřeba něco upravit, napíšeme vám.</p>" +
-        "<p>Zápis můžete do schválení upravit přes stejný odkaz z e-mailu.</p>";
-      el("z-hotovo").focus();
-      stav.scrollIntoView({ behavior: "smooth", block: "start" });
+      hotovo();
       return;
     }
 
     if (data.chyby) {
       const kroky = Object.keys(data.chyby).map((j) => KROK_POLE[j] ?? KROKU);
-      const prvniKrok = Math.min(...kroky);
-      ukazKrok(prvniKrok);
-      for (const [jmeno, text] of Object.entries(data.chyby)) ukazChybu(jmeno, text);
-      zamerNaPrvniChybu();
+      ukazKrok(Math.min(...kroky));
+      ukazChyby(data.chyby);
       return;
     }
     zprava(zpravaFormulare, "chyba", data.chyba ?? "Zápis se nepodařilo odeslat. Zkuste to prosím za chvíli znovu.");
@@ -582,18 +801,22 @@ export function spustZapis() {
   const seznamFotek = el<HTMLUListElement>("z-fotky");
   const vyberSouboru = el<HTMLInputElement>("z-soubor");
   const stavFotek = el("z-fotky-stav");
-  const uloziste = createClient(ADRESA, KLIC, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  }).storage;
+  let uloziste: ReturnType<typeof createClient>["storage"] | null = null;
+  function ziskejUloziste() {
+    uloziste ??= createClient(ADRESA, KLIC, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    }).storage;
+    return uloziste;
+  }
 
   function vykresliFotky() {
     seznamFotek.innerHTML = "";
     fotky.forEach((f, i) => {
       const li = document.createElement("li");
-      li.className = "z-fotka";
+      li.className = "zp-fotka";
       const img = document.createElement("img");
       img.src = f.nahled;
-      img.alt = i === 0 ? `Fotka ${i + 1}, titulní` : `Fotka ${i + 1}`;
+      img.alt = i === 0 ? `Fotka ${i + 1}, bude na kartičce` : `Fotka ${i + 1}`;
       const smazat = document.createElement("button");
       smazat.type = "button";
       smazat.className = "z-tlacitko";
@@ -603,26 +826,15 @@ export function spustZapis() {
         fotky.splice(i, 1);
         vykresliFotky();
         ulozRozepsany();
-        zprava(stavFotek, "ok", `Hotovo. Fotku jsme z formuláře odebrali. Zbývá ${fotky.length}.`);
+        zprava(stavFotek, "ok", "Hotovo. Fotku jsme odebrali.");
         vyberSouboru.focus();
       });
       li.append(img, smazat);
-      if (i > 0) {
-        const titulni = document.createElement("button");
-        titulni.type = "button";
-        titulni.className = "z-tlacitko";
-        titulni.textContent = "Dát jako první";
-        titulni.addEventListener("click", () => {
-          const [f2] = fotky.splice(i, 1);
-          fotky.unshift(f2);
-          vykresliFotky();
-          ulozRozepsany();
-          zprava(stavFotek, "ok", "Hotovo. Fotka je teď titulní.");
-        });
-        li.append(titulni);
-      }
       seznamFotek.append(li);
     });
+    seznamFotek.hidden = fotky.length === 0;
+    el("z-fotky-pocet").textContent =
+      `Nahráno ${fotky.length} z ${LIMITY.fotekMin}–${LIMITY.fotekMax} fotek.`;
     el("z-nahrat").hidden = fotky.length >= LIMITY.fotekMax;
   }
 
@@ -635,11 +847,11 @@ export function spustZapis() {
     const vybrane = soubory.slice(0, volno);
     const chyby: string[] = [];
     if (soubory.length > volno) {
-      chyby.push(`Přidat jde nejvýš ${LIMITY.fotekMax} fotek, ${soubory.length - volno} jsme vynechali.`);
+      chyby.push(`Nahrát můžete nejvýš ${LIMITY.fotekMax} fotek. Přebývající jsme vynechali.`);
     }
 
     nahravaSe += vybrane.length;
-    zprava(stavFotek, "info", vybrane.length === 1 ? "Nahráváme fotku…" : `Nahráváme ${vybrane.length} fotky…`);
+    zprava(stavFotek, "info", vybrane.length === 1 ? "Nahráváme fotku…" : "Nahráváme fotky…");
 
     let pridano = 0;
     for (const soubor of vybrane) {
@@ -649,12 +861,18 @@ export function spustZapis() {
           chyby.push(`Fotka ${soubor.name} je i po zmenšení moc velká. Vyberte prosím jinou.`);
           continue;
         }
+        if (ukazka) {
+          fotky.push({ cesta: `ukazka/${Date.now()}-${pridano}.jpg`, nahled: URL.createObjectURL(jpeg) });
+          pridano++;
+          vykresliFotky();
+          continue;
+        }
         const { stav: kod, data } = await zavolej("adresa-pro-fotku", token);
         if (kod !== 200) {
           chyby.push(data.chyba ?? "Fotku se nepodařilo nahrát. Zkuste to prosím znovu.");
           continue;
         }
-        const { error } = await uloziste
+        const { error } = await ziskejUloziste()
           .from(String(data.bucket))
           .uploadToSignedUrl(String(data.cesta), String(data.token), jpeg, { contentType: "image/jpeg" });
         if (error) {
@@ -672,26 +890,23 @@ export function spustZapis() {
     }
 
     ulozRozepsany();
-    if (chyby.length) {
-      stavFotek.innerHTML = "";
-      if (pridano) {
-        const ok = document.createElement("p");
-        ok.className = "z-ok";
-        ok.textContent = `Hotovo. Přidali jsme ${pridano} z ${vybrane.length}.`;
-        stavFotek.append(ok);
-      }
-      for (const c of chyby) {
-        const p = document.createElement("p");
-        p.className = "z-chyba";
-        p.textContent = c;
-        stavFotek.append(p);
-      }
-    } else {
-      zprava(
-        stavFotek,
-        "ok",
-        pridano === 1 ? "Hotovo. Fotku jsme přidali." : `Hotovo. Přidali jsme ${pridano} fotky.`,
-      );
+    smazChyby();
+    stavFotek.innerHTML = "";
+    if (pridano) {
+      const ok = document.createElement("p");
+      ok.className = "z-ok";
+      ok.textContent = `Hotovo. Přidali jsme ${sklonuj(pridano, "fotku", "fotky", "fotek")}.`;
+      stavFotek.append(ok);
+    }
+    for (const c of chyby) {
+      const p = document.createElement("p");
+      p.className = "z-chyba";
+      p.textContent = c;
+      stavFotek.append(p);
     }
   });
+
+  // Až na konci: všechny proměnné výše už musí existovat (ukázka se
+  // vyplní hned, bez čekání na server).
+  void nacti();
 }

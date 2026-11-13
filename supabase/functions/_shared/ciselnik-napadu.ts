@@ -93,9 +93,9 @@ export const ZDATNOST: Volba[] = [
 
 export const DELKA: Volba[] = [
   { klic: 'hodina', nazev: 'Hodina' },
-  { klic: '1-2h', nazev: '1–2 hodiny' },
-  { klic: '2-4h', nazev: '2–4 hodiny' },
-  { klic: 'vic-4h', nazev: 'Více než 4 hodiny' },
+  { klic: '1-2h', nazev: '1–2 h' },
+  { klic: '2-4h', nazev: '2–4 h' },
+  { klic: 'vic-4h', nazev: 'Více než 4 h' },
 ];
 
 /** Který kontakt smí být u nápadu zveřejněný. */
@@ -123,7 +123,8 @@ export const KRAJE = [
 
 /** Délky textů. Musí sedět s CHECK podmínkami v migraci. */
 export const LIMITY = {
-  nazevMax: 120,
+  nazevMin: 5,
+  nazevMax: 100,
   popisMin: 100,
   popisMax: 1000,
   vzkazMax: 300,
@@ -145,9 +146,7 @@ export const SOUHLAS = {
   zpracovani:
     'Souhlasím se zpracováním osobních údajů z tohoto formuláře pro účely Zásobníku nápadů ' +
     'a se zveřejněním vybraného kontaktu u mého nápadu, aby se mi mohli ozvat zájemci.',
-  foto:
-    'Prohlašuji, že všichni vyfocení souhlasí se zveřejněním fotek. ' +
-    'U dětí mám souhlas jejich rodičů.',
+  foto: 'Mám souhlas všech vyfocených se zveřejněním, u dětí souhlas rodičů.',
 } as const;
 
 export function nazevVolby(seznam: Volba[], klic: string): string {

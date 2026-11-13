@@ -1,0 +1,217 @@
+/* ==========================================================================
+   Formulář zápisu po akci (/zapis/)
+
+   Doplňuje zasobnik.css o věci, které má jen průvodce zápisem. Základní
+   tlačítka, volby a pole jsou v zasobnik.css. Barvy jen z palety
+   v global.css a aktualni.css, žádné nové odstíny.
+   Nic menšího než 18 px (1.125rem).
+   ========================================================================== */
+
+/* Panel průvodce: bílý, zaoblený, nejvýš ~760 px. */
+.zp-panel {
+  max-width: 47.5rem;
+  border-radius: 24px;
+  background: #fff;
+}
+
+.zp-krok {
+  margin: 0 0 0.35rem;
+  color: var(--color-tyrkys);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.zp-panel h2 {
+  margin: 0 0 0.5rem;
+}
+
+.zp-panel h3 {
+  margin: 1.5rem 0 0.5rem;
+}
+
+.zp-panel .z-napoveda,
+.zp-panel .z-pocitadlo {
+  font-size: 1.125rem;
+}
+
+/* Popisky fieldsetů stejně výrazné jako u ostatních polí. */
+.zp-panel legend {
+  margin: 0 0 0.4rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Chyby kroku: jeden červený box nad poli s ikonou a radou.
+   -------------------------------------------------------------------------- */
+.zp-chyby {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.2rem;
+  border: 2px solid var(--color-chyba);
+  border-radius: var(--z-zaobleni, 16px);
+  background: #fdecec;
+  color: var(--color-chyba);
+}
+
+.zp-chyby:focus {
+  outline: 4px solid var(--f-inkoust);
+  outline-offset: 4px;
+}
+
+.zp-chyby p,
+.zp-chyby ul {
+  margin: 0;
+}
+
+.zp-chyby ul {
+  padding-left: 1.4rem;
+  list-style: disc;
+}
+
+.zp-chyby li + li {
+  margin-top: 0.3rem;
+}
+
+.zp-chyby-nadpis {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem !important;
+  font-weight: 700;
+}
+
+/* Ikona vykřičníku v kolečku před nadpisem boxu. */
+.zp-chyby-nadpis::before {
+  content: "!";
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-chyba);
+  color: #fff;
+  line-height: 1;
+}
+
+/* Pole s chybou: červený rámeček (text je v boxu nahoře). */
+.z-pole[data-chyba] .z-volba,
+.z-pole[data-chyba] .z-zaskrtnuti input {
+  outline: 2px solid var(--color-chyba);
+  outline-offset: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   Velká tlačítka typu akce
+   -------------------------------------------------------------------------- */
+.zp-velke {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+.zp-velke .z-volba {
+  justify-content: center;
+  min-height: 5rem;
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+/* Kratší víceřádková pole (pomůcky, vzkaz). */
+.z-pole textarea.zp-kratke {
+  min-height: 7rem;
+}
+
+/* --------------------------------------------------------------------------
+   Fotky: malé dlaždice, 3 v řadě na mobilu, 5 na širším displeji.
+   -------------------------------------------------------------------------- */
+.zp-fotky {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 36rem) {
+  .zp-fotky {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.zp-fotka {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.zp-fotka img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--color-plocha-tyrkys);
+}
+
+.zp-fotka .z-tlacitko {
+  min-height: var(--z-cil-maly, 3.5rem);
+  padding: 0.25rem 0.4rem;
+  font-size: 1.125rem;
+}
+
+.zp-pocet-fotek {
+  margin: 0.25rem 0 0.75rem;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Shrnutí
+   -------------------------------------------------------------------------- */
+.zp-shrnuti {
+  margin: 1rem 0;
+}
+
+.zp-shrnuti dd {
+  overflow-wrap: anywhere;
+}
+
+.zp-fotky-shrnuti .zp-fotka img {
+  aspect-ratio: 4 / 3;
+}
+
+.zp-text {
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.zp-text p {
+  margin: 0 0 0.8rem;
+}
+
+/* --------------------------------------------------------------------------
+   Pruhy nad formulářem
+   -------------------------------------------------------------------------- */
+.zp-ukazka {
+  margin: 0 0 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--z-zaobleni, 16px);
+  background: var(--f-merunka-mlha);
+  color: var(--color-text);
+  font-size: 1.125rem;
+}
+
+.zp-vraceno p {
+  margin: 0;
+}
+
+.zp-vraceno-nadpis {
+  font-weight: 700;
+}
+
+/* Tlačítka průvodce: na úzkém displeji pod sebou přes celou šířku. */
+@media (max-width: 30rem) {
+  .zp-rada .z-tlacitko {
+    flex: 1 1 100%;
+  }
+}

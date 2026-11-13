@@ -2,9 +2,12 @@
    ZÁSOBNÍK NÁPADŮ — stránky /zasobnik/ a /zapis/
    ==========================================================================
 
-   Pravidla ovládání (zadání):
-     - text aspoň 18 px, ovládací prvky aspoň 56 px na výšku,
-     - viditelný fokus,
+   Pravidla ovládání (zadání podle ukázky pro zadavatelku):
+     - základ písma 22 px (1,375rem), nic menšího než 18 px (1,125rem),
+     - tlačítka a pole aspoň 64 px na výšku (malá 56 px), zaoblení 16 px,
+       rámeček 2 px,
+     - fokus: 4px obrys #0a3e47 s odsazením 4 px,
+     - při 200% zvětšení písma se nic nesmí překrývat,
      - červená jen na hlavní tlačítko (komponenta Tlacitko / .z-hlavni),
      - chyba vždy řekne, co udělat; potvrzení začíná „Hotovo…" a ukáže se
        u místa, kde člověk klikl.
@@ -14,7 +17,8 @@
    ========================================================================== */
 
 .z-stranka {
-  --z-cil: 3.5rem; /* 56 px */
+  --z-cil: 4rem; /* 64 px */
+  --z-cil-maly: 3.5rem; /* 56 px */
   --z-ramecek: #d9d4ca;
   --z-zaobleni: 16px;
 }
@@ -23,6 +27,14 @@
   max-width: var(--spacing-obsah);
   margin: 0 auto;
   padding: 2rem 1.25rem 5rem;
+  font-size: 1.375rem; /* 22 px */
+  line-height: 1.55;
+}
+
+/* Jeden fokus pro všechno na stránkách Zásobníku. */
+.z-stranka .z-obsah :focus-visible {
+  outline: 4px solid var(--f-inkoust);
+  outline-offset: 4px;
 }
 
 .z-obsah:focus {
@@ -39,17 +51,62 @@
 .z-uvod {
   max-width: 46rem;
   margin: 0 0 1.5rem;
+}
+
+/* Pruh „Co tady můžete udělat:" pod nadpisem obrazovky. */
+.z-co-delat {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  max-width: 52rem;
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--z-zaobleni);
+  background: var(--color-plocha-tyrkys);
+  color: var(--f-inkoust);
+}
+
+.z-co-delat p {
+  margin: 0;
+}
+
+.z-co-delat-ikona {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 2.2rem;
+  height: 2.2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-tyrkys);
+  color: #fff;
+  font-family: Georgia, serif;
   font-size: 1.25rem;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .z-obsah h2 {
   margin: 2rem 0 0.75rem;
-  font-size: 1.6rem;
+  font-size: 1.75rem;
 }
 
 .z-obsah h3 {
   margin: 0;
-  font-size: 1.35rem;
+  color: var(--f-inkoust);
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.z-obsah h4 {
+  margin: 1.75rem 0 0.5rem;
+  color: var(--f-inkoust);
+  font-size: 1.375rem;
+}
+
+.z-tucne {
+  font-weight: 700;
 }
 
 /* --------------------------------------------------------------------------
@@ -61,13 +118,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.6rem 1.4rem;
+  padding: 0.6rem 1.5rem;
   border: 2px solid var(--color-tyrkys);
-  border-radius: 12px;
+  border-radius: 16px;
   background: #fff;
   color: var(--color-tyrkys);
   font: inherit;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
@@ -92,6 +149,12 @@
   background: var(--color-tlacitko-hover);
 }
 
+/* Malé tlačítko (56 px), např. v kartě nápadu. */
+.z-tlacitko.z-male {
+  min-height: var(--z-cil-maly);
+  font-size: 1.125rem;
+}
+
 .z-tlacitko:disabled {
   cursor: wait;
   opacity: 0.6;
@@ -103,13 +166,17 @@
   min-height: var(--z-cil);
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1.1rem;
-  border: 2px solid var(--z-ramecek);
-  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  border: 2px solid #8a877d;
+  border-radius: 16px;
   background: #fff;
   color: var(--color-text);
   font: inherit;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
+  text-align: left;
+  /* Dlouhá volba se při zvětšeném písmu zalomí, nevyteče z obrazovky. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
   cursor: pointer;
   transition:
     background-color 150ms ease-out,
@@ -130,7 +197,7 @@
 /* Zaškrtnutí je vidět i bez barvy (pro barvoslepé a v černobílém tisku). */
 .z-volba[aria-pressed="true"]::before,
 .z-volba:has(input:checked)::before {
-  content: "✓";
+  content: "✓ ";
   font-weight: 600;
 }
 
@@ -143,8 +210,8 @@
 }
 
 .z-volba:has(input:focus-visible) {
-  outline: 3px solid var(--color-tyrkys);
-  outline-offset: 3px;
+  outline: 4px solid var(--f-inkoust);
+  outline-offset: 4px;
 }
 
 .z-volby {
@@ -180,7 +247,7 @@
 .z-ok {
   border-color: var(--color-potvrzeni);
   background: #e6f4ec;
-  color: #174a34;
+  color: var(--color-potvrzeni);
 }
 
 .z-chyba {
@@ -200,17 +267,40 @@
   font-weight: 400;
 }
 
+/* Upozornění (žluté): např. „zápis nemá žádné fotky". */
+.z-upozorneni {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1.1rem;
+  border: 2px solid #b7791f;
+  border-radius: var(--z-zaobleni);
+  background: #fff4d6;
+  color: var(--color-text);
+}
+
+/* Nic se nenašlo / Zásobník je zatím prázdný. */
+.z-prazdne {
+  margin: 1rem 0;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid var(--color-merunka);
+  border-radius: 20px;
+  background: var(--f-merunka-mlha);
+}
+
+.z-prazdne p {
+  margin: 0.25rem 0;
+}
+
 .z-tlumene {
   color: #6b6a63;
-  font-size: 1.05rem;
+  font-size: 1.125rem;
 }
 
 /* --------------------------------------------------------------------------
-   Filtry Zásobníku
+   Výběr v Zásobníku (zaklikávací skupiny)
    -------------------------------------------------------------------------- */
-.z-filtry {
+.z-vyber {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.6rem;
   margin: 0 0 1rem;
 }
 
@@ -225,10 +315,10 @@
   min-height: var(--z-cil);
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 1.1rem;
-  color: var(--color-tyrkys);
-  font-size: 1.2rem;
-  font-weight: 600;
+  flex-wrap: wrap;
+  padding: 0.5rem 1.25rem;
+  color: var(--f-inkoust);
+  font-size: 1.375rem;
   cursor: pointer;
   list-style: none;
 }
@@ -254,38 +344,51 @@
 
 .z-skupina .z-volby {
   margin: 0;
-  padding: 0 1.1rem 1rem;
+  padding: 0 1.25rem 1.1rem;
 }
 
 .z-stitek {
   display: inline-block;
-  padding: 0.1rem 0.7rem;
+  padding: 0.15rem 0.75rem;
   border-radius: 999px;
   background: var(--color-plocha-tyrkys);
   color: var(--f-inkoust);
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .z-stitek-merunka {
   background: var(--f-merunka-mlha);
 }
 
-.z-pocet {
-  margin: 0.5rem 0 1rem;
-  font-size: 1.15rem;
+#z-stav:empty {
+  display: none;
 }
 
 /* --------------------------------------------------------------------------
    Karty nápadů
    -------------------------------------------------------------------------- */
+/* 1 sloupec na mobilu, 2 na tabletu, 3 na počítači. */
 .z-mrizka {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   margin: 1rem 0;
   padding: 0;
   list-style: none;
+}
+
+@media (min-width: 40rem) {
+  .z-mrizka {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .z-mrizka {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .z-karta {
@@ -300,7 +403,7 @@
 
 .z-karta-foto {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   background: var(--color-plocha-tyrkys);
 }
@@ -308,13 +411,31 @@
 .z-karta-zastupce {
   display: flex;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   align-items: center;
   justify-content: center;
   background: var(--f-merunka-mlha);
-  color: var(--f-inkoust);
-  font-size: 1.3rem;
-  font-weight: 600;
+  color: var(--color-tyrkys);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.z-karta-zastupce-tyrkys {
+  background: var(--color-plocha-tyrkys);
+}
+
+.z-misto {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.z-ikona {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-top: 0.15rem;
+  color: var(--color-tyrkys);
 }
 
 .z-karta-telo {
@@ -344,7 +465,7 @@
    -------------------------------------------------------------------------- */
 .z-galerie {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: 0.75rem;
   margin: 1rem 0 1.5rem;
 }
@@ -355,6 +476,11 @@
   object-fit: cover;
   border-radius: 14px;
   background: var(--color-plocha-tyrkys);
+}
+
+.z-detail-nazev {
+  margin: 0.5rem 0 0.5rem !important;
+  font-size: 1.9rem !important;
 }
 
 .z-udaje {
@@ -402,7 +528,7 @@
    Formulář zápisu
    -------------------------------------------------------------------------- */
 .z-panel {
-  max-width: 48rem;
+  max-width: 47.5rem; /* ~760 px */
   padding: clamp(1.25rem, 3vw, 2.25rem);
   border: 2px solid var(--z-ramecek);
   border-radius: 24px;
@@ -413,7 +539,7 @@
 .z-krok {
   margin: 0 0 0.25rem;
   color: var(--color-tyrkys);
-  font-size: 1.05rem;
+  font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -458,7 +584,7 @@
 .z-napoveda {
   margin: 0.25rem 0 0.5rem;
   color: #6b6a63;
-  font-size: 1.05rem;
+  font-size: 1.125rem;
 }
 
 .z-pole input[type="text"],
@@ -469,13 +595,13 @@
 .z-pole textarea {
   width: 100%;
   min-height: var(--z-cil);
-  padding: 0.6rem 0.9rem;
+  padding: 0.6rem 1rem;
   border: 2px solid #8a877d;
-  border-radius: 12px;
+  border-radius: 16px;
   background: #fff;
   color: var(--color-text);
   font: inherit;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
 }
 
 .z-pole textarea {
@@ -487,9 +613,9 @@
 .z-pole input:focus-visible,
 .z-pole select:focus-visible,
 .z-pole textarea:focus-visible {
-  border-color: var(--color-tyrkys);
-  outline: 3px solid var(--color-tyrkys);
-  outline-offset: 1px;
+  border-color: var(--f-inkoust);
+  outline: 4px solid var(--f-inkoust);
+  outline-offset: 4px;
 }
 
 .z-pole[data-chyba] input,
@@ -501,12 +627,12 @@
 .z-pole .z-chyba {
   margin: 0.4rem 0 0;
   padding: 0.5rem 0.8rem;
-  font-size: 1.05rem;
+  font-size: 1.125rem;
 }
 
 .z-pocitadlo {
   margin: 0.35rem 0 0;
-  font-size: 1.05rem;
+  font-size: 1.125rem;
 }
 
 .z-pocitadlo[data-stav="malo"] {
@@ -571,9 +697,9 @@
 }
 
 .z-fotka .z-tlacitko {
-  min-height: 3rem;
+  min-height: var(--z-cil-maly);
   padding: 0.3rem 0.6rem;
-  font-size: 1rem;
+  font-size: 1.125rem;
 }
 
 .z-nahrat {
@@ -588,8 +714,8 @@
 }
 
 .z-nahrat:has(input:focus-visible) .z-tlacitko {
-  outline: 3px solid var(--color-tyrkys);
-  outline-offset: 3px;
+  outline: 4px solid var(--f-inkoust);
+  outline-offset: 4px;
 }
 
 .z-souhrn {
@@ -605,7 +731,6 @@
 
 .z-nacitani {
   padding: 2rem 0;
-  font-size: 1.2rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

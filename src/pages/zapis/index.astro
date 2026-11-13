@@ -7,13 +7,23 @@
  * se osobní odkaz neobjeví v logu hostingu ani v hlavičce Referer.
  * (Kvůli starším odkazům se bere i ?t=<token>.)
  *
- * Formulář má 7 kroků. Všechny jsou v HTML rovnou a skript jen přepíná,
+ * Průvodce má 8 kroků. Všechny jsou v HTML rovnou a skript jen přepíná,
  * který je vidět. Volby se generují ze sdíleného číselníku, takže sedí
  * s kontrolou na serveru i s podmínkami v databázi.
+ *
+ *   1 Vaše údaje            5 Pro koho (věk, zdatnost)
+ *   2 Název, datum, místo   6 Popis a vzkaz
+ *   3 Typ akce              7 Fotky a souhlasy
+ *   4 Náročnost a pomůcky   8 Shrnutí
+ *
+ * UKÁZKA: když se web sestaví s PUBLIC_ZASOBNIK_UKAZKA=1 (náhled pro
+ * zadavatelku), formulář se otevře i bez osobního odkazu, předvyplní se
+ * vymyšlenými údaji a nic se neukládá ani neodesílá.
  *
  * Skript: src/components/zasobnik/zapis.ts
  */
 import StrankaZasobniku from "../../layouts/StrankaZasobniku.astro";
+import "../../styles/zapis.css";
 import {
   DELKA,
   KRAJE,
@@ -25,7 +35,21 @@ import {
   ZDATNOST,
 } from "../../lib/ciselnikNapadu";
 
-const KROKU = 7;
+const KROKU = 8;
+
+// Našeptávač obcí: jen nápověda, napsat jde jakákoli obec.
+const OBCE = [
+  "Praha", "Brno", "Ostrava", "Plzeň", "Liberec", "Olomouc", "České Budějovice",
+  "Hradec Králové", "Ústí nad Labem", "Pardubice", "Zlín", "Havířov", "Kladno",
+  "Most", "Opava", "Jihlava", "Frýdek-Místek", "Karviná", "Teplice", "Děčín",
+  "Karlovy Vary", "Chomutov", "Jablonec nad Nisou", "Mladá Boleslav", "Prostějov",
+  "Přerov", "Třebíč", "Česká Lípa", "Třinec", "Tábor", "Znojmo", "Kolín",
+  "Příbram", "Cheb", "Trutnov", "Písek", "Kroměříž", "Šumperk", "Vsetín",
+  "Uherské Hradiště", "Břeclav", "Hodonín", "Říčany", "Benešov", "Beroun",
+  "Kutná Hora", "Mělník", "Nymburk", "Rakovník", "Strakonice", "Klatovy",
+  "Jindřichův Hradec", "Havlíčkův Brod", "Žďár nad Sázavou", "Náchod",
+  "Rychnov nad Kněžnou", "Svitavy", "Chrudim", "Vyškov", "Blansko", "Litoměřice",
+];
 ---
 
 <StrankaZasobniku
@@ -44,26 +68,29 @@ const KROKU = 7;
     <p class="z-nacitani">Načítáme formulář…</p>
   </div>
 
-  <form id="z-formular" class="z-panel" novalidate hidden>
-    <p class="z-krok" id="z-krok-text">Krok 1 z {KROKU}</p>
+  <form id="z-formular" class="z-panel zp-panel" novalidate hidden>
+    <p class="zp-krok" id="z-krok-text">Krok 1 z {KROKU}</p>
     <div class="z-ukazatel" aria-hidden="true">
       {Array.from({ length: KROKU }, () => <span></span>)}
     </div>
 
-    {/* ---------------- Krok 1: pořadatel ---------------- */}
+    {/* Chyby kroku: jeden červený box nad poli. Při psaní zmizí. */}
+    <div id="z-chyby" class="zp-chyby" role="alert" tabindex="-1" hidden></div>
+
+    {/* ---------------- Krok 1: vaše údaje ---------------- */}
     <section data-krok="1" aria-labelledby="z-k1">
-      <h2 id="z-k1">Kdo akci pořádal</h2>
-      <p class="z-napoveda">Vyplnili jsme to z vaší registrace. Když je něco jinak, opravte to.</p>
+      <h2 id="z-k1">Vaše údaje</h2>
+      <p class="z-napoveda">Vyplnili jsme je z vaší přihlášky. Když je něco jinak, opravte to.</p>
 
       <div class="z-pole" data-pole="nazev_poradatele">
-        <label for="z-nazev_poradatele">Pořadatel (škola, spolek, firma nebo vaše jméno)</label>
+        <label for="z-nazev_poradatele">Organizace (škola, spolek, firma nebo vaše jméno)</label>
         <input type="text" id="z-nazev_poradatele" name="nazev_poradatele" maxlength="200" autocomplete="organization" />
       </div>
+      <div class="z-pole" data-pole="kontaktni_osoba">
+        <label for="z-kontaktni_osoba">Kontaktní osoba</label>
+        <input type="text" id="z-kontaktni_osoba" name="kontaktni_osoba" maxlength="120" autocomplete="name" />
+      </div>
       <div class="z-dvojice">
-        <div class="z-pole" data-pole="kontaktni_osoba">
-          <label for="z-kontaktni_osoba">Kontaktní osoba</label>
-          <input type="text" id="z-kontaktni_osoba" name="kontaktni_osoba" maxlength="120" autocomplete="name" />
-        </div>
         <div class="z-pole" data-pole="email">
           <label for="z-email">E-mail</label>
           <input type="email" id="z-email" name="email" maxlength="254" autocomplete="email" />
@@ -72,28 +99,25 @@ const KROKU = 7;
           <label for="z-telefon">Telefon (nepovinné)</label>
           <input type="tel" id="z-telefon" name="telefon" maxlength="30" autocomplete="tel" />
         </div>
-        <div class="z-pole" data-pole="mesto">
-          <label for="z-mesto">Město nebo obec, kde akce byla</label>
-          <input type="text" id="z-mesto" name="mesto" maxlength="120" autocomplete="address-level2" />
-        </div>
-      </div>
-      <div class="z-pole" data-pole="kraj">
-        <label for="z-kraj">Kraj</label>
-        <select id="z-kraj" name="kraj">
-          <option value="">Vyberte kraj</option>
-          {KRAJE.map((k) => <option value={k}>{k}</option>)}
-        </select>
       </div>
     </section>
 
-    {/* ---------------- Krok 2: akce a typ ---------------- */}
+    {/* ---------------- Krok 2: název, datum, místo ---------------- */}
     <section data-krok="2" aria-labelledby="z-k2" hidden>
-      <h2 id="z-k2">O jakou akci šlo</h2>
+      <h2 id="z-k2">O akci</h2>
 
       <div class="z-pole" data-pole="nazev_akce">
         <label for="z-nazev_akce">Název akce</label>
-        <p class="z-napoveda" id="z-nazev_akce-napoveda">Krátce a výstižně, například „Kvíz o našem městě“.</p>
-        <input type="text" id="z-nazev_akce" name="nazev_akce" maxlength={LIMITY.nazevMax} aria-describedby="z-nazev_akce-napoveda" />
+        <p class="z-napoveda" id="z-nazev_akce-napoveda">
+          Krátce a výstižně, {LIMITY.nazevMin} až {LIMITY.nazevMax} znaků.
+        </p>
+        <input
+          type="text"
+          id="z-nazev_akce"
+          name="nazev_akce"
+          maxlength={LIMITY.nazevMax}
+          aria-describedby="z-nazev_akce-napoveda"
+        />
       </div>
 
       <div class="z-pole" data-pole="datum_akce">
@@ -101,10 +125,32 @@ const KROKU = 7;
         <input type="date" id="z-datum_akce" name="datum_akce" />
       </div>
 
+      <div class="z-dvojice">
+        <div class="z-pole" data-pole="mesto">
+          <label for="z-mesto">Město nebo obec</label>
+          <input type="text" id="z-mesto" name="mesto" maxlength="120" list="z-obce" autocomplete="address-level2" />
+          <datalist id="z-obce">
+            {OBCE.map((o) => <option value={o} />)}
+          </datalist>
+        </div>
+        <div class="z-pole" data-pole="kraj">
+          <label for="z-kraj">Kraj</label>
+          <select id="z-kraj" name="kraj">
+            <option value="">Vyberte kraj</option>
+            {KRAJE.map((k) => <option value={k}>{k}</option>)}
+          </select>
+        </div>
+      </div>
+    </section>
+
+    {/* ---------------- Krok 3: typ akce ---------------- */}
+    <section data-krok="3" aria-labelledby="z-k3" hidden>
+      <h2 id="z-k3">Typ akce</h2>
+
       <div class="z-pole" data-pole="typ">
         <fieldset>
-          <legend>Typ akce</legend>
-          <div class="z-volby">
+          <legend>Jaký typ akce to byl?</legend>
+          <div class="z-volby zp-velke">
             {TYPY.map((t) => (
               <label class="z-volba">
                 <input type="radio" name="typ" value={t.klic} />
@@ -118,7 +164,7 @@ const KROKU = 7;
       {TYPY.map((t) => (
         <div class="z-pole" data-pole="podtyp" data-pro-typ={t.klic} hidden>
           <fieldset>
-            <legend>Co přesně ({t.nazev.toLowerCase()})</legend>
+            <legend>Upřesněte, prosím</legend>
             <div class="z-volby">
               {t.podtypy.map((p) => (
                 <label class="z-volba">
@@ -132,52 +178,19 @@ const KROKU = 7;
       ))}
 
       <div class="z-pole" data-pole="podtyp_jine" hidden>
-        <label for="z-podtyp_jine">Napište, o jakou akci šlo</label>
+        <label for="z-podtyp_jine">Jaká akce to byla?</label>
         <input type="text" id="z-podtyp_jine" name="podtyp_jine" maxlength={LIMITY.jineMax} />
       </div>
     </section>
 
-    {/* ---------------- Krok 3: pro koho ---------------- */}
-    <section data-krok="3" aria-labelledby="z-k3" hidden>
-      <h2 id="z-k3">Pro koho se akce hodí</h2>
-      <p class="z-napoveda">Můžete vybrat víc možností.</p>
-
-      <div class="z-pole" data-pole="vek">
-        <fieldset>
-          <legend>Věk</legend>
-          <div class="z-volby">
-            {VEK.map((v) => (
-              <label class="z-volba">
-                <input type="checkbox" name="vek" value={v.klic} />
-                {v.nazev}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      </div>
-
-      <div class="z-pole" data-pole="zdatnost">
-        <fieldset>
-          <legend>Fyzická zdatnost</legend>
-          <div class="z-volby">
-            {ZDATNOST.map((v) => (
-              <label class="z-volba">
-                <input type="checkbox" name="zdatnost" value={v.klic} />
-                {v.nazev}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      </div>
-    </section>
-
-    {/* ---------------- Krok 4: organizace ---------------- */}
+    {/* ---------------- Krok 4: náročnost a pomůcky ---------------- */}
     <section data-krok="4" aria-labelledby="z-k4" hidden>
-      <h2 id="z-k4">Jak náročná byla příprava</h2>
+      <h2 id="z-k4">Náročnost a pomůcky</h2>
 
       <div class="z-pole" data-pole="narocnost">
-        <fieldset>
+        <fieldset aria-describedby="z-narocnost-napoveda">
           <legend>Organizační náročnost</legend>
+          <p class="z-napoveda" id="z-narocnost-napoveda">Kolik práce dala příprava.</p>
           <div class="z-volby">
             {NAROCNOST.map((v) => (
               <label class="z-volba">
@@ -190,8 +203,9 @@ const KROKU = 7;
       </div>
 
       <div class="z-pole" data-pole="delka">
-        <fieldset>
-          <legend>Jak dlouho akce trvala</legend>
+        <fieldset aria-describedby="z-delka-napoveda">
+          <legend>Časová náročnost</legend>
+          <p class="z-napoveda" id="z-delka-napoveda">Jak dlouho akce trvala.</p>
           <div class="z-volby">
             {DELKA.map((v) => (
               <label class="z-volba">
@@ -205,7 +219,7 @@ const KROKU = 7;
 
       <div class="z-pole" data-pole="pomucky_potreba">
         <fieldset>
-          <legend>Pomůcky</legend>
+          <legend>Byly potřeba nějaké pomůcky?</legend>
           <div class="z-volby">
             <label class="z-volba">
               <input type="radio" name="pomucky_potreba" value="ne" />
@@ -220,20 +234,62 @@ const KROKU = 7;
       </div>
 
       <div class="z-pole" data-pole="pomucky_jake" hidden>
-        <label for="z-pomucky_jake">Jaké pomůcky (nepovinné)</label>
-        <input type="text" id="z-pomucky_jake" name="pomucky_jake" maxlength={LIMITY.pomuckyMax} />
+        <label for="z-pomucky_jake">Jaké?</label>
+        <textarea
+          id="z-pomucky_jake"
+          name="pomucky_jake"
+          maxlength={LIMITY.pomuckyMax}
+          rows="3"
+          class="zp-kratke"
+          aria-describedby="z-pomucky_jake-pocet"
+        ></textarea>
+        <p class="z-pocitadlo" id="z-pomucky_jake-pocet"></p>
       </div>
     </section>
 
-    {/* ---------------- Krok 5: popis ---------------- */}
+    {/* ---------------- Krok 5: pro koho ---------------- */}
     <section data-krok="5" aria-labelledby="z-k5" hidden>
-      <h2 id="z-k5">Jak akce proběhla</h2>
+      <h2 id="z-k5">Pro koho se akce hodí</h2>
+
+      <div class="z-pole" data-pole="vek">
+        <fieldset aria-describedby="z-vek-napoveda">
+          <legend>Pro jaký věk se akce hodí?</legend>
+          <p class="z-napoveda" id="z-vek-napoveda">Můžete vybrat více možností.</p>
+          <div class="z-volby">
+            {VEK.map((v) => (
+              <label class="z-volba">
+                <input type="checkbox" name="vek" value={v.klic} />
+                {v.nazev}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="z-pole" data-pole="zdatnost">
+        <fieldset aria-describedby="z-zdatnost-napoveda">
+          <legend>Jakou fyzickou zdatnost akce vyžaduje?</legend>
+          <p class="z-napoveda" id="z-zdatnost-napoveda">Můžete vybrat více možností.</p>
+          <div class="z-volby">
+            {ZDATNOST.map((v) => (
+              <label class="z-volba">
+                <input type="checkbox" name="zdatnost" value={v.klic} />
+                {v.nazev}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    {/* ---------------- Krok 6: popis a vzkaz ---------------- */}
+    <section data-krok="6" aria-labelledby="z-k6" hidden>
+      <h2 id="z-k6">Jak akce proběhla</h2>
 
       <div class="z-pole" data-pole="popis">
         <label for="z-popis">Popis akce</label>
         <p class="z-napoveda" id="z-popis-napoveda">
-          Co jste dělali, co se povedlo a co byste příště udělali jinak.
-          Aspoň {LIMITY.popisMin} znaků, nejvýš {LIMITY.popisMax}.
+          Popište, jak akce probíhala, co se povedlo a na co si dát pozor.
         </p>
         <p class="z-info" id="z-puvodni-napad" hidden></p>
         <textarea
@@ -242,32 +298,56 @@ const KROKU = 7;
           maxlength={LIMITY.popisMax}
           aria-describedby="z-popis-napoveda z-popis-pocet"
         ></textarea>
-        <p class="z-pocitadlo" id="z-popis-pocet" aria-live="polite"></p>
+        <p class="z-pocitadlo" id="z-popis-pocet"></p>
+      </div>
+
+      <div class="z-pole" data-pole="vzkaz">
+        <label for="z-vzkaz">Vzkaz organizátorům kampaně (neveřejné, nepovinné)</label>
+        <p class="z-napoveda" id="z-vzkaz-napoveda">
+          Vzkaz uvidí jen správci z Právě teď! o.p.s., ve veřejném Zásobníku se nezobrazí.
+        </p>
+        <textarea
+          id="z-vzkaz"
+          name="vzkaz"
+          maxlength={LIMITY.vzkazMax}
+          rows="3"
+          class="zp-kratke"
+          aria-describedby="z-vzkaz-napoveda z-vzkaz-pocet"
+        ></textarea>
+        <p class="z-pocitadlo" id="z-vzkaz-pocet"></p>
       </div>
     </section>
 
-    {/* ---------------- Krok 6: fotky ---------------- */}
-    <section data-krok="6" aria-labelledby="z-k6" hidden>
-      <h2 id="z-k6">Fotky z akce</h2>
-      <p class="z-napoveda">
-        Přidejte 1 až {LIMITY.fotekMax} fotek. První fotka bude na kartičce
-        v Zásobníku. Fotky před odesláním zmenšíme a odstraníme z nich údaje
-        o místě pořízení.
-      </p>
+    {/* ---------------- Krok 7: fotky a souhlasy ---------------- */}
+    <section data-krok="7" aria-labelledby="z-k7" hidden>
+      <h2 id="z-k7">Fotky a souhlas</h2>
 
       <div class="z-pole" data-pole="fotky">
-        <ul class="z-fotky" id="z-fotky"></ul>
+        <p class="z-popisek" id="z-fotky-nadpis">Fotky z akce ({LIMITY.fotekMin} až {LIMITY.fotekMax})</p>
+        <p class="z-napoveda" id="z-fotky-napoveda">
+          Fotky před uložením zmenšíme a odstraníme z nich údaje o místě a přístroji.
+        </p>
+        <ul class="zp-fotky" id="z-fotky" aria-labelledby="z-fotky-nadpis"></ul>
+        <p class="zp-pocet-fotek" id="z-fotky-pocet" aria-live="polite"></p>
         <div class="z-nahrat" id="z-nahrat">
-          <input type="file" id="z-soubor" accept="image/*" multiple />
-          <label for="z-soubor" class="z-tlacitko">Přidat fotky</label>
+          <input
+            type="file"
+            id="z-soubor"
+            accept="image/*"
+            multiple
+            aria-describedby="z-fotky-napoveda z-fotky-pocet"
+          />
+          <label for="z-soubor" class="z-tlacitko">Vybrat fotky</label>
         </div>
         <div id="z-fotky-stav" aria-live="polite"></div>
       </div>
-    </section>
 
-    {/* ---------------- Krok 7: souhlasy ---------------- */}
-    <section data-krok="7" aria-labelledby="z-k7" hidden>
-      <h2 id="z-k7">Kontakt a souhlas</h2>
+      <div class="z-pole" data-pole="souhlas_foto">
+        <label class="z-zaskrtnuti">
+          <input type="checkbox" name="souhlas_foto" />
+          <span id="z-souhlas-foto-text">Mám souhlas všech vyfocených se zveřejněním, u dětí souhlas rodičů.</span>
+        </label>
+      </div>
 
       <div class="z-pole" data-pole="verejny_kontakt">
         <fieldset>
@@ -293,25 +373,20 @@ const KROKU = 7;
           <a href="/zpracovani-osobnich-udaju/" target="_blank" rel="noopener">Jak s údaji zacházíme</a>
         </p>
       </div>
+    </section>
 
-      <div class="z-pole" data-pole="souhlas_foto">
-        <label class="z-zaskrtnuti">
-          <input type="checkbox" name="souhlas_foto" />
-          <span id="z-souhlas-foto-text"></span>
-        </label>
-      </div>
-
-      <div class="z-pole" data-pole="vzkaz">
-        <label for="z-vzkaz">Vzkaz organizátorům kampaně (nepovinné, neveřejné)</label>
-        <textarea id="z-vzkaz" name="vzkaz" maxlength={LIMITY.vzkazMax} rows="3" style="min-height:6rem"></textarea>
-      </div>
+    {/* ---------------- Krok 8: shrnutí ---------------- */}
+    <section data-krok="8" aria-labelledby="z-k8" hidden>
+      <h2 id="z-k8">Shrnutí</h2>
+      <p class="z-napoveda">Zkontrolujte prosím, že je všechno správně. Opravit můžete tlačítkem „Zpět o krok“.</p>
+      <div id="z-shrnuti"></div>
     </section>
 
     <div id="z-zprava-formulare" aria-live="assertive"></div>
 
-    <div class="z-rada">
+    <div class="z-rada zp-rada">
       <button type="button" class="z-tlacitko" id="z-zpet" hidden>Zpět o krok</button>
-      <button type="submit" class="z-tlacitko z-hlavni" id="z-dal">Pokračovat</button>
+      <button type="submit" class="z-tlacitko z-hlavni" id="z-dal">Pokračovat na krok 2</button>
     </div>
   </form>
 </StrankaZasobniku>

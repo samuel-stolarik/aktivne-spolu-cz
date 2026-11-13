@@ -34,6 +34,9 @@ const PLATNOST_ZKUSEBNI_DNI = 1;
 /** Kolik výzev jde odeslat jedním požadavkem. Víc posílá administrace po dávkách. */
 const DAVKA_MAX = 25;
 
+/** Nejkratší důvod vrácení k úpravě. Musí sedět se správou. */
+const DUVOD_MIN = 5;
+
 function chyba(veta: string, stav: number): Vysledek {
   return { stav, telo: { chyba: veta } };
 }
@@ -149,8 +152,11 @@ export async function rozhodniNapad(
 
   if (!jeUuid(id)) return chyba('Chybí, o který zápis jde. Obnovte prosím stránku.', 400);
   if (!(rozhodnuti in ROZHODNUTI)) return chyba('Neznámé rozhodnutí. Obnovte prosím stránku.', 400);
-  if (rozhodnuti === 'vratit' && !duvod) {
-    return chyba('Napište prosím pořadateli, co má v zápisu upravit.', 422);
+  if (rozhodnuti === 'vratit' && duvod.length < DUVOD_MIN) {
+    return chyba(
+      `Napište prosím pořadateli, co má v zápisu upravit. Stačí krátce, aspoň ${DUVOD_MIN} znaků.`,
+      422,
+    );
   }
   if (duvod.length > 1000) return chyba('Zkraťte prosím důvod na 1000 znaků.', 422);
 

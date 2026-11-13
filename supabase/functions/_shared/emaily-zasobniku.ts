@@ -151,7 +151,7 @@ export function emailZverejneni(
   nazevAkce: string,
   napadId: string,
 ): Zprava {
-  const odkaz = `${WEB}/zasobnik/?napad=${encodeURIComponent(napadId)}`;
+  const odkaz = `${WEB}/zasobnik/?id=${encodeURIComponent(napadId)}`;
   const predmet = `Váš nápad je v Zásobníku: ${nazevAkce}`;
   const text = [
     osloveni(p.kontaktni_osoba),
