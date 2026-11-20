@@ -9,7 +9,7 @@ zápisů, které po akci posílají registrovaní pořadatelé.
    pořadatelům* pošle pořadateli e-mail s osobním odkazem
    `/zapis/#t=<token>`. Token je v databázi jen jako SHA-256 a odkaz platí
    60 dní. Nová výzva zruší starší odkaz téže přihlášky.
-2. **Zápis.** Pořadatel otevře odkaz a vyplní 7 kroků. Údaje z registrace
+2. **Zápis.** Pořadatel otevře odkaz a projde 8 kroků (poslední je shrnutí). Údaje z registrace
    jsou předvyplněné. Nahraje 1–5 fotek, které se v prohlížeči zmenší na
    1600 px a uloží jako JPEG bez EXIF a GPS. Zápis se uloží ve stavu `ceka`
    a správce dostane upozornění e-mailem.
@@ -35,11 +35,44 @@ Zabezpečení je stejné jako u přihlášek: RLS zapnuté a vynucené, žádná
 policy, `anon` ani `authenticated` nemají na nových tabulkách práva. Bucket
 s fotkami je soukromý a fotky jdou ven jen přes podepsané adresy.
 
+## Pole a nepotvrzené předpoklady
+
+Hodnoty, názvy polí i rozhodnutí, která zadavatelka zatím nepotvrdila, jsou
+na jednom místě v `supabase/functions/_shared/ciselnik-napadu.ts`:
+
+| Co | Konstanta | Teď |
+|---|---|---|
+| Upřesnění u typu akce | `TYPY[].podtypy` | Kulturní, Pohyb a sport a Společenská akce mají upřesnění, Jiná jen text |
+| Poznámka/komentář je veřejná | `POZNAMKA_JE_VEREJNA` | ano, do 300 znaků |
+| Rozpočet = celkové náklady pořadatele | `ROZPOCET_NAPOVEDA` | ano |
+| Zdatnost seniorů, víc odpovědí | `ZDATNOST_VICE_VOLEB` | ne, jedna odpověď |
+| Ve filtru víc hodnot ve skupině | `FILTR_VICE_VOLEB` | ano |
+| Názvy polí | `POPISKY` | doslova podle e-mailu z 18. 11. 2026 |
+
+Náročnost se od 20. 11. 2026 nevyplňuje. Sloupec `napady.narocnost` zůstal
+i s daty. Starší zápisy bez nových polí ukazují „neuvedeno“.
+
+## Administrace
+
+- **Opravit texty**: název, popis, jaké pomůcky, poznámka a vlastní popis
+  typu. Ukládá `admin-obsah` (akce `uprav-napad`), každá změna se zapíše
+  do `napady_upravy` (kdo, kdy, původní a nová hodnota). Na webu se úprava
+  neukazuje.
+- **Náhled**: `/zasobnik/?nahled=<id>` vykreslí kartu i detail nápadu
+  v jakémkoli stavu přesně jako na webu. Data dá jen přihlášenému správci.
+- **Vrátit k rozhodnutí**: schválený, vrácený i zamítnutý zápis jde zpátky
+  do stavu „čeká na kontrolu“. Pořadatel nedostane e-mail.
+- **Stáhnout zápisy do Excelu (CSV)** podle filtru „Zobrazit“.
+
 ## Nasazení
 
 ```bash
 npx supabase link --project-ref kourmwqxkhdtahbxyuaq
-npx supabase db push
+# POZOR: historie migrací v ostrém projektu není úplná (migrace od
+# 20260821140000 do 20261112120000 se pouštěly ručně). `db push` by je
+# zkusil přehrát znovu. Novou migraci proto pouštějte samostatně:
+npx supabase db query --remote -f supabase/migrations/<nova>.sql
+npx supabase migration repair --remote --status applied <cislo>
 npx supabase secrets set ZASOBNIK_UPOZORNENI_EMAIL=... WEB_URL=https://aktivne-spolu.cz
 npx supabase functions deploy zapis-napadu
 npx supabase functions deploy verejne-napady
@@ -47,14 +80,8 @@ npx supabase functions deploy admin-obsah
 npm run zip   # a nahrát na FTP podle README
 ```
 
-## Skryté spuštění
+## Spuštění
 
-Dokud Zásobník neodsouhlasí zadavatelka:
-
-- `/zasobnik/` a `/zapis/` mají `noindex` a nejsou v sitemapě,
-- tlačítko vpravo nahoře v hlavičce pořád vede na registraci.
-
-Po odsouhlasení: v `src/pages/zasobnik/index.astro` smazat `skryta`,
-v `astro.config.mjs` pustit `/zasobnik/` do sitemapy a
-v `src/components/aktualni/Hlavicka.astro` změnit `tlacitko` na
-`{ odkaz: "/zasobnik/", text: "Zásobník nápadů" }`.
+Zadavatelka Zásobník odsouhlasila 18. 11. 2026, naostro běží od 20. 11. 2026:
+`/zasobnik/` je bez `noindex` a v sitemapě, tlačítko v hlavičce vede na
+Zásobník. `/zapis/` zůstává skrytý (jen osobní odkazy z e-mailu).
