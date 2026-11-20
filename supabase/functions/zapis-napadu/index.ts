@@ -21,14 +21,18 @@ import {
   DELKA,
   KRAJE,
   LIMITY,
-  NAROCNOST,
+  MISTO_KONANI,
+  PODTYP_JINE,
+  ROZPOCET,
   SOUHLAS,
-  TYPY,
   VEK,
+  VEK_VSECHNY,
   VEREJNY_KONTAKT,
   ZDATNOST,
-  nazevPodtypu,
+  ZDATNOST_VICE_VOLEB,
+  maPodtypy,
   typAkce,
+  typSPodtypem,
 } from '../_shared/ciselnik-napadu.ts';
 import { e, zaradAPosli } from '../_shared/fronta-posty.ts';
 import { jeToken, otiskTokenu } from '../_shared/token.ts';
@@ -190,8 +194,9 @@ async function overOdkaz(
 /** Sloupce zápisu, které pořadatel vidí zpátky ve formuláři. */
 const SLOUPCE_ZAPISU =
   'id, stav, duvod, nazev_poradatele, kontaktni_osoba, email, telefon, mesto, kraj, ' +
-  'nazev_akce, typ, podtyp, podtyp_jine, narocnost, pomucky_potreba, pomucky_jake, ' +
-  'vek, zdatnost, delka, popis, datum_akce, fotky, vzkaz, verejny_kontakt, upraveno';
+  'nazev_akce, typ, podtyp, podtyp_jine, pomucky_potreba, pomucky_jake, ' +
+  'vek, zdatnost, delka, misto_konani, rozpocet, poznamka, popis, datum_akce, fotky, vzkaz, ' +
+  'verejny_kontakt, upraveno';
 
 const LZE_UPRAVIT = new Set(['ceka', 'vraceno']);
 
@@ -384,20 +389,20 @@ function zkontroluj(
   }
 
   const typ = text(v.typ);
-  const podtyp = text(v.podtyp);
-  let podtyp_jine: string | null = text(v.podtyp_jine) || null;
   const t = typAkce(typ);
+  // Typ bez upřesnění (Jiná) má jen vlastní text, podtyp je vždycky `jine`.
+  const podtyp = t && !maPodtypy(typ) ? PODTYP_JINE : text(v.podtyp);
+  let podtyp_jine: string | null = text(v.podtyp_jine) || null;
   if (!t) ch.typ = 'Vyberte prosím typ akce.';
-  else if (!t.podtypy.some((p) => p.klic === podtyp)) ch.podtyp = 'Vyberte prosím, o co šlo.';
-  if (podtyp === 'jine') {
-    if (!podtyp_jine) ch.podtyp_jine = 'Napište prosím, o jakou akci šlo.';
+  else if (maPodtypy(typ) && !t.podtypy.some((p) => p.klic === podtyp)) {
+    ch.podtyp = 'Vyberte prosím, o co šlo.';
+  }
+  if (podtyp === PODTYP_JINE) {
+    if (!podtyp_jine) ch.podtyp_jine = 'Napište prosím, jaká akce to byla.';
     else if (delka(podtyp_jine) > LIMITY.jineMax) {
       ch.podtyp_jine = `Zkraťte prosím text na ${LIMITY.jineMax} znaků.`;
     }
   } else podtyp_jine = null;
-
-  const narocnost = text(v.narocnost);
-  if (!klice(NAROCNOST).has(narocnost)) ch.narocnost = 'Vyberte prosím náročnost.';
 
   const pomucky_potreba = v.pomucky_potreba === true;
   if (typeof v.pomucky_potreba !== 'boolean') ch.pomucky_potreba = 'Vyberte prosím, jestli byly potřeba pomůcky.';
@@ -409,17 +414,34 @@ function zkontroluj(
   }
 
   const povolenyVek = klice(VEK);
-  const vek = [...new Set(textovePole(v.vek))];
-  if (!vek.length || vek.some((x) => !povolenyVek.has(x))) ch.vek = 'Vyberte prosím aspoň jednu věkovou skupinu.';
+  let vek = [...new Set(textovePole(v.vek))];
+  if (!vek.length || vek.some((x) => !povolenyVek.has(x))) {
+    ch.vek = 'Vyberte prosím aspoň jednu skupinu, pro kterou je akce vhodná.';
+  }
+  // „Všechny skupiny" ostatní volby ruší.
+  if (vek.includes(VEK_VSECHNY)) vek = [VEK_VSECHNY];
 
   const povolenaZdatnost = klice(ZDATNOST);
   const zdatnost = [...new Set(textovePole(v.zdatnost))];
   if (!zdatnost.length || zdatnost.some((x) => !povolenaZdatnost.has(x))) {
-    ch.zdatnost = 'Vyberte prosím aspoň jednu možnost.';
+    ch.zdatnost = 'Vyberte prosím zdatnost seniorů.';
+  } else if (!ZDATNOST_VICE_VOLEB && zdatnost.length > 1) {
+    ch.zdatnost = 'U zdatnosti seniorů vyberte prosím jen jednu možnost.';
   }
 
   const delkaAkce = text(v.delka);
-  if (!klice(DELKA).has(delkaAkce)) ch.delka = 'Vyberte prosím, jak dlouho akce trvala.';
+  if (!klice(DELKA).has(delkaAkce)) ch.delka = 'Vyberte prosím časovou náročnost akce.';
+
+  const misto_konani = text(v.misto_konani);
+  if (!klice(MISTO_KONANI).has(misto_konani)) ch.misto_konani = 'Vyberte prosím místo konání.';
+
+  const rozpocet = text(v.rozpocet);
+  if (!klice(ROZPOCET).has(rozpocet)) ch.rozpocet = 'Vyberte prosím rozpočet na akci.';
+
+  const poznamka: string | null = text(v.poznamka) || null;
+  if (poznamka && delka(poznamka) > LIMITY.poznamkaMax) {
+    ch.poznamka = `Zkraťte prosím poznámku na ${LIMITY.poznamkaMax} znaků.`;
+  }
 
   const popis = text(v.popis);
   const znaku = delka(popis);
@@ -484,12 +506,14 @@ function zkontroluj(
       typ,
       podtyp,
       podtyp_jine,
-      narocnost,
       pomucky_potreba,
       pomucky_jake,
       vek,
       zdatnost,
       delka: delkaAkce,
+      misto_konani,
+      rozpocet,
+      poznamka,
       popis,
       datum_akce,
       fotky,
@@ -605,8 +629,7 @@ async function upozorniSpravce(
   const nazev = String(d.nazev_akce);
   const kdo = String(d.nazev_poradatele);
   const kde = `${d.mesto}, ${d.kraj}`;
-  const typ = TYPY.find((t) => t.klic === d.typ)?.nazev ?? String(d.typ);
-  const podtyp = d.podtyp === 'jine' ? String(d.podtyp_jine) : nazevPodtypu(String(d.typ), String(d.podtyp));
+  const typ = typSPodtypem(String(d.typ), String(d.podtyp), (d.podtyp_jine as string | null) ?? null);
   const odkaz = `${WEB}/admin/#zasobnik`;
 
   const predmet = upraveno
@@ -619,7 +642,7 @@ async function upozorniSpravce(
     `Akce: ${nazev}`,
     `Pořadatel: ${kdo}`,
     `Kde: ${kde}`,
-    `Typ: ${typ} – ${podtyp}`,
+    `Typ akce: ${typ}`,
     `Fotek: ${(d.fotky as string[]).length}`,
     d.vzkaz ? `Vzkaz pro vás: ${d.vzkaz}` : '',
     '',
@@ -627,7 +650,7 @@ async function upozorniSpravce(
   ].filter((r, i, a) => r !== '' || a[i - 1] !== '').join('\n');
 
   const html = `<p>${upraveno ? 'Pořadatel upravil zápis do Zásobníku nápadů.' : 'Do Zásobníku nápadů přišel nový zápis.'}</p>
-<p><strong>${e(nazev)}</strong><br>${e(kdo)}<br>${e(kde)}<br>${e(typ)} – ${e(podtyp)}<br>Fotek: ${(d.fotky as string[]).length}</p>
+<p><strong>${e(nazev)}</strong><br>${e(kdo)}<br>${e(kde)}<br>${e(typ)}<br>Fotek: ${(d.fotky as string[]).length}</p>
 ${d.vzkaz ? `<p>Vzkaz pro vás: ${e(String(d.vzkaz))}</p>` : ''}
 <p><a href="${e(odkaz)}">Zkontrolovat v administraci</a></p>`;
 

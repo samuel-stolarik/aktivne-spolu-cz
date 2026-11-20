@@ -20,14 +20,21 @@ import { createClient } from "@supabase/supabase-js";
 import {
   DELKA,
   LIMITY,
-  NAROCNOST,
+  MISTO_KONANI,
+  PODTYP_JINE,
+  POMUCKY,
+  POPISKY,
+  POZNAMKA_JE_VEREJNA,
+  ROZPOCET,
   SOUHLAS,
-  TYPY,
   VEK,
+  VEK_VSECHNY,
   VEREJNY_KONTAKT,
   ZDATNOST,
-  nazevPodtypu,
+  maPodtypy,
   nazevVolby,
+  nazvyVoleb,
+  typSPodtypem,
 } from "../../lib/ciselnikNapadu";
 
 const ADRESA = import.meta.env.PUBLIC_SUPABASE_URL ?? "";
@@ -44,9 +51,9 @@ const KROK_POLE: Record<string, number> = {
   nazev_poradatele: 1, kontaktni_osoba: 1, email: 1, telefon: 1,
   nazev_akce: 2, datum_akce: 2, mesto: 2, kraj: 2,
   typ: 3, podtyp: 3, podtyp_jine: 3,
-  narocnost: 4, delka: 4, pomucky_potreba: 4, pomucky_jake: 4,
+  delka: 4, misto_konani: 4, rozpocet: 4, pomucky_potreba: 4, pomucky_jake: 4,
   vek: 5, zdatnost: 5,
-  popis: 6, vzkaz: 6,
+  popis: 6, poznamka: 6, vzkaz: 6,
   fotky: 7, souhlas_foto: 7, verejny_kontakt: 7, souhlas_zpracovani: 7,
 };
 
@@ -363,7 +370,7 @@ export function spustZapis() {
       if (v.type === "checkbox") {
         v.checked = Array.isArray(h) ? h.includes(v.value) : h === true;
       } else if (v.type === "radio") {
-        v.checked = v.value === h;
+        v.checked = Array.isArray(h) ? h.includes(v.value) : v.value === h;
       } else {
         v.value = h == null ? "" : String(h);
       }
@@ -373,19 +380,27 @@ export function spustZapis() {
   function vyplnFormular(d: Record<string, unknown>) {
     for (const jmeno of [
       "nazev_poradatele", "kontaktni_osoba", "email", "telefon", "mesto", "kraj",
-      "nazev_akce", "datum_akce", "typ", "podtyp_jine", "narocnost", "delka",
-      "pomucky_potreba", "pomucky_jake", "popis", "vzkaz",
+      "nazev_akce", "datum_akce", "typ", "podtyp_jine", "delka", "misto_konani", "rozpocet",
+      "pomucky_potreba", "pomucky_jake", "popis", "poznamka", "vzkaz",
     ]) {
       if (d[jmeno] !== undefined) nastav(jmeno, d[jmeno]);
     }
-    if (d.typ && d.podtyp) nastav(`podtyp-${d.typ}`, d.podtyp);
-    for (const jmeno of ["vek", "zdatnost", "verejny_kontakt"]) {
+    if (d.typ && d.podtyp && maPodtypy(String(d.typ))) nastav(`podtyp-${d.typ}`, d.podtyp);
+    // Zdatnost se ukládá jako seznam, i když je ve formuláři jedna volba.
+    if (Array.isArray(d.zdatnost)) nastav("zdatnost", d.zdatnost);
+    for (const jmeno of ["vek", "verejny_kontakt"]) {
       if (Array.isArray(d[jmeno])) nastav(jmeno, d[jmeno]);
     }
     for (const jmeno of ["souhlas_zpracovani", "souhlas_foto"]) {
       if (d[jmeno] === true) nastav(jmeno, true);
     }
     prekresliZavislosti();
+  }
+
+  /** Podtyp: u typu bez upřesnění (Jiná) vždycky `jine`. */
+  function podtypPodleTypu(typ: string): string {
+    if (!typ) return "";
+    return maPodtypy(typ) ? hodnota(`podtyp-${typ}`) : PODTYP_JINE;
   }
 
   function sesbirej(): Record<string, unknown> {
@@ -400,15 +415,17 @@ export function spustZapis() {
       nazev_akce: hodnota("nazev_akce"),
       datum_akce: hodnota("datum_akce"),
       typ,
-      podtyp: typ ? hodnota(`podtyp-${typ}`) : "",
+      podtyp: podtypPodleTypu(typ),
       podtyp_jine: hodnota("podtyp_jine"),
       vek: zaskrtnute("vek"),
       zdatnost: zaskrtnute("zdatnost"),
-      narocnost: hodnota("narocnost"),
       delka: hodnota("delka"),
+      misto_konani: hodnota("misto_konani"),
+      rozpocet: hodnota("rozpocet"),
       pomucky_potreba: hodnota("pomucky_potreba") === "" ? null : hodnota("pomucky_potreba") === "ano",
       pomucky_jake: hodnota("pomucky_jake"),
       popis: hodnota("popis"),
+      poznamka: hodnota("poznamka"),
       fotky: fotky.map((f) => f.cesta),
       verejny_kontakt: zaskrtnute("verejny_kontakt"),
       souhlas_zpracovani: zaskrtnuto("souhlas_zpracovani"),
@@ -425,8 +442,8 @@ export function spustZapis() {
     formular.querySelectorAll<HTMLElement>('[data-pole="podtyp"]').forEach((b) => {
       b.hidden = b.dataset.proTyp !== typ;
     });
-    const podtyp = typ ? hodnota(`podtyp-${typ}`) : "";
-    (formular.querySelector('[data-pole="podtyp_jine"]') as HTMLElement).hidden = podtyp !== "jine";
+    const podtyp = podtypPodleTypu(typ);
+    (formular.querySelector('[data-pole="podtyp_jine"]') as HTMLElement).hidden = podtyp !== PODTYP_JINE;
     (formular.querySelector('[data-pole="pomucky_jake"]') as HTMLElement).hidden =
       hodnota("pomucky_potreba") !== "ano";
 
@@ -453,6 +470,9 @@ export function spustZapis() {
     popis.textContent = `Napsáno ${cislo(n)} z ${LIMITY.popisMin}–${cislo(LIMITY.popisMax)} znaků`;
     popis.dataset.stav = n >= LIMITY.popisMin ? "ok" : n > 0 ? "malo" : "";
 
+    const poznamka = el("z-poznamka-pocet");
+    poznamka.textContent = `Napsáno ${znaku(hodnota("poznamka"))} z nejvýš ${LIMITY.poznamkaMax} znaků`;
+
     const vzkaz = el("z-vzkaz-pocet");
     vzkaz.textContent = `Napsáno ${znaku(hodnota("vzkaz"))} z nejvýš ${LIMITY.vzkazMax} znaků`;
 
@@ -465,7 +485,14 @@ export function spustZapis() {
     prekresliZavislosti();
     ulozRozepsany();
   });
-  formular.addEventListener("change", () => {
+  formular.addEventListener("change", (u) => {
+    // „Všechny skupiny" ostatní volby zruší a naopak.
+    const cil = u.target;
+    if (cil instanceof HTMLInputElement && cil.name === "vek" && cil.checked) {
+      formular.querySelectorAll<HTMLInputElement>('input[name="vek"]').forEach((v) => {
+        if (v !== cil && (cil.value === VEK_VSECHNY || v.value === VEK_VSECHNY)) v.checked = false;
+      });
+    }
     smazChyby();
     prekresliZavislosti();
     ulozRozepsany();
@@ -618,17 +645,18 @@ export function spustZapis() {
     if (n === 3) {
       if (!d.typ) ch.typ = "Vyberte prosím, jaký typ akce to byl.";
       else if (!d.podtyp) ch.podtyp = "Upřesněte prosím, o jakou akci šlo.";
-      if (d.podtyp === "jine" && !d.podtyp_jine) ch.podtyp_jine = "Napište prosím, jaká akce to byla.";
+      if (d.podtyp === PODTYP_JINE && !d.podtyp_jine) ch.podtyp_jine = "Napište prosím, jaká akce to byla.";
     }
     if (n === 4) {
-      if (!d.narocnost) ch.narocnost = "Vyberte prosím organizační náročnost.";
-      if (!d.delka) ch.delka = "Vyberte prosím, jak dlouho akce trvala.";
+      if (!d.delka) ch.delka = "Vyberte prosím časovou náročnost akce.";
+      if (!d.misto_konani) ch.misto_konani = "Vyberte prosím místo konání.";
+      if (!d.rozpocet) ch.rozpocet = "Vyberte prosím rozpočet na akci.";
       if (d.pomucky_potreba === null) ch.pomucky_potreba = "Vyberte prosím, jestli byly potřeba pomůcky.";
       else if (d.pomucky_potreba && !d.pomucky_jake) ch.pomucky_jake = "Napište prosím, jaké pomůcky byly potřeba.";
     }
     if (n === 5) {
-      if (!(d.vek as string[]).length) ch.vek = "Vyberte prosím aspoň jednu věkovou skupinu.";
-      if (!(d.zdatnost as string[]).length) ch.zdatnost = "Vyberte prosím aspoň jednu možnost u zdatnosti.";
+      if (!(d.vek as string[]).length) ch.vek = "Vyberte prosím aspoň jednu skupinu, pro kterou je akce vhodná.";
+      if (!(d.zdatnost as string[]).length) ch.zdatnost = "Vyberte prosím zdatnost seniorů.";
     }
     if (n === 6) {
       const z = znaku(String(d.popis));
@@ -677,10 +705,6 @@ export function spustZapis() {
     const misto = el("z-shrnuti");
     misto.innerHTML = "";
 
-    const typ = TYPY.find((t) => t.klic === d.typ);
-    const podtyp = d.podtyp === "jine"
-      ? String(d.podtyp_jine)
-      : nazevPodtypu(String(d.typ), String(d.podtyp)).toLowerCase();
     const kontakty = (d.verejny_kontakt as string[]).map((k) => {
       const h = k === "email" ? d.email : d.telefon;
       return `${nazevVolby(VEREJNY_KONTAKT, k)} (${h})`;
@@ -694,12 +718,16 @@ export function spustZapis() {
       ["Název akce", String(d.nazev_akce)],
       ["Kdy proběhla", d.datum_akce ? datumCesky(String(d.datum_akce)) : "Neuvedeno"],
       ["Kde", `${d.mesto}, ${d.kraj}`],
-      ["Typ", `${typ?.nazev ?? ""} – ${podtyp}`],
-      ["Organizační náročnost", nazevVolby(NAROCNOST, String(d.narocnost))],
-      ["Časová náročnost", nazevVolby(DELKA, String(d.delka))],
-      ["Pomůcky", d.pomucky_potreba ? `Jsou potřeba: ${d.pomucky_jake}` : "Nejsou potřeba"],
-      ["Pro koho – věk", (d.vek as string[]).map((v) => nazevVolby(VEK, v)).join(", ")],
-      ["Zdatnost", (d.zdatnost as string[]).map((v) => nazevVolby(ZDATNOST, v)).join(", ")],
+      [POPISKY.typ, typSPodtypem(String(d.typ), String(d.podtyp), String(d.podtyp_jine))],
+      [POPISKY.delka, nazevVolby(DELKA, String(d.delka))],
+      [POPISKY.misto_konani, nazevVolby(MISTO_KONANI, String(d.misto_konani))],
+      [POPISKY.rozpocet, nazevVolby(ROZPOCET, String(d.rozpocet))],
+      [
+        POPISKY.pomucky,
+        d.pomucky_potreba ? `${nazevVolby(POMUCKY, "ano")}: ${d.pomucky_jake}` : nazevVolby(POMUCKY, "ne"),
+      ],
+      [POPISKY.vek, nazvyVoleb(VEK, d.vek as string[])],
+      [POPISKY.zdatnost, nazvyVoleb(ZDATNOST, d.zdatnost as string[])],
       ["Fotky", sklonuj(fotky.length, "fotka", "fotky", "fotek")],
       ["Zveřejněný kontakt", kontakty.join(", ")],
       ["Souhlasy", "Ano, potvrzeno"],
@@ -742,6 +770,14 @@ export function spustZapis() {
       popis.append(p);
     }
     misto.append(popis);
+
+    const poznamkaNadpis = document.createElement("h3");
+    poznamkaNadpis.textContent = `${POPISKY.poznamka} (${POZNAMKA_JE_VEREJNA ? "veřejné" : "neveřejné"})`;
+    misto.append(poznamkaNadpis);
+    const poznamka = document.createElement("p");
+    poznamka.className = "zp-text";
+    poznamka.textContent = String(d.poznamka) || "Bez poznámky.";
+    misto.append(poznamka);
 
     const vzkazNadpis = document.createElement("h3");
     vzkazNadpis.textContent = "Vzkaz organizátorům kampaně (neveřejné)";

@@ -11,10 +11,13 @@
  * který je vidět. Volby se generují ze sdíleného číselníku, takže sedí
  * s kontrolou na serveru i s podmínkami v databázi.
  *
- *   1 Vaše údaje            5 Pro koho (věk, zdatnost)
- *   2 Název, datum, místo   6 Popis a vzkaz
- *   3 Typ akce              7 Fotky a souhlasy
- *   4 Náročnost a pomůcky   8 Shrnutí
+ *   1 Vaše údaje                        5 Pro koho (skupiny, zdatnost seniorů)
+ *   2 Název, datum, místo               6 Popis, poznámka a vzkaz
+ *   3 Typ akce                          7 Fotky a souhlasy
+ *   4 Čas, místo konání, rozpočet,      8 Shrnutí
+ *     pomůcky
+ *
+ * Názvy polí jsou v číselníku (POPISKY), aby byly všude stejné.
  *
  * UKÁZKA: když se web sestaví s PUBLIC_ZASOBNIK_UKAZKA=1 (náhled pro
  * zadavatelku), formulář se otevře i bez osobního odkazu, předvyplní se
@@ -28,14 +31,23 @@ import {
   DELKA,
   KRAJE,
   LIMITY,
-  NAROCNOST,
+  MISTO_KONANI,
+  POMUCKY,
+  POPISKY,
+  POZNAMKA_JE_VEREJNA,
+  ROZPOCET,
+  ROZPOCET_NAPOVEDA,
   TYPY,
   VEK,
+  VEK_VSECHNY,
   VEREJNY_KONTAKT,
   ZDATNOST,
+  ZDATNOST_VICE_VOLEB,
+  nazevVolby,
 } from "../../lib/ciselnikNapadu";
 
 const KROKU = 8;
+const typZdatnosti = ZDATNOST_VICE_VOLEB ? "checkbox" : "radio";
 
 // Našeptávač obcí: jen nápověda, napsat jde jakákoli obec.
 const OBCE = [
@@ -149,7 +161,7 @@ const OBCE = [
 
       <div class="z-pole" data-pole="typ">
         <fieldset>
-          <legend>Jaký typ akce to byl?</legend>
+          <legend>{POPISKY.typ}</legend>
           <div class="z-volby zp-velke">
             {TYPY.map((t) => (
               <label class="z-volba">
@@ -161,7 +173,7 @@ const OBCE = [
         </fieldset>
       </div>
 
-      {TYPY.map((t) => (
+      {TYPY.filter((t) => t.podtypy.length > 0).map((t) => (
         <div class="z-pole" data-pole="podtyp" data-pro-typ={t.klic} hidden>
           <fieldset>
             <legend>Upřesněte, prosím</legend>
@@ -183,28 +195,13 @@ const OBCE = [
       </div>
     </section>
 
-    {/* ---------------- Krok 4: náročnost a pomůcky ---------------- */}
+    {/* ---------------- Krok 4: čas, místo konání, rozpočet, pomůcky ---------------- */}
     <section data-krok="4" aria-labelledby="z-k4" hidden>
-      <h2 id="z-k4">Náročnost a pomůcky</h2>
-
-      <div class="z-pole" data-pole="narocnost">
-        <fieldset aria-describedby="z-narocnost-napoveda">
-          <legend>Organizační náročnost</legend>
-          <p class="z-napoveda" id="z-narocnost-napoveda">Kolik práce dala příprava.</p>
-          <div class="z-volby">
-            {NAROCNOST.map((v) => (
-              <label class="z-volba">
-                <input type="radio" name="narocnost" value={v.klic} />
-                {v.nazev}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      </div>
+      <h2 id="z-k4">Čas, místo a rozpočet</h2>
 
       <div class="z-pole" data-pole="delka">
         <fieldset aria-describedby="z-delka-napoveda">
-          <legend>Časová náročnost</legend>
+          <legend>{POPISKY.delka}</legend>
           <p class="z-napoveda" id="z-delka-napoveda">Jak dlouho akce trvala.</p>
           <div class="z-volby">
             {DELKA.map((v) => (
@@ -217,18 +214,45 @@ const OBCE = [
         </fieldset>
       </div>
 
+      <div class="z-pole" data-pole="misto_konani">
+        <fieldset>
+          <legend>{POPISKY.misto_konani}</legend>
+          <div class="z-volby">
+            {MISTO_KONANI.map((v) => (
+              <label class="z-volba">
+                <input type="radio" name="misto_konani" value={v.klic} />
+                {v.nazev}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="z-pole" data-pole="rozpocet">
+        <fieldset aria-describedby="z-rozpocet-napoveda">
+          <legend>{POPISKY.rozpocet}</legend>
+          <p class="z-napoveda" id="z-rozpocet-napoveda">{ROZPOCET_NAPOVEDA}</p>
+          <div class="z-volby">
+            {ROZPOCET.map((v) => (
+              <label class="z-volba">
+                <input type="radio" name="rozpocet" value={v.klic} />
+                {v.nazev}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+
       <div class="z-pole" data-pole="pomucky_potreba">
         <fieldset>
-          <legend>Byly potřeba nějaké pomůcky?</legend>
+          <legend>{POPISKY.pomucky}</legend>
           <div class="z-volby">
-            <label class="z-volba">
-              <input type="radio" name="pomucky_potreba" value="ne" />
-              Nejsou potřeba
-            </label>
-            <label class="z-volba">
-              <input type="radio" name="pomucky_potreba" value="ano" />
-              Jsou potřeba
-            </label>
+            {POMUCKY.map((v) => (
+              <label class="z-volba">
+                <input type="radio" name="pomucky_potreba" value={v.klic} />
+                {v.nazev}
+              </label>
+            ))}
           </div>
         </fieldset>
       </div>
@@ -249,12 +273,14 @@ const OBCE = [
 
     {/* ---------------- Krok 5: pro koho ---------------- */}
     <section data-krok="5" aria-labelledby="z-k5" hidden>
-      <h2 id="z-k5">Pro koho se akce hodí</h2>
+      <h2 id="z-k5">{POPISKY.vek}</h2>
 
       <div class="z-pole" data-pole="vek">
         <fieldset aria-describedby="z-vek-napoveda">
-          <legend>Pro jaký věk se akce hodí?</legend>
-          <p class="z-napoveda" id="z-vek-napoveda">Můžete vybrat více možností.</p>
+          <legend>{POPISKY.vek}</legend>
+          <p class="z-napoveda" id="z-vek-napoveda">
+            Můžete vybrat více možností. „{nazevVolby(VEK, VEK_VSECHNY)}“ ostatní volby zruší.
+          </p>
           <div class="z-volby">
             {VEK.map((v) => (
               <label class="z-volba">
@@ -268,12 +294,14 @@ const OBCE = [
 
       <div class="z-pole" data-pole="zdatnost">
         <fieldset aria-describedby="z-zdatnost-napoveda">
-          <legend>Jakou fyzickou zdatnost akce vyžaduje?</legend>
-          <p class="z-napoveda" id="z-zdatnost-napoveda">Můžete vybrat více možností.</p>
+          <legend>{POPISKY.zdatnost}</legend>
+          <p class="z-napoveda" id="z-zdatnost-napoveda">
+            {ZDATNOST_VICE_VOLEB ? "Můžete vybrat více možností." : "Vyberte jednu možnost."}
+          </p>
           <div class="z-volby">
             {ZDATNOST.map((v) => (
               <label class="z-volba">
-                <input type="checkbox" name="zdatnost" value={v.klic} />
+                <input type={typZdatnosti} name="zdatnost" value={v.klic} />
                 {v.nazev}
               </label>
             ))}
@@ -299,6 +327,26 @@ const OBCE = [
           aria-describedby="z-popis-napoveda z-popis-pocet"
         ></textarea>
         <p class="z-pocitadlo" id="z-popis-pocet"></p>
+      </div>
+
+      <div class="z-pole" data-pole="poznamka">
+        <label for="z-poznamka">
+          {POPISKY.poznamka} ({POZNAMKA_JE_VEREJNA ? "veřejné" : "neveřejné"}, nepovinné)
+        </label>
+        <p class="z-napoveda" id="z-poznamka-napoveda">
+          {POZNAMKA_JE_VEREJNA
+            ? "Volné místo na případné doplnění. Zobrazí se u nápadu v Zásobníku."
+            : "Volné místo na případné doplnění. Uvidí ho jen správci kampaně."}
+        </p>
+        <textarea
+          id="z-poznamka"
+          name="poznamka"
+          maxlength={LIMITY.poznamkaMax}
+          rows="3"
+          class="zp-kratke"
+          aria-describedby="z-poznamka-napoveda z-poznamka-pocet"
+        ></textarea>
+        <p class="z-pocitadlo" id="z-poznamka-pocet"></p>
       </div>
 
       <div class="z-pole" data-pole="vzkaz">

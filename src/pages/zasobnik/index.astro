@@ -10,8 +10,8 @@
  * Nadpis a pruh „Co tady můžete udělat" mění skript podle toho, jestli
  * je vidět přehled, nebo detail.
  *
- * SKRYTÁ dokud ji zadavatelka neodsouhlasí naostro: noindex a mimo
- * sitemapu (viz astro.config.mjs). Po odsouhlasení se `skryta` smaže.
+ * Zadavatelka Zásobník odsouhlasila 18. 11. 2026 („pak už to pojďme
+ * spustit"), proto je stránka veřejná a v sitemapě.
  *
  * Skript: src/components/zasobnik/prehled.ts
  */
@@ -21,7 +21,6 @@ import StrankaZasobniku from "../../layouts/StrankaZasobniku.astro";
 <StrankaZasobniku
   titulek="Zásobník nápadů — mezigenerační akce | aktivně spolu"
   popis="Ověřené nápady na mezigenerační akce od škol, spolků a firem z celé republiky. Vyberte si a uspořádejte podobnou."
-  skryta
 >
   <h1 class="z-nadpis" id="z-nadpis">Zásobník nápadů</h1>
 
@@ -29,8 +28,8 @@ import StrankaZasobniku from "../../layouts/StrankaZasobniku.astro";
     <span class="z-co-delat-ikona" aria-hidden="true">i</span>
     <p>
       <strong>Co tady můžete udělat:</strong>{" "}<span id="z-co-delat">
-        Vyberte, jakou aktivitu hledáte. Ukážeme ověřené nápady od pořadatelů
-        z celé republiky.
+        Vyberte (vyfiltrujte si), jakou aktivitu hledáte. Najdeme vám ověřené
+        nápady od pořadatelů z celé republiky.
       </span>
     </p>
   </div>

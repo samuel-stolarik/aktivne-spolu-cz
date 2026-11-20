@@ -1,29 +1,43 @@
 /**
  * Zásobník nápadů (/zasobnik/) — seznam, zaklikávací výběr a detail.
  *
- * Chová se jako ukázka, kterou viděla zadavatelka:
- *   - 6 rozbalovacích skupin, na začátku otevřená jen „Typ akce",
- *   - ve skupině jde vybrat JEDNA volba, druhé kliknutí ji zruší,
- *   - mezi skupinami musí sedět všechny vybrané volby,
- *   - věk: nápad pro „všechny věkové skupiny" nebo „bez omezení" se ukáže
- *     u jakékoli zvolené věkové skupiny.
- * Výběr je v adrese (?typ=pohyb&…), takže funguje tlačítko Zpět i odkaz.
+ * Výběr (filtry):
+ *   - 7 rozbalovacích skupin, na začátku otevřená jen „Typ akce",
+ *   - ve skupině jde vybrat víc voleb (FILTR_VICE_VOLEB v číselníku),
+ *     nápad se ukáže, když sedí aspoň jedna; druhé kliknutí volbu zruší,
+ *   - mezi skupinami musí sedět všechny,
+ *   - „Pro koho je akce vhodná": nápad pro „Všechny skupiny" se ukáže
+ *     u jakékoli zvolené skupiny,
+ *   - starší zápisy bez nového pole (místo konání, rozpočet) se při výběru
+ *     v té skupině neukážou, v detailu mají „neuvedeno".
+ * Výběr je v adrese (?typ=pohyb,kulturni&…), takže funguje tlačítko Zpět i odkaz.
  *
  * Detail je na stejné stránce: /zasobnik/?id=<id>. Web je statický, pro
  * každý nápad tedy nemůže existovat vlastní soubor. Starší odkazy
  * s ?napad=<id> fungují dál.
+ *
+ * NÁHLED PRO SPRÁVCE: /zasobnik/?nahled=<id> ukáže detail i kartu
+ * nápadu v jakémkoli stavu, přesně jak budou vypadat po zveřejnění.
+ * Data dá jen funkce `admin-obsah` přihlášenému správci (přihlášení
+ * z /admin/ v tomtéž prohlížeči).
  *
  * UKÁZKA: v sestavení s PUBLIC_ZASOBNIK_UKAZKA=1 (náhled) se místo ostré
  * databáze načtou vymyšlené nápady ze src/lib/ukazkaNapadu.ts.
  */
 import {
   DELKA,
-  NAROCNOST,
+  FILTR_VICE_VOLEB,
+  MISTO_KONANI,
+  POMUCKY,
+  POPISKY,
+  ROZPOCET,
   TYPY,
   VEK,
+  VEK_VSECHNY,
   ZDATNOST,
-  nazevPodtypu,
   nazevVolby,
+  nazvyVoleb,
+  typSPodtypem as typSPodtypemZCiselniku,
   type Volba,
 } from "../../lib/ciselnikNapadu";
 
@@ -44,12 +58,16 @@ export interface VerejnyNapad {
   typ: string;
   podtyp: string;
   podtyp_jine: string | null;
-  narocnost: string;
   pomucky_potreba: boolean;
   pomucky_jake: string | null;
   vek: string[];
   zdatnost: string[];
   delka: string;
+  /** Starší zápisy nemají (null). */
+  misto_konani: string | null;
+  rozpocet: string | null;
+  /** Veřejná poznámka pořadatele, nebo null. */
+  poznamka: string | null;
   popis: string;
   datum_akce: string | null;
   kontakt: { email: string | null; telefon: string | null };
@@ -64,32 +82,28 @@ interface Skupina {
   sedi: (n: Napad, klic: string) => boolean;
 }
 
-const VSEM_VEKUM = new Set(["vsechny", "bez-omezeni"]);
-
 const SKUPINY: Skupina[] = [
   {
     id: "typ",
-    nazev: "Typ akce",
+    nazev: POPISKY.typ,
     volby: TYPY.map((t) => ({ klic: t.klic, nazev: t.nazev })),
     sedi: (n, k) => n.typ === k,
   },
-  { id: "narocnost", nazev: "Náročnost", volby: NAROCNOST, sedi: (n, k) => n.narocnost === k },
   {
     id: "vek",
-    nazev: "Pro koho – věk",
+    nazev: POPISKY.vek,
     volby: VEK,
-    // Kdo hledá konkrétní skupinu, uvidí i nápady „pro všechny".
-    sedi: (n, k) => n.vek.includes(k) || n.vek.some((v) => VSEM_VEKUM.has(v)),
+    // Kdo hledá konkrétní skupinu, uvidí i nápady „pro všechny skupiny".
+    sedi: (n, k) => n.vek.includes(k) || n.vek.includes(VEK_VSECHNY),
   },
-  { id: "zdatnost", nazev: "Zdatnost", volby: ZDATNOST, sedi: (n, k) => n.zdatnost.includes(k) },
-  { id: "delka", nazev: "Délka", volby: DELKA, sedi: (n, k) => n.delka === k },
+  { id: "zdatnost", nazev: POPISKY.zdatnost, volby: ZDATNOST, sedi: (n, k) => n.zdatnost.includes(k) },
+  { id: "delka", nazev: POPISKY.delka, volby: DELKA, sedi: (n, k) => n.delka === k },
+  { id: "misto", nazev: POPISKY.misto_konani, volby: MISTO_KONANI, sedi: (n, k) => n.misto_konani === k },
+  { id: "rozpocet", nazev: POPISKY.rozpocet, volby: ROZPOCET, sedi: (n, k) => n.rozpocet === k },
   {
     id: "pomucky",
-    nazev: "Pomůcky",
-    volby: [
-      { klic: "ne", nazev: "Nejsou potřeba" },
-      { klic: "ano", nazev: "Jsou potřeba" },
-    ],
+    nazev: POPISKY.pomucky,
+    volby: POMUCKY,
     sedi: (n, k) => (k === "ano") === n.pomucky_potreba,
   },
 ];
@@ -102,8 +116,10 @@ const TYP_PORADATELE: Record<string, string> = {
 
 const NADPIS_PREHLEDU = "Zásobník nápadů";
 const NADPIS_DETAILU = "Nápad na společnou akci";
+// Doslova podle zadavatelky (e-mail 18. 11. 2026). Stejný text je
+// i v src/pages/zasobnik/index.astro, kde se ukáže ještě před načtením skriptu.
 const CO_DELAT_PREHLED =
-  "Vyberte, jakou aktivitu hledáte. Ukážeme ověřené nápady od pořadatelů z celé republiky.";
+  "Vyberte (vyfiltrujte si), jakou aktivitu hledáte. Najdeme vám ověřené nápady od pořadatelů z celé republiky.";
 const CO_DELAT_DETAIL = "Přečtěte si, jak akce proběhla. Můžete uspořádat podobnou.";
 
 // ---------------------------------------------------------------------------
@@ -152,8 +168,7 @@ function nazevTypu(typ: string): string {
 }
 
 function typSPodtypem(n: Napad): string {
-  const podtyp = n.podtyp === "jine" ? (n.podtyp_jine ?? "") : nazevPodtypu(n.typ, n.podtyp);
-  return podtyp ? `${nazevTypu(n.typ)} – ${podtyp.toLocaleLowerCase("cs")}` : nazevTypu(n.typ);
+  return typSPodtypemZCiselniku(n.typ, n.podtyp, n.podtyp_jine);
 }
 
 function kdoPoradal(n: Napad): string {
@@ -161,8 +176,13 @@ function kdoPoradal(n: Napad): string {
 }
 
 function seznamVoleb(volby: Volba[], klice: string[]): string {
-  const s = klice.map((k) => nazevVolby(volby, k)).join(", ");
+  const s = nazvyVoleb(volby, klice);
   return s.charAt(0).toLocaleUpperCase("cs") + s.slice(1).toLocaleLowerCase("cs");
+}
+
+/** Hodnota s velkým počátečním písmenem („neuvedeno" → „Neuvedeno"). */
+function velke(s: string): string {
+  return s.charAt(0).toLocaleUpperCase("cs") + s.slice(1);
 }
 
 /** Ikona špendlíku před místem konání. Dekorace, čtečka ji přeskočí. */
@@ -219,6 +239,39 @@ async function nactiJeden(id: string): Promise<Napad | null> {
   return data.napad as Napad;
 }
 
+/**
+ * Náhled pro správce: nápad v jakémkoli stavu přes `admin-obsah`.
+ * Přihlášení se vezme z /admin/ (stejný prohlížeč, stejná doména).
+ * Klient Supabase se načte jen tady, běžný návštěvník ho nestahuje.
+ */
+async function nactiNahled(id: string): Promise<{ napad: Napad; stav: string }> {
+  if (!ADRESA || !KLIC) throw new Error("Náhled teď nefunguje, web je sestavený bez přístupu k databázi.");
+  const { createClient } = await import("@supabase/supabase-js");
+  const klient = createClient(ADRESA, KLIC, {
+    auth: { persistSession: true, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { data } = await klient.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    throw new Error("Náhled vidí jen přihlášený správce. Přihlaste se prosím v administraci a otevřete náhled znovu.");
+  }
+  const o = await fetch(`${ADRESA}/functions/v1/admin-obsah`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: KLIC, Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ akce: "nahled-napadu", id }),
+  });
+  const telo = await o.json().catch(() => ({}));
+  if (!o.ok) throw new Error(telo.chyba ?? "Náhled se nepodařilo načíst. Zkuste to prosím znovu.");
+  return telo as { napad: Napad; stav: string };
+}
+
+const STAV_PRO_NAHLED: Record<string, string> = {
+  ceka: "čeká na kontrolu",
+  vraceno: "je vrácený pořadateli k úpravě",
+  zamitnuto: "je zamítnutý",
+  schvaleno: "je schválený a na webu",
+};
+
 // ---------------------------------------------------------------------------
 
 export function spustPrehled() {
@@ -232,7 +285,9 @@ export function spustPrehled() {
 
   let napady: Napad[] = [];
   let nacteno = false;
-  const vyber: Record<string, string | null> = Object.fromEntries(SKUPINY.map((s) => [s.id, null]));
+  // Vybrané volby v každé skupině. Prázdný seznam = skupina nic neomezuje.
+  const vyber: Record<string, string[]> = Object.fromEntries(SKUPINY.map((s) => [s.id, [] as string[]]));
+  const necoVybrano = () => SKUPINY.some((s) => vyber[s.id].length > 0);
   // Které skupiny má člověk otevřené. Na začátku jen „Typ akce".
   const otevrene: Record<string, boolean> = { typ: true };
 
@@ -240,15 +295,15 @@ export function spustPrehled() {
   function nactiZAdresy(): string | null {
     const q = new URLSearchParams(location.search);
     for (const s of SKUPINY) {
-      const k = q.get(s.id);
-      vyber[s.id] = k && s.volby.some((v) => v.klic === k) ? k : null;
+      const klice = (q.get(s.id) ?? "").split(",").filter((k) => s.volby.some((v) => v.klic === k));
+      vyber[s.id] = FILTR_VICE_VOLEB ? [...new Set(klice)] : klice.slice(0, 1);
     }
     return q.get("id") || q.get("napad");
   }
 
   function zapisDoAdresy(id: string | null, novyZaznam: boolean) {
     const q = new URLSearchParams();
-    for (const s of SKUPINY) if (vyber[s.id]) q.set(s.id, vyber[s.id]!);
+    for (const s of SKUPINY) if (vyber[s.id].length) q.set(s.id, vyber[s.id].join(","));
     if (id) q.set("id", id);
     const adresa = `${location.pathname}${q.toString() ? `?${q}` : ""}`;
     if (novyZaznam) history.pushState(null, "", adresa);
@@ -264,16 +319,16 @@ export function spustPrehled() {
   function vykresliVyber() {
     vyberEl.innerHTML = "";
     for (const s of SKUPINY) {
-      const zvolena = vyber[s.id];
+      const zvolene = vyber[s.id];
       const skupina = vytvor("details", "z-skupina");
-      skupina.open = Boolean(otevrene[s.id] || zvolena);
+      skupina.open = Boolean(otevrene[s.id] || zvolene.length);
       skupina.addEventListener("toggle", () => {
         otevrene[s.id] = skupina.open;
       });
 
       const souhrn = vytvor("summary");
       souhrn.append(vytvor("strong", "", s.nazev));
-      if (zvolena) souhrn.append(vytvor("span", "z-stitek", nazevVolby(s.volby, zvolena)));
+      for (const k of zvolene) souhrn.append(vytvor("span", "z-stitek", nazevVolby(s.volby, k)));
       skupina.append(souhrn);
 
       const volby = vytvor("div", "z-volby");
@@ -284,9 +339,14 @@ export function spustPrehled() {
         t.type = "button";
         t.dataset.skupina = s.id;
         t.dataset.volba = v.klic;
-        t.setAttribute("aria-pressed", String(zvolena === v.klic));
+        t.setAttribute("aria-pressed", String(zvolene.includes(v.klic)));
         t.addEventListener("click", () => {
-          vyber[s.id] = vyber[s.id] === v.klic ? null : v.klic;
+          const uz = vyber[s.id].includes(v.klic);
+          if (FILTR_VICE_VOLEB) {
+            vyber[s.id] = uz ? vyber[s.id].filter((k) => k !== v.klic) : [...vyber[s.id], v.klic];
+          } else {
+            vyber[s.id] = uz ? [] : [v.klic];
+          }
           otevrene[s.id] = true;
           zapisDoAdresy(null, false);
           vykresliVyber();
@@ -302,11 +362,11 @@ export function spustPrehled() {
       vyberEl.append(skupina);
     }
 
-    if (SKUPINY.some((s) => vyber[s.id])) {
+    if (necoVybrano()) {
       const zrusit = vytvor("button", "z-tlacitko", "Zrušit výběr");
       zrusit.type = "button";
       zrusit.addEventListener("click", () => {
-        for (const s of SKUPINY) vyber[s.id] = null;
+        for (const s of SKUPINY) vyber[s.id] = [];
         zapisDoAdresy(null, false);
         vykresliVyber();
         vykresliSeznam();
@@ -321,14 +381,14 @@ export function spustPrehled() {
   function vyfiltruj(): Napad[] {
     return napady.filter((n) =>
       SKUPINY.every((s) => {
-        const k = vyber[s.id];
-        return !k || s.sedi(n, k);
+        const klice = vyber[s.id];
+        return !klice.length || klice.some((k) => s.sedi(n, k));
       }),
     );
   }
 
   // --- Seznam --------------------------------------------------------------
-  function karta(n: Napad): HTMLLIElement {
+  function karta(n: Napad, naKlik?: () => void): HTMLLIElement {
     const li = vytvor("li", "z-karta");
     if (n.fotky[0]) {
       const img = vytvor("img", "z-karta-foto");
@@ -348,8 +408,8 @@ export function spustPrehled() {
 
     const stitky = vytvor("p", "z-stitky");
     stitky.append(vytvor("span", "z-stitek", typSPodtypem(n)));
-    stitky.append(vytvor("span", "z-stitek", nazevVolby(NAROCNOST, n.narocnost)));
-    stitky.append(vytvor("span", "z-stitek", nazevVolby(DELKA, n.delka)));
+    stitky.append(vytvor("span", "z-stitek", `${POPISKY.delka}: ${nazevVolby(DELKA, n.delka)}`));
+    if (n.misto_konani) stitky.append(vytvor("span", "z-stitek", nazevVolby(MISTO_KONANI, n.misto_konani)));
     telo.append(stitky);
 
     const kde = [n.mesto, n.kraj].filter(Boolean).join(", ");
@@ -367,6 +427,10 @@ export function spustPrehled() {
     odkaz.setAttribute("aria-label", `Ukázat celý nápad: ${n.nazev_akce}`);
     odkaz.addEventListener("click", (u) => {
       u.preventDefault();
+      if (naKlik) {
+        naKlik();
+        return;
+      }
       zapisDoAdresy(n.id, true);
       void ukazDetail(n.id);
     });
@@ -377,7 +441,6 @@ export function spustPrehled() {
 
   function vykresliSeznam() {
     const nalez = vyfiltruj();
-    const necoVybrano = SKUPINY.some((s) => vyber[s.id]);
     seznam.innerHTML = "";
     stav.innerHTML = "";
 
@@ -397,7 +460,7 @@ export function spustPrehled() {
       return;
     }
 
-    if (necoVybrano) {
+    if (necoVybrano()) {
       const ok = vytvor("p", "z-ok", `Hotovo! Našli jsme ${pocetNapadu(nalez.length)}.`);
       stav.append(ok);
     }
@@ -438,7 +501,14 @@ export function spustPrehled() {
     }
 
     detail.innerHTML = "";
-    if (!n) {
+    if (n) {
+      vykresliDetail(n);
+      detail.append(radaSeZpet());
+      document.title = `${n.nazev_akce} — Zásobník nápadů | aktivně spolu`;
+      detail.focus();
+      return;
+    }
+    {
       const box = vytvor("div", chyba ? "z-chyba" : "z-prazdne");
       if (chyba) box.append(vytvor("p", "", chyba));
       else {
@@ -446,13 +516,19 @@ export function spustPrehled() {
         box.append(vytvor("p", "", "Možná už není v zásobníku. Vyberte si prosím jiný."));
       }
       detail.append(box);
-      const r = vytvor("p", "z-rada");
-      r.append(tlacitkoZpet());
-      detail.append(r);
+      detail.append(radaSeZpet());
       detail.focus();
-      return;
     }
+  }
 
+  function radaSeZpet(): HTMLElement {
+    const r = vytvor("p", "z-rada");
+    r.append(tlacitkoZpet());
+    return r;
+  }
+
+  /** Obsah detailu nápadu (bez tlačítka Zpět). Stejný pro web i náhled správce. */
+  function vykresliDetail(n: Napad) {
     // 1. Galerie všech fotek
     if (n.fotky.length) {
       const g = vytvor("div", "z-galerie");
@@ -474,12 +550,18 @@ export function spustPrehled() {
 
     // 4. Údaje
     const radky: [string, string][] = [
-      ["Typ", typSPodtypem(n)],
-      ["Náročnost", nazevVolby(NAROCNOST, n.narocnost)],
-      ["Pomůcky", n.pomucky_potreba ? `Jsou potřeba${n.pomucky_jake ? `: ${n.pomucky_jake}` : ""}` : "Nejsou potřeba"],
-      ["Pro koho – věk", seznamVoleb(VEK, n.vek)],
-      ["Zdatnost", seznamVoleb(ZDATNOST, n.zdatnost)],
-      ["Délka", nazevVolby(DELKA, n.delka)],
+      [POPISKY.typ, typSPodtypem(n)],
+      [POPISKY.vek, seznamVoleb(VEK, n.vek)],
+      [POPISKY.zdatnost, seznamVoleb(ZDATNOST, n.zdatnost)],
+      [POPISKY.delka, velke(nazevVolby(DELKA, n.delka))],
+      [POPISKY.misto_konani, velke(nazevVolby(MISTO_KONANI, n.misto_konani))],
+      [POPISKY.rozpocet, velke(nazevVolby(ROZPOCET, n.rozpocet))],
+      [
+        POPISKY.pomucky,
+        n.pomucky_potreba
+          ? `${nazevVolby(POMUCKY, "ano")}${n.pomucky_jake ? `: ${n.pomucky_jake}` : ""}`
+          : nazevVolby(POMUCKY, "ne"),
+      ],
       ["Kde", [n.mesto, n.kraj].filter(Boolean).join(", ")],
       ["Kdy proběhlo", datumCesky(n.datum_akce)],
       ["Pořadatel", kdoPoradal(n)],
@@ -522,12 +604,46 @@ export function spustPrehled() {
     }
     detail.append(popis);
 
-    // 7. Zpět
-    const r = vytvor("p", "z-rada");
-    r.append(tlacitkoZpet());
-    detail.append(r);
+    // 7. Veřejná poznámka pořadatele (jen když ji funkce vydala).
+    if (n.poznamka) {
+      detail.append(vytvor("h4", "", POPISKY.poznamka));
+      const p = vytvor("div", "z-popis");
+      p.append(vytvor("p", "", n.poznamka));
+      detail.append(p);
+    }
+  }
 
-    document.title = `${n.nazev_akce} — Zásobník nápadů | aktivně spolu`;
+  // --- Náhled pro správce ---------------------------------------------------
+  async function ukazNahled(id: string) {
+    nadpis.textContent = NADPIS_DETAILU;
+    coDelat.textContent = "Náhled pro správce: takhle bude nápad vypadat v Zásobníku.";
+    prehled.hidden = true;
+    detail.hidden = false;
+    detail.innerHTML = '<p class="z-nacitani">Načítáme náhled…</p>';
+    try {
+      const { napad, stav: stavZapisu } = await nactiNahled(id);
+      detail.innerHTML = "";
+      const pruh = vytvor(
+        "p",
+        stavZapisu === "schvaleno" ? "z-ok" : "z-info",
+        stavZapisu === "schvaleno"
+          ? "Náhled: zápis je schválený, takhle ho vidí návštěvníci."
+          : `Náhled: zápis ${STAV_PRO_NAHLED[stavZapisu] ?? stavZapisu}. Návštěvníci ho zatím nevidí.`,
+      );
+      detail.append(pruh);
+      detail.append(vytvor("h2", "", "Kartička v přehledu"));
+      const ul = vytvor("ul", "z-mrizka");
+      ul.append(karta({ ...napad, fotky: napad.fotky.slice(0, 1) }, () => detail.querySelector("h3.z-detail-nazev")?.scrollIntoView({ behavior: "smooth" })));
+      detail.append(ul);
+      detail.append(vytvor("h2", "", "Celý nápad"));
+      vykresliDetail(napad);
+      document.title = `Náhled: ${napad.nazev_akce} — Zásobník nápadů`;
+    } catch (e) {
+      detail.innerHTML = "";
+      detail.append(
+        vytvor("p", "z-chyba", e instanceof Error && e.message ? e.message : "Náhled se nepodařilo načíst."),
+      );
+    }
     detail.focus();
   }
 
@@ -566,6 +682,12 @@ export function spustPrehled() {
     vyberEl.hidden = false;
     vykresliVyber();
     vykresliSeznam();
+  }
+
+  const nahled = new URLSearchParams(location.search).get("nahled");
+  if (nahled) {
+    void ukazNahled(nahled);
+    return;
   }
 
   const id = nactiZAdresy();

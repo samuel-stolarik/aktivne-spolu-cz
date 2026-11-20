@@ -1,8 +1,10 @@
 // Veřejný výdej Zásobníku nápadů.
 //
 // Vrací JEN schválené zápisy a JEN pole, která jsou vypsaná ve funkci
-// `verejnaPodoba`. Neveřejný vzkaz, jméno kontaktní osoby, souhlasy, důvody
-// vrácení ani nic z přihlášky (faktury, platba) ven nejde.
+// `verejnaPodoba` (supabase/functions/_shared/verejny-napad.ts). Neveřejný
+// vzkaz, jméno kontaktní osoby, souhlasy, důvody vrácení, záznam úprav
+// správcem ani nic z přihlášky (faktury, platba) ven nejde. Veřejná
+// Poznámka/komentář jde ven, jen když to dovolí POZNAMKA_JE_VEREJNA.
 //
 // Kontakt (e-mail, telefon) se vydá jen ten, se zveřejněním kterého
 // pořadatel souhlasil (`verejny_kontakt`).
@@ -18,6 +20,7 @@
 //   GET ?id=<uuid>     → { napad: {...} }    detail se všemi fotkami
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { SLOUPCE_VEREJNE, verejnaPodoba } from '../_shared/verejny-napad.ts';
 
 const BUCKET = 'napady-fotky';
 
@@ -26,13 +29,6 @@ const PLATNOST_FOTKY_S = 6 * 3600;
 
 /** Jak dlouho smí prohlížeč a CDN odpověď držet (s). Musí být kratší než platnost fotek. */
 const MEZIPAMET_S = 300;
-
-const NAZEV_JE_VEREJNY = new Set(['skola', 'organizace']);
-
-const SLOUPCE =
-  'id, schvaleno_kdy, typ_poradatele, nazev_poradatele, email, telefon, mesto, kraj, ' +
-  'nazev_akce, typ, podtyp, podtyp_jine, narocnost, pomucky_potreba, pomucky_jake, ' +
-  'vek, zdatnost, delka, popis, datum_akce, fotky, verejny_kontakt';
 
 const HLAVICKY_CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -56,43 +52,6 @@ function chyba(veta: string, stav: number): Response {
   return odpoved({ chyba: veta }, stav);
 }
 
-/**
- * Veřejná podoba zápisu. Staví se NOVÝ objekt pole po poli, nekopíruje se
- * řádek z databáze. Co tu není vypsané, ven nejde.
- */
-function verejnaPodoba(r: Record<string, unknown>, fotky: string[]) {
-  const kontakt = Array.isArray(r.verejny_kontakt) ? (r.verejny_kontakt as string[]) : [];
-  const typPoradatele = String(r.typ_poradatele ?? '');
-
-  return {
-    id: String(r.id),
-    zverejneno: r.schvaleno_kdy ?? null,
-    typ_poradatele: typPoradatele,
-    nazev_poradatele: NAZEV_JE_VEREJNY.has(typPoradatele)
-      ? String(r.nazev_poradatele ?? '')
-      : null,
-    mesto: String(r.mesto ?? ''),
-    kraj: String(r.kraj ?? ''),
-    nazev_akce: String(r.nazev_akce ?? ''),
-    typ: String(r.typ ?? ''),
-    podtyp: String(r.podtyp ?? ''),
-    podtyp_jine: r.podtyp === 'jine' ? String(r.podtyp_jine ?? '') : null,
-    narocnost: String(r.narocnost ?? ''),
-    pomucky_potreba: r.pomucky_potreba === true,
-    pomucky_jake: r.pomucky_potreba === true ? (r.pomucky_jake ?? null) : null,
-    vek: Array.isArray(r.vek) ? r.vek : [],
-    zdatnost: Array.isArray(r.zdatnost) ? r.zdatnost : [],
-    delka: String(r.delka ?? ''),
-    popis: String(r.popis ?? ''),
-    datum_akce: r.datum_akce ?? null,
-    kontakt: {
-      email: kontakt.includes('email') ? String(r.email ?? '') || null : null,
-      telefon: kontakt.includes('telefon') ? String(r.telefon ?? '') || null : null,
-    },
-    fotky,
-  };
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: HLAVICKY_CORS });
   if (req.method !== 'GET') return chyba('Nepodporovaný způsob volání.', 405);
@@ -113,7 +72,7 @@ Deno.serve(async (req) => {
     return chyba('Tenhle nápad neznáme. Vraťte se prosím do Zásobníku.', 404);
   }
 
-  let dotaz = klient.from('napady').select(SLOUPCE).eq('stav', 'schvaleno');
+  let dotaz = klient.from('napady').select(SLOUPCE_VEREJNE).eq('stav', 'schvaleno');
   if (id) dotaz = dotaz.eq('id', id);
   const { data, error } = await dotaz.order('schvaleno_kdy', { ascending: false }).limit(500);
 
