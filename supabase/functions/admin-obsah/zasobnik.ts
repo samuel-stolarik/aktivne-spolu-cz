@@ -316,7 +316,8 @@ export async function upravNapad(
       chyby[pole] = `Popis akce musí mít aspoň ${LIMITY.popisMin} znaků. Teď má ${znaku(nove)}.`;
       continue;
     }
-    if (nove !== puvodni) zmena[pole] = nove || null;
+    // Porovnává se bez okrajových mezer, ať se jako změna nepočítá jen mezera navíc.
+    if (nove !== puvodni.trim()) zmena[pole] = nove || null;
   }
 
   if (Object.keys(chyby).length) {
