@@ -26,7 +26,15 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { najdiSouradnice, type KlientProFrontu } from '../_shared/nominatim.ts';
-import { posliVyzvy, prehledVyzev, rozhodniNapad, seznamNapadu, type Vysledek } from './zasobnik.ts';
+import {
+  nahledNapadu,
+  posliVyzvy,
+  prehledVyzev,
+  rozhodniNapad,
+  seznamNapadu,
+  upravNapad,
+  type Vysledek,
+} from './zasobnik.ts';
 
 // ---------------------------------------------------------------------------
 // NASTAVENÍ
@@ -757,6 +765,10 @@ Deno.serve(async (req) => {
       return zVysledku(req, await seznamNapadu(klient));
     case 'rozhodni-napad':
       return zVysledku(req, await rozhodniNapad(klient, telo, overeni.spravce));
+    case 'uprav-napad':
+      return zVysledku(req, await upravNapad(klient, telo, overeni.spravce));
+    case 'nahled-napadu':
+      return zVysledku(req, await nahledNapadu(klient, telo));
     case 'vyzvy':
       return zVysledku(req, await prehledVyzev(klient));
     case 'posli-vyzvy':

@@ -4,8 +4,11 @@
  * Dvě části:
  *   1. Zápisy ke kontrole: meruňkový pruh „Čeká na vás", každý zápis jako
  *      rozbalovací řádek se vším (fotky, údaje, celý popis, souhlasy,
- *      neveřejný vzkaz) a tlačítky Schválit a zveřejnit / Vrátit k úpravě
- *      (s důvodem) / Zamítnout.
+ *      neveřejný vzkaz), náhledem veřejné podoby, opravou textů
+ *      (zapíše se kdo a kdy) a tlačítky Schválit a zveřejnit / Vrátit
+ *      k úpravě (s důvodem) / Zamítnout / Vrátit k rozhodnutí.
+ *      Rozbalené řádky i hlášky u nich přežijí překreslení seznamu
+ *      (stejný vzor jako v tabulce přihlášek). Seznam jde stáhnout do CSV.
  *   2. Výzvy pořadatelům: stav u každé přihlášky (Neodesláno / Odesláno
  *      dne / Zápis vyplněný), výzva jednotlivě i hromadně a zkušební
  *      e-mail na vlastní adresu.
@@ -17,13 +20,20 @@ import { zavolej } from "./klient";
 import { sHlasenim, ukazStav } from "./stav";
 import {
   DELKA,
-  NAROCNOST,
-  TYPY,
+  LIMITY,
+  MISTO_KONANI,
+  PODTYP_JINE,
+  POMUCKY,
+  POPISKY,
+  POZNAMKA_JE_VEREJNA,
+  ROZPOCET,
   VEK,
   VEREJNY_KONTAKT,
   ZDATNOST,
-  nazevPodtypu,
   nazevVolby,
+  nazvyVoleb,
+  typSPodtypem,
+  type UpravitelnePole,
 } from "../../lib/ciselnikNapadu";
 
 /** Kolik výzev jde na server v jednom požadavku. Musí sedět se serverem. */
@@ -50,12 +60,14 @@ interface Zapis {
   typ: string;
   podtyp: string;
   podtyp_jine: string | null;
-  narocnost: string;
   pomucky_potreba: boolean;
   pomucky_jake: string | null;
   vek: string[];
   zdatnost: string[];
   delka: string;
+  misto_konani: string | null;
+  rozpocet: string | null;
+  poznamka: string | null;
   popis: string;
   datum_akce: string | null;
   fotky: Fotka[];
@@ -66,6 +78,9 @@ interface Zapis {
   duvod: string | null;
   rozhodl: string | null;
   rozhodnuto_kdy: string | null;
+  texty_upravil: string | null;
+  texty_upraveno_kdy: string | null;
+  upravy: { upraveno: string; upravil: string; pole: string }[];
 }
 
 interface PrihlaskaSVyzvou {
@@ -155,6 +170,12 @@ const DUVOD_MIN = 5;
 
 let zapisy: Zapis[] = [];
 
+/** Rozbalené řádky. Po překreslení seznamu zůstanou otevřené. */
+const rozbalene = new Set<string>();
+
+/** Poslední hláška u řádku. Po překreslení se ukáže znovu. */
+const hlaskyRadku = new Map<string, { druh: "hotovo" | "chyba"; text: string }>();
+
 export async function nactiZapisy(): Promise<void> {
   const vysledek = await sHlasenim(
     el("hlaska-zapisy"),
@@ -207,6 +228,11 @@ function radekUdaju(dl: HTMLDListElement, nazev: string, hodnota: string): void 
 function radekZapisu(z: Zapis): HTMLElement {
   const radek = vytvor("details", "admin-zapis");
   radek.dataset.id = z.id;
+  radek.open = rozbalene.has(z.id);
+  radek.addEventListener("toggle", () => {
+    if (radek.open) rozbalene.add(z.id);
+    else rozbalene.delete(z.id);
+  });
 
   // --- Souhrn: název, kdo a odkud, počet fotek; vpravo „Otevřít". ---
   const souhrn = vytvor("summary");
@@ -254,29 +280,36 @@ function radekZapisu(z: Zapis): HTMLElement {
   }
 
   // --- Údaje ---
-  const typ = TYPY.find((t) => t.klic === z.typ)?.nazev ?? z.typ;
-  const podtyp = z.podtyp === "jine" ? `jiné: ${z.podtyp_jine ?? ""}` : nazevPodtypu(z.typ, z.podtyp).toLowerCase();
   const dl = vytvor("dl", "admin-udaje");
-  radekUdaju(dl, "Typ", `${typ} – ${podtyp}`);
-  radekUdaju(dl, "Náročnost", nazevVolby(NAROCNOST, z.narocnost));
-  radekUdaju(
-    dl,
-    "Pomůcky",
-    z.pomucky_potreba ? `Jsou potřeba${z.pomucky_jake ? `: ${z.pomucky_jake}` : ""}` : "Nejsou potřeba",
-  );
-  radekUdaju(dl, "Pro koho – věk", z.vek.map((v) => nazevVolby(VEK, v)).join(", "));
-  radekUdaju(dl, "Zdatnost", z.zdatnost.map((v) => nazevVolby(ZDATNOST, v)).join(", "));
-  radekUdaju(dl, "Délka", nazevVolby(DELKA, z.delka));
+  radekUdaju(dl, POPISKY.typ, typSPodtypem(z.typ, z.podtyp, z.podtyp_jine));
+  radekUdaju(dl, POPISKY.vek, nazvyVoleb(VEK, z.vek));
+  radekUdaju(dl, POPISKY.zdatnost, nazvyVoleb(ZDATNOST, z.zdatnost));
+  radekUdaju(dl, POPISKY.delka, nazevVolby(DELKA, z.delka));
+  radekUdaju(dl, POPISKY.misto_konani, nazevVolby(MISTO_KONANI, z.misto_konani));
+  radekUdaju(dl, POPISKY.rozpocet, nazevVolby(ROZPOCET, z.rozpocet));
+  radekUdaju(dl, POPISKY.pomucky, textPomucek(z));
   radekUdaju(dl, "Kde", `${z.mesto}, ${z.kraj}`);
   radekUdaju(dl, "Kdy proběhlo", datum(z.datum_akce) || "Neuvedeno");
   radekUdaju(dl, "Pořadatel", z.nazev_poradatele);
   radekUdaju(dl, "Kontaktní osoba", `${z.kontaktni_osoba}, ${z.email}${z.telefon ? `, ${z.telefon}` : ""}`);
   radekUdaju(dl, "Zápis přišel", datumCas(z.upraveno));
+  if (z.texty_upravil) {
+    radekUdaju(
+      dl,
+      "Texty opravil",
+      `${z.texty_upravil}${z.texty_upraveno_kdy ? `, ${datumCas(z.texty_upraveno_kdy)}` : ""}` +
+        (z.upravy.length ? ` (oprav celkem: ${z.upravy.length})` : ""),
+    );
+  }
   telo.append(dl);
 
-  // --- Celý popis ---
+  // --- Celý popis a poznámka ---
   telo.append(vytvor("h3", "mt-6 mb-2 text-xl", "Jak akce proběhla"));
   telo.append(vytvor("p", "admin-popis-zapisu", z.popis));
+  telo.append(
+    vytvor("h3", "mt-6 mb-2 text-xl", `${POPISKY.poznamka} (${POZNAMKA_JE_VEREJNA ? "veřejné" : "neveřejné"})`),
+  );
+  telo.append(vytvor("p", "admin-popis-zapisu", z.poznamka || "Bez poznámky."));
 
   // --- Souhlasy ---
   const souhlasy = vytvor("div", "mt-6");
@@ -301,15 +334,162 @@ function radekZapisu(z: Zapis): HTMLElement {
     telo.append(vzkaz);
   }
 
+  telo.append(ovladaniUprav(z));
   telo.append(ovladaniRozhodnuti(z));
   radek.append(telo);
   return radek;
+}
+
+function textPomucek(z: Zapis): string {
+  return z.pomucky_potreba
+    ? `${nazevVolby(POMUCKY, "ano")}${z.pomucky_jake ? `: ${z.pomucky_jake}` : ""}`
+    : nazevVolby(POMUCKY, "ne");
+}
+
+/** Hláška u řádku, která se po překreslení ukáže znovu. */
+function hlaskaRadku(z: Zapis): HTMLParagraphElement {
+  const p = vytvor("p", "admin-hlaska admin-hlaska-radku mb-3");
+  p.setAttribute("role", "status");
+  const ulozena = hlaskyRadku.get(z.id);
+  if (ulozena) ukazStav(p, ulozena.druh, ulozena.text);
+  return p;
+}
+
+/** Překreslí seznam a vrátí fokus do řádku, ve kterém člověk pracoval. */
+function prekresliSFokusem(id: string): void {
+  vykresliZapisy();
+  const hlaska = document.querySelector<HTMLElement>(`.admin-zapis[data-id="${id}"] .admin-hlaska-radku`);
+  if (hlaska) {
+    hlaska.setAttribute("tabindex", "-1");
+    hlaska.focus({ preventScroll: true });
+    hlaska.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+
+// ===========================================================================
+// NÁHLED A OPRAVA TEXTŮ
+// ===========================================================================
+
+/** Co jde opravit a jak velké pole na to je. */
+const POLE_UPRAV: { pole: UpravitelnePole; nazev: string; max: number; radku: number }[] = [
+  { pole: "nazev_akce", nazev: "Název akce", max: LIMITY.nazevMax, radku: 0 },
+  { pole: "podtyp_jine", nazev: "Jaká akce to byla (vlastní popis typu)", max: LIMITY.jineMax, radku: 0 },
+  { pole: "popis", nazev: "Popis akce", max: LIMITY.popisMax, radku: 10 },
+  { pole: "pomucky_jake", nazev: "Jaké pomůcky", max: LIMITY.pomuckyMax, radku: 3 },
+  { pole: "poznamka", nazev: POPISKY.poznamka, max: LIMITY.poznamkaMax, radku: 3 },
+];
+
+function ovladaniUprav(z: Zapis): HTMLElement {
+  const obal = vytvor("div", "admin-rozhodnuti");
+  const rada = vytvor("div", "flex flex-wrap gap-3");
+
+  // Náhled: /zasobnik/?nahled=<id> vykreslí nápad přesně jako na webu.
+  const nahled = vytvor("a", "admin-tlacitko-vedlejsi", "Náhled, jak bude vypadat na webu");
+  nahled.href = `/zasobnik/?nahled=${encodeURIComponent(z.id)}`;
+  nahled.target = "_blank";
+  nahled.rel = "noopener";
+
+  const upravit = vytvor("button", "admin-tlacitko-vedlejsi", "Opravit texty");
+  upravit.type = "button";
+  upravit.setAttribute("aria-expanded", "false");
+  rada.append(nahled, upravit);
+
+  const misto = vytvor("div", "admin-potvrzeni-misto");
+  misto.hidden = true;
+  misto.append(
+    vytvor(
+      "p",
+      "mt-0 text-popisek",
+      "Oprava drobných chyb a překlepů. Uloží se, kdo a kdy texty upravil; na webu se úprava neukazuje.",
+    ),
+  );
+
+  const pole: Partial<Record<UpravitelnePole, HTMLInputElement | HTMLTextAreaElement>> = {};
+  for (const p of POLE_UPRAV) {
+    if (p.pole === "pomucky_jake" && !z.pomucky_potreba) continue;
+    if (p.pole === "podtyp_jine" && z.podtyp !== PODTYP_JINE) continue;
+    const id = `uprava-${p.pole}-${z.id}`;
+    const popisek = vytvor("label", "admin-popisek mt-3", `${p.nazev} (nejvýš ${p.max} znaků)`);
+    popisek.htmlFor = id;
+    const vstup = p.radku ? vytvor("textarea", "admin-pole mt-1") : vytvor("input", "admin-pole mt-1");
+    vstup.id = id;
+    vstup.maxLength = p.max;
+    if (vstup instanceof HTMLTextAreaElement) vstup.rows = p.radku;
+    else vstup.type = "text";
+    vstup.value = (z[p.pole] as string | null) ?? "";
+    pole[p.pole] = vstup;
+    misto.append(popisek, vstup);
+  }
+
+  const chybaUprav = vytvor("p", "admin-hlaska mt-2");
+  const radaUlozit = vytvor("div", "mt-3 flex flex-wrap gap-3");
+  const ulozit = vytvor("button", "admin-tlacitko", "Uložit opravu");
+  ulozit.type = "button";
+  const zrusit = vytvor("button", "admin-tlacitko-vedlejsi", "Zrušit");
+  zrusit.type = "button";
+  radaUlozit.append(ulozit, zrusit);
+  misto.append(chybaUprav, radaUlozit);
+
+  upravit.addEventListener("click", () => {
+    misto.hidden = false;
+    upravit.setAttribute("aria-expanded", "true");
+    (pole.nazev_akce ?? Object.values(pole)[0])?.focus();
+  });
+  zrusit.addEventListener("click", () => {
+    for (const p of POLE_UPRAV) {
+      const v = pole[p.pole];
+      if (v) v.value = (z[p.pole] as string | null) ?? "";
+    }
+    misto.hidden = true;
+    upravit.setAttribute("aria-expanded", "false");
+    ukazStav(chybaUprav, "nic");
+    upravit.focus();
+  });
+
+  ulozit.addEventListener("click", async () => {
+    const texty: Partial<Record<UpravitelnePole, string>> = {};
+    for (const [k, v] of Object.entries(pole)) texty[k as UpravitelnePole] = v!.value;
+    const v = await sHlasenim(
+      chybaUprav,
+      { probiha: "Ukládám opravu…", hotovo: "Hotovo!" },
+      () =>
+        zavolej<
+          { zmeneno: UpravitelnePole[]; texty_upravil?: string; texty_upraveno_kdy?: string } & Record<string, unknown>
+        >("uprav-napad", { id: z.id, texty }),
+      { tlacitko: ulozit },
+    );
+    if (!v) return;
+    if (!v.zmeneno.length) {
+      ukazStav(chybaUprav, "hotovo", "Hotovo! Nic se nezměnilo, není co ukládat.");
+      return;
+    }
+    for (const k of v.zmeneno) (z as unknown as Record<string, unknown>)[k] = v[k] ?? null;
+    z.texty_upravil = v.texty_upravil ?? z.texty_upravil;
+    z.texty_upraveno_kdy = v.texty_upraveno_kdy ?? z.texty_upraveno_kdy;
+    z.upravy = [
+      ...v.zmeneno.map((pole) => ({ upraveno: z.texty_upraveno_kdy ?? "", upravil: z.texty_upravil ?? "", pole })),
+      ...z.upravy,
+    ];
+    const nazvy = v.zmeneno.map((k) => POLE_UPRAV.find((p) => p.pole === k)?.nazev ?? k).join(", ");
+    hlaskyRadku.set(z.id, {
+      druh: "hotovo",
+      text:
+        `Hotovo! Opraveno: ${nazvy}.` +
+        (z.stav === "schvaleno" ? " Na webu se oprava ukáže do 5 minut." : ""),
+    });
+    rozbalene.add(z.id);
+    prekresliSFokusem(z.id);
+  });
+
+  obal.append(hlaskaRadku(z), rada, misto);
+  return obal;
 }
 
 const HOTOVO_ROZHODNUTI = {
   schvalit: "Hotovo! Zápis je zveřejněný v Zásobníku nápadů.",
   vratit: "Hotovo! Zápis je vrácený k úpravě. Pořadatel dostane e-mail s vaším důvodem a odkazem na úpravu.",
   zamitnout: "Hotovo! Zápis je zamítnutý a na webu se neukáže.",
+  "k-rozhodnuti": "Hotovo! Zápis zase čeká na vaše rozhodnutí. Na webu není a pořadatel o tom e-mail nedostane.",
 } as const;
 
 function ovladaniRozhodnuti(z: Zapis): HTMLElement {
@@ -336,7 +516,7 @@ function ovladaniRozhodnuti(z: Zapis): HTMLElement {
     if (!v) return false;
 
     z.stav = v.stav;
-    z.duvod = rozhodnuti === "schvalit" ? null : duvod || null;
+    z.duvod = rozhodnuti === "schvalit" || rozhodnuti === "k-rozhodnuti" ? null : duvod || null;
     z.rozhodnuto_kdy = new Date().toISOString();
 
     // Hláška patří k sekci: řádek se po rozhodnutí z fronty přesune.
@@ -348,6 +528,11 @@ function ovladaniRozhodnuti(z: Zapis): HTMLElement {
     sekce.focus({ preventScroll: true });
     return true;
   }
+
+  // --- Vrátit k rozhodnutí: vezme schválení, vrácení i zamítnutí zpět ---
+  const kRozhodnuti = vytvor("button", "admin-tlacitko-vedlejsi", "Vrátit k rozhodnutí");
+  kRozhodnuti.type = "button";
+  kRozhodnuti.addEventListener("click", () => void rozhodni("k-rozhodnuti", kRozhodnuti));
 
   // --- Schválit ---
   const schvalit = vytvor("button", "admin-tlacitko", "Schválit a zveřejnit");
@@ -451,6 +636,7 @@ function ovladaniRozhodnuti(z: Zapis): HTMLElement {
   if (z.stav !== "schvaleno") rada.append(schvalit);
   if (z.stav !== "vraceno") rada.append(vratit);
   if (z.stav !== "zamitnuto") rada.append(zamitnout);
+  if (z.stav !== "ceka") rada.append(kRozhodnuti);
   obal.append(hlaska, rada, mistoVraceni, mistoZamitnuti);
   return obal;
 }
@@ -762,8 +948,107 @@ export function nactiZasobnik(): void {
   void nactiZapisy();
 }
 
+// ===========================================================================
+// STAŽENÍ ZÁPISŮ DO CSV
+// ===========================================================================
+
+/**
+ * Zápisy podle filtru „Zobrazit" do CSV pro Excel. Stejná pravidla jako
+ * u přihlášek: středník jako oddělovač a BOM na začátku, jinak český
+ * Excel rozhází sloupce a diakritiku.
+ */
+function sestavCsvZapisu(radky: Zapis[]): string {
+  const hlavicka = [
+    "Zápis přišel",
+    "Stav",
+    "Název akce",
+    "Pořadatel",
+    "Kontaktní osoba",
+    "E-mail",
+    "Telefon",
+    "Město",
+    "Kraj",
+    "Kdy proběhlo",
+    POPISKY.typ,
+    POPISKY.vek,
+    POPISKY.zdatnost,
+    POPISKY.delka,
+    POPISKY.misto_konani,
+    POPISKY.rozpocet,
+    POPISKY.pomucky,
+    "Popis akce",
+    POPISKY.poznamka,
+    "Vzkaz organizátorům (neveřejný)",
+    "Zveřejněný kontakt",
+    "Počet fotek",
+    "Rozhodl",
+    "Důvod",
+    "Texty opravil",
+  ];
+  const uvozovky = (h: string | number | null | undefined): string =>
+    `"${(h === null || h === undefined ? "" : String(h)).replace(/"/g, '""')}"`;
+
+  const radkySouboru = [hlavicka.map(uvozovky).join(";")];
+  for (const z of radky) {
+    radkySouboru.push(
+      [
+        datumCas(z.vytvoreno),
+        STAV_ZAPISU[z.stav] ?? z.stav,
+        z.nazev_akce,
+        z.nazev_poradatele,
+        z.kontaktni_osoba,
+        z.email,
+        z.telefon,
+        z.mesto,
+        z.kraj,
+        datum(z.datum_akce),
+        typSPodtypem(z.typ, z.podtyp, z.podtyp_jine),
+        nazvyVoleb(VEK, z.vek),
+        nazvyVoleb(ZDATNOST, z.zdatnost),
+        nazevVolby(DELKA, z.delka),
+        nazevVolby(MISTO_KONANI, z.misto_konani),
+        nazevVolby(ROZPOCET, z.rozpocet),
+        textPomucek(z),
+        z.popis,
+        z.poznamka,
+        z.vzkaz,
+        nazvyVoleb(VEREJNY_KONTAKT, z.verejny_kontakt),
+        z.fotky.length,
+        z.rozhodl ? `${z.rozhodl}, ${datumCas(z.rozhodnuto_kdy)}` : "",
+        z.duvod,
+        z.texty_upravil ? `${z.texty_upravil}, ${datumCas(z.texty_upraveno_kdy)}` : "",
+      ]
+        .map(uvozovky)
+        .join(";"),
+    );
+  }
+  return "\uFEFF" + radkySouboru.join("\r\n");
+}
+
+function stahniCsvZapisu(): void {
+  const filtr = el<HTMLSelectElement>("filtr-zapisu").value;
+  const radky = zapisy.filter((z) => filtr === "vse" || z.stav === filtr);
+  const hlaska = el("hlaska-zapisy");
+  if (!radky.length) {
+    ukazStav(hlaska, "chyba", "Není co stahovat. V zobrazeném seznamu nejsou žádné zápisy, zkuste „Zobrazit: Všechny“.");
+    return;
+  }
+  const soubor = new Blob([sestavCsvZapisu(radky)], { type: "text/csv;charset=utf-8" });
+  const adresa = URL.createObjectURL(soubor);
+  const dnes = new Date().toLocaleDateString("sv-SE");
+  const odkaz = document.createElement("a");
+  odkaz.href = adresa;
+  odkaz.download = `zasobnik-zapisy-${dnes}.csv`;
+  document.body.append(odkaz);
+  odkaz.click();
+  odkaz.remove();
+  URL.revokeObjectURL(adresa);
+  ukazStav(hlaska, "hotovo", `Hotovo! Staženo ${zapisu(radky.length)} do souboru zasobnik-zapisy-${dnes}.csv.`);
+}
+
 export function pripravZasobnik(emailSpravce: () => string): void {
   el("filtr-zapisu").addEventListener("change", vykresliZapisy);
+  el("tlacitko-csv-zapisu").addEventListener("click", stahniCsvZapisu);
   el("tlacitko-nacist-zapisy").addEventListener("click", () => void nactiZapisy());
 
   for (const t of document.querySelectorAll<HTMLButtonElement>("[data-cast-zasobniku]")) {

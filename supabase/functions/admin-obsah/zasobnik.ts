@@ -1,13 +1,16 @@
-// Administrace Zásobníku nápadů: fronta zápisů, schvalování a výzvy k zápisu.
+// Administrace Zásobníku nápadů: fronta zápisů, schvalování, opravy textů,
+// náhled veřejné podoby a výzvy k zápisu.
 //
 // Volá se jen z `index.ts` této funkce, AŽ PO ověření správce. Funkce tady
 // vracejí `{ stav, telo }` a odpověď z nich skládá `index.ts`, aby se CORS
 // a hlavičky řešily na jednom místě.
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { LIMITY, PODTYP_JINE, UPRAVITELNA_POLE, type UpravitelnePole } from '../_shared/ciselnik-napadu.ts';
 import { emailVraceni, emailVyzvy, emailZverejneni } from '../_shared/emaily-zasobniku.ts';
 import { zaradAPosli } from '../_shared/fronta-posty.ts';
 import { novyToken, otiskTokenu } from '../_shared/token.ts';
+import { SLOUPCE_VEREJNE, verejnaPodoba } from '../_shared/verejny-napad.ts';
 
 // deno-lint-ignore no-explicit-any
 type Klient = SupabaseClient<any, any, any>;
@@ -106,16 +109,26 @@ async function zalozVyzvu(
 // FRONTA ZÁPISŮ
 // ---------------------------------------------------------------------------
 
-/** Všechny zápisy, nejnovější nahoře, s náhledy fotek. */
+/** Všechny zápisy, nejnovější nahoře, s náhledy fotek a záznamem oprav textů. */
 export async function seznamNapadu(klient: Klient): Promise<Vysledek> {
-  const { data, error } = await klient
-    .from('napady')
-    .select('*')
-    .order('vytvoreno', { ascending: false });
+  const [{ data, error }, upravy] = await Promise.all([
+    klient.from('napady').select('*').order('vytvoreno', { ascending: false }),
+    klient
+      .from('napady_upravy')
+      .select('napad_id, upraveno, upravil, pole')
+      .order('upraveno', { ascending: false }),
+  ]);
 
-  if (error) {
-    console.error('Zápisy se nepodařilo načíst:', error.message);
+  if (error || upravy.error) {
+    console.error('Zápisy se nepodařilo načíst:', (error ?? upravy.error)?.message);
     return chyba('Zápisy se nepodařilo načíst. Zkuste to prosím znovu.', 503);
+  }
+
+  const upravyNapadu = new Map<string, Record<string, unknown>[]>();
+  for (const u of upravy.data ?? []) {
+    const id = u.napad_id as string;
+    if (!upravyNapadu.has(id)) upravyNapadu.set(id, []);
+    upravyNapadu.get(id)!.push({ upraveno: u.upraveno, upravil: u.upravil, pole: u.pole });
   }
 
   const radky = (data ?? []) as Record<string, unknown>[];
@@ -130,6 +143,7 @@ export async function seznamNapadu(klient: Klient): Promise<Vysledek> {
     napady: radky.map((r) => ({
       ...r,
       fotky: ((r.fotky as string[]) ?? []).map((c) => ({ cesta: c, adresa: adresy.get(c) ?? '' })),
+      upravy: upravyNapadu.get(r.id as string) ?? [],
     })),
   });
 }
@@ -138,9 +152,12 @@ const ROZHODNUTI = {
   schvalit: 'schvaleno',
   vratit: 'vraceno',
   zamitnout: 'zamitnuto',
+  // Vezme dřívější rozhodnutí zpět: zápis je zase „čeká na kontrolu"
+  // a z webu zmizí. Pořadatel nedostane žádný e-mail.
+  'k-rozhodnuti': 'ceka',
 } as const;
 
-/** Schválí, vrátí k úpravě, nebo zamítne zápis. */
+/** Schválí, vrátí k úpravě, zamítne zápis, nebo rozhodnutí vezme zpět. */
 export async function rozhodniNapad(
   klient: Klient,
   telo: Record<string, unknown>,
@@ -170,12 +187,18 @@ export async function rozhodniNapad(
   if (!napad) return chyba('Tenhle zápis už neexistuje. Obnovte prosím seznam.', 404);
 
   const ted = new Date().toISOString();
-  const zmena: Record<string, unknown> = {
-    stav: ROZHODNUTI[rozhodnuti],
-    duvod: rozhodnuti === 'schvalit' ? null : duvod || null,
-    rozhodl: spravce.email,
-    rozhodnuto_kdy: ted,
-  };
+  if (rozhodnuti === 'k-rozhodnuti' && napad.stav === 'ceka') {
+    return chyba('Zápis už čeká na rozhodnutí. Obnovte prosím seznam.', 409);
+  }
+
+  const zmena: Record<string, unknown> = rozhodnuti === 'k-rozhodnuti'
+    ? { stav: 'ceka', duvod: null, rozhodl: spravce.email, rozhodnuto_kdy: ted }
+    : {
+      stav: ROZHODNUTI[rozhodnuti],
+      duvod: rozhodnuti === 'schvalit' ? null : duvod || null,
+      rozhodl: spravce.email,
+      rozhodnuto_kdy: ted,
+    };
   const poprveSchvaleno = rozhodnuti === 'schvalit' && !napad.schvaleno_kdy;
   if (poprveSchvaleno) zmena.schvaleno_kdy = ted;
 
@@ -211,6 +234,149 @@ export async function rozhodniNapad(
   }
 
   return ok({ id, stav: ROZHODNUTI[rozhodnuti], email });
+}
+
+// ---------------------------------------------------------------------------
+// OPRAVA TEXTŮ SPRÁVCEM
+// ---------------------------------------------------------------------------
+
+/** Nejvyšší délka každého upravitelného pole. Stejná jako ve formuláři. */
+const MAX_DELKA: Record<UpravitelnePole, number> = {
+  nazev_akce: LIMITY.nazevMax,
+  popis: LIMITY.popisMax,
+  pomucky_jake: LIMITY.pomuckyMax,
+  poznamka: LIMITY.poznamkaMax,
+  podtyp_jine: LIMITY.jineMax,
+};
+
+const NAZEV_POLE: Record<UpravitelnePole, string> = {
+  nazev_akce: 'Název akce',
+  popis: 'Popis akce',
+  pomucky_jake: 'Jaké pomůcky',
+  poznamka: 'Poznámka/komentář',
+  podtyp_jine: 'Jaká akce to byla',
+};
+
+function znaku(t: string): number {
+  return [...t].length;
+}
+
+/**
+ * Opraví texty zápisu (překlepy, drobné chyby). Ukládá se jen to, co se
+ * opravdu změnilo, a každá změna se zapíše do `napady_upravy`: kdo, kdy,
+ * původní a nová hodnota. Na webu se úprava neukazuje.
+ *
+ * Stav zápisu se nemění. Schválený nápad je po uložení hned opravený i na webu.
+ */
+export async function upravNapad(
+  klient: Klient,
+  telo: Record<string, unknown>,
+  spravce: Spravce,
+): Promise<Vysledek> {
+  const id = telo.id;
+  if (!jeUuid(id)) return chyba('Chybí, o který zápis jde. Obnovte prosím stránku.', 400);
+  const texty = telo.texty && typeof telo.texty === 'object' ? (telo.texty as Record<string, unknown>) : {};
+
+  const { data: napad, error } = await klient
+    .from('napady')
+    .select('id, podtyp, pomucky_potreba, nazev_akce, popis, pomucky_jake, poznamka, podtyp_jine')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return chyba('Zápis se nepodařilo načíst. Zkuste to prosím znovu.', 503);
+  if (!napad) return chyba('Tenhle zápis už neexistuje. Obnovte prosím seznam.', 404);
+
+  const chyby: Record<string, string> = {};
+  const zmena: Record<string, string | null> = {};
+
+  for (const pole of UPRAVITELNA_POLE) {
+    if (!(pole in texty)) continue;
+    const surove = texty[pole];
+    if (surove !== null && typeof surove !== 'string') continue;
+    const nove = (surove ?? '').trim();
+    const puvodni = (napad[pole] as string | null) ?? '';
+
+    // Pole, která u tohoto zápisu nemají smysl, se nedají vyplnit.
+    if (pole === 'pomucky_jake' && !napad.pomucky_potreba) continue;
+    if (pole === 'podtyp_jine' && napad.podtyp !== PODTYP_JINE) continue;
+
+    if (znaku(nove) > MAX_DELKA[pole]) {
+      chyby[pole] = `${NAZEV_POLE[pole]}: zkraťte prosím text na ${MAX_DELKA[pole]} znaků.`;
+      continue;
+    }
+    const povinne = pole !== 'poznamka';
+    if (povinne && !nove) {
+      chyby[pole] = `${NAZEV_POLE[pole]} nesmí zůstat prázdné.`;
+      continue;
+    }
+    if (pole === 'nazev_akce' && znaku(nove) < LIMITY.nazevMin) {
+      chyby[pole] = `Název akce musí mít aspoň ${LIMITY.nazevMin} znaků.`;
+      continue;
+    }
+    if (pole === 'popis' && znaku(nove) < LIMITY.popisMin) {
+      chyby[pole] = `Popis akce musí mít aspoň ${LIMITY.popisMin} znaků. Teď má ${znaku(nove)}.`;
+      continue;
+    }
+    if (nove !== puvodni) zmena[pole] = nove || null;
+  }
+
+  if (Object.keys(chyby).length) {
+    return { stav: 422, telo: { chyba: Object.values(chyby).join(' '), chyby } };
+  }
+  const zmenena = Object.keys(zmena) as UpravitelnePole[];
+  if (!zmenena.length) return ok({ id, zmeneno: [] });
+
+  const ted = new Date().toISOString();
+  const { error: chybaZmeny } = await klient
+    .from('napady')
+    .update({ ...zmena, texty_upravil: spravce.email, texty_upraveno_kdy: ted })
+    .eq('id', id);
+  if (chybaZmeny) {
+    console.error('Opravu textů se nepodařilo uložit:', chybaZmeny.message);
+    return chyba('Opravu se nepodařilo uložit. Zkuste to prosím znovu.', 503);
+  }
+
+  const { error: chybaZaznamu } = await klient.from('napady_upravy').insert(
+    zmenena.map((pole) => ({
+      napad_id: id,
+      upraveno: ted,
+      upravil: spravce.email,
+      pole,
+      puvodni: (napad[pole] as string | null) ?? null,
+      nove: zmena[pole],
+    })),
+  );
+  if (chybaZaznamu) console.error('Záznam opravy se nepodařilo uložit:', chybaZaznamu.message);
+
+  return ok({ id, zmeneno: zmenena, texty_upravil: spravce.email, texty_upraveno_kdy: ted, ...zmena });
+}
+
+// ---------------------------------------------------------------------------
+// NÁHLED VEŘEJNÉ PODOBY
+// ---------------------------------------------------------------------------
+
+/**
+ * Nápad v podobě, jakou vydává veřejná funkce `verejne-napady`, ale
+ * v jakémkoli stavu. Stránka /zasobnik/?nahled=<id> z něj vykreslí
+ * přesně to, co uvidí návštěvníci po schválení.
+ */
+export async function nahledNapadu(klient: Klient, telo: Record<string, unknown>): Promise<Vysledek> {
+  const id = telo.id;
+  if (!jeUuid(id)) return chyba('Chybí, o který zápis jde. Otevřete náhled prosím znovu z administrace.', 400);
+
+  const { data, error } = await klient.from('napady').select(`${SLOUPCE_VEREJNE}, stav`).eq('id', id).maybeSingle();
+  if (error) return chyba('Náhled se nepodařilo načíst. Zkuste to prosím znovu.', 503);
+  if (!data) return chyba('Tenhle zápis už neexistuje.', 404);
+
+  const r = data as unknown as Record<string, unknown>;
+  const cesty = Array.isArray(r.fotky) ? (r.fotky as string[]) : [];
+  const adresy = new Map<string, string>();
+  if (cesty.length) {
+    const { data: podepsane } = await klient.storage.from(BUCKET).createSignedUrls(cesty, PLATNOST_NAHLEDU_S);
+    for (const a of podepsane ?? []) if (a.path && a.signedUrl) adresy.set(a.path, a.signedUrl);
+  }
+  const fotky = cesty.map((c) => adresy.get(c)).filter((x): x is string => Boolean(x));
+
+  return ok({ napad: verejnaPodoba(r, fotky), stav: r.stav });
 }
 
 // ---------------------------------------------------------------------------
