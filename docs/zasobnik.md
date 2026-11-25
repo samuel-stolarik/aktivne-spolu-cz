@@ -24,7 +24,7 @@ zápisů, které po akci posílají registrovaní pořadatelé.
 
 | Co | Soubor |
 |---|---|
-| Tabulky `napady`, `vyzvy_k_zapisu`, bucket `napady-fotky` | `supabase/migrations/20261112120000_zasobnik_napadu.sql` |
+| Tabulky `napady`, `vyzvy_k_zapisu`, bucket `napady-fotky` | `supabase/migrations/20261112120000_zasobnik_napadu.sql`, úpravy v `20261120120000_…` a `20261125120000_…` |
 | Číselník voleb (jeden pro DB, funkce i web) | `supabase/functions/_shared/ciselnik-napadu.ts` |
 | Formulář z osobního odkazu | `supabase/functions/zapis-napadu/`, `src/pages/zapis/`, `src/components/zasobnik/zapis.ts` |
 | Veřejný výpis | `supabase/functions/verejne-napady/`, `src/pages/zasobnik/`, `src/components/zasobnik/prehled.ts` |
@@ -35,19 +35,23 @@ Zabezpečení je stejné jako u přihlášek: RLS zapnuté a vynucené, žádná
 policy, `anon` ani `authenticated` nemají na nových tabulkách práva. Bucket
 s fotkami je soukromý a fotky jdou ven jen přes podepsané adresy.
 
-## Pole a nepotvrzené předpoklady
+## Pole a rozhodnutí zadavatelky
 
-Hodnoty, názvy polí i rozhodnutí, která zadavatelka zatím nepotvrdila, jsou
-na jednom místě v `supabase/functions/_shared/ciselnik-napadu.ts`:
+Hodnoty, názvy polí i rozhodnutí jsou na jednom místě
+v `supabase/functions/_shared/ciselnik-napadu.ts`:
 
 | Co | Konstanta | Teď |
 |---|---|---|
-| Upřesnění u typu akce | `TYPY[].podtypy` | Kulturní, Pohyb a sport a Společenská akce mají upřesnění, Jiná jen text |
-| Poznámka/komentář je veřejná | `POZNAMKA_JE_VEREJNA` | ano, do 300 znaků |
-| Rozpočet = celkové náklady pořadatele | `ROZPOCET_NAPOVEDA` | ano |
+| Typ akce | `TYPY` | jen Kulturní, Pohyb a sport, Společenská akce, Jiná; u Jiná povinný vlastní text („Jaká akce to byla?"), upřesnění (Zpěv, Kvíz…) zrušeno 25. 11. 2026 (potvrzeno zadavatelkou) |
+| Rozpočet | `POPISKY.rozpocet`, `ROZPOCET_NAPOVEDA` | „Rozpočet na celou akci", nápověda „Celkové náklady na celou akci." (potvrzeno 24. 11. 2026) |
+| Poznámka/komentář je veřejná | `POZNAMKA_JE_VEREJNA` | ano, do 300 znaků (nepotvrzeno) |
 | Zdatnost seniorů, víc odpovědí | `ZDATNOST_VICE_VOLEB` | ne, jedna odpověď |
 | Ve filtru víc hodnot ve skupině | `FILTR_VICE_VOLEB` | ano |
-| Názvy polí | `POPISKY` | doslova podle e-mailu z 18. 11. 2026 |
+| Názvy polí | `POPISKY` | podle e-mailu z 18. 11. 2026 |
+
+V databázi: u Kulturní, Pohyb a sport a Společenská akce je `podtyp`
+prázdný, u Jiná `podtyp = 'jine'` a text v `podtyp_jine`
+(migrace `20261125120000_zasobnik_typy_bez_upresneni.sql`).
 
 Náročnost se od 20. 11. 2026 nevyplňuje. Sloupec `napady.narocnost` zůstal
 i s daty. Starší zápisy bez nových polí ukazují „neuvedeno“.
@@ -73,15 +77,43 @@ npx supabase link --project-ref kourmwqxkhdtahbxyuaq
 # zkusil přehrát znovu. Novou migraci proto pouštějte samostatně:
 npx supabase db query --remote -f supabase/migrations/<nova>.sql
 npx supabase migration repair --remote --status applied <cislo>
-npx supabase secrets set ZASOBNIK_UPOZORNENI_EMAIL=... WEB_URL=https://aktivne-spolu.cz
 npx supabase functions deploy zapis-napadu
 npx supabase functions deploy verejne-napady
 npx supabase functions deploy admin-obsah
-npm run zip   # a nahrát na FTP podle README
+npm run zip   # sestaví ostrou verzi (s .env!) a zabalí dist.zip
 ```
+
+Secrets `ZASOBNIK_UPOZORNENI_EMAIL` a `WEB_URL` nejsou nastavené a nemusí:
+upozornění na nový zápis jde na `DODAVATEL_EMAIL`, odkazy v e-mailech
+vedou na `https://aktivne-spolu.cz`.
+
+Web na hosting: obsah `dist.zip` patří do **`/home/html/aktivne-spolu.cz/public_html`**,
+ne do kořene FTP (ten je o úroveň výš). Build bez `.env` se nesmí nahrát;
+kontrola: v `dist/_astro/*.js` musí být `kourmwqxkhdtahbxyuaq.supabase.co`.
+
+Pozor: `npm run nahled` přepíše `dist/` verzí pro GitHub Pages (jiný
+základ adres, ukázková data). Před `npm run zip` / nahráním na FTP vždy
+sestavit znovu.
 
 ## Spuštění
 
-Zadavatelka Zásobník odsouhlasila 18. 11. 2026, naostro běží od 20. 11. 2026:
-`/zasobnik/` je bez `noindex` a v sitemapě, tlačítko v hlavičce vede na
-Zásobník. `/zapis/` zůstává skrytý (jen osobní odkazy z e-mailu).
+Zadavatelka Zásobník odsouhlasila 18. 11. 2026, typ akce a rozpočet
+upřesnila 24. 11. 2026.
+
+Stav k 25. 11. 2026:
+
+- **Supabase je naostro**: tabulky a bucket (migrace 20261112120000,
+  20261120120000, 20261125120000) a funkce `zapis-napadu`,
+  `verejne-napady`, `admin-obsah` nasazené 25. 11. 2026. V databázi
+  zatím není žádný zápis ani výzva.
+- **Web na hostingu ještě NENÍ**: `https://aktivne-spolu.cz/zasobnik/`
+  i `/zapis/` vracejí 404, na hostingu běží starší build (index.html z 8. 9. 2026). Dřívější
+  věta „naostro běží od 20. 11." neplatila. Spustí se nahráním `dist.zip`
+  na FTP (viz Nasazení).
+- Náhled se stejnou verzí: https://samuel-stolarik.github.io/aktivne-spolu-cz/zasobnik/
+  a `/zapis/` (ukázková data, nic se neukládá).
+
+Po nahrání: `/zasobnik/` je bez `noindex` a v sitemapě, tlačítko
+v hlavičce vede na Zásobník. `/zapis/` zůstává skrytý (`noindex`, mimo
+sitemapu); zápis jde uložit jen z osobního odkazu z e-mailu
+(administrace → Zásobník nápadů → Výzvy pořadatelům).
