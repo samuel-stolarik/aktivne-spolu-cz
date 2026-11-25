@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Zásobník nápadů — mezigenerační akce | aktivně spolu</title><meta name="description" content="Ověřené nápady na mezigenerační akce od škol, spolků a firem z celé republiky. Vyberte si a uspořádejte podobnou."><meta name="referrer" content="strict-origin-when-cross-origin"><link rel="icon" type="image/svg+xml" href="/aktivne-spolu-cz/favicon.svg"><link rel="preload" href="/aktivne-spolu-cz/fonty/source-sans-3-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/aktivne-spolu-cz/fonty/source-sans-3-latin-ext.woff2" as="font" type="font/woff2" crossorigin><meta property="og:title" content="Zásobník nápadů — mezigenerační akce | aktivně spolu"><meta property="og:description" content="Ověřené nápady na mezigenerační akce od škol, spolků a firem z celé republiky. Vyberte si a uspořádejte podobnou."><meta property="og:type" content="website"><meta property="og:locale" content="cs_CZ"><script>
+  (function () {
+    var ID = "G-FCCK990ZVV",
+      KLIC = "as-souhlas-analytika";
+
+    function nactiAnalytiku() {
+      if (window.__asAnalytikaNactena) return;
+      window.__asAnalytikaNactena = true;
+      var s = document.createElement("script");
+      s.async = true;
+      s.src = "https://www.googletagmanager.com/gtag/js?id=" + ID;
+      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () {
+        window.dataLayer.push(arguments);
+      };
+      window.gtag("js", new Date());
+      window.gtag("config", ID, { anonymize_ip: true });
+    }
+
+    function precti() {
+      try { return localStorage.getItem(KLIC); } catch (e) { return null; }
+    }
+    function zapis(v) {
+      try { localStorage.setItem(KLIC, v); } catch (e) {}
+    }
+
+    function postavListu() {
+      if (document.getElementById("as-cookies")) return;
+
+      var css = document.createElement("style");
+      css.textContent =
+        "#as-cookies{position:fixed;left:0;right:0;bottom:0;z-index:9999;display:flex;justify-content:center;padding:12px;font-family:inherit;animation:as-vjezd .28s ease-out}" +
+        "@keyframes as-vjezd{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}" +
+        "@media (prefers-reduced-motion:reduce){#as-cookies{animation:none}}" +
+        "#as-cookies .as-karta{background:#fff;color:#123;max-width:640px;width:100%;border:1px solid #d7e6ea;border-radius:14px;box-shadow:0 8px 30px rgba(14,84,96,.18);padding:16px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}" +
+        "#as-cookies p{margin:0;flex:1 1 260px;font-size:.94rem;line-height:1.5}" +
+        "#as-cookies a{color:#12707f;text-decoration:underline}" +
+        "#as-cookies .as-akce{display:flex;gap:8px;flex:0 0 auto}" +
+        "#as-cookies button{font:inherit;font-size:.92rem;font-weight:600;cursor:pointer;border-radius:9px;padding:9px 16px;border:1px solid #12707f;transition:filter .15s}" +
+        "#as-cookies button:hover{filter:brightness(1.08)}" +
+        "#as-cookies button:focus-visible{outline:3px solid #12707f;outline-offset:2px}" +
+        "#as-ano{background:#12707f;color:#fff}" +
+        "#as-ne{background:#fff;color:#0e5460}" +
+        "@media (max-width:520px){#as-cookies .as-akce{width:100%}#as-cookies button{flex:1}}";
+      document.head.appendChild(css);
+
+      var box = document.createElement("div");
+      box.id = "as-cookies";
+      box.setAttribute("role", "dialog");
+      box.setAttribute("aria-live", "polite");
+      box.setAttribute("aria-label", "Souhlas s analytickými cookies");
+      box.innerHTML =
+        '<div class="as-karta">' +
+        "<p>Rádi bychom měřili anonymní návštěvnost webu, abychom věděli, co lidem pomáhá. " +
+        "Pomůžete nám tím? Bez souhlasu se nic neměří. " +
+        '<a href="/aktivne-spolu-cz/zpracovani-osobnich-udaju/">Více o zpracování údajů</a></p>' +
+        '<div class="as-akce">' +
+        '<button type="button" id="as-ne">Odmítnout</button>' +
+        '<button type="button" id="as-ano">Souhlasím</button>' +
+        "</div></div>";
+      document.body.appendChild(box);
+
+      document.getElementById("as-ano").addEventListener("click", function () {
+        zapis("ano"); box.remove(); nactiAnalytiku();
+      });
+      document.getElementById("as-ne").addEventListener("click", function () {
+        zapis("ne"); box.remove();
+      });
+    }
+
+    function napojPrepinac() {
+      var b = document.getElementById("as-zmenit-souhlas");
+      if (!b) return;
+      b.addEventListener("click", function () {
+        try { localStorage.removeItem(KLIC); } catch (e) {}
+        window.__asAnalytikaNactena = false;
+        postavListu();
+      });
+    }
+
+    function start() {
+      var v = precti();
+      if (v === "ano") nactiAnalytiku();
+      else if (v !== "ne") postavListu();
+      napojPrepinac();
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+    else start();
+  })();
+</script><link rel="stylesheet" href="/aktivne-spolu-cz/_astro/global.CGzeHYn2.css"><link rel="stylesheet" href="/aktivne-spolu-cz/_astro/Hlavicka.BrfaYOxw.css"><link rel="stylesheet" href="/aktivne-spolu-cz/_astro/StrankaZasobniku.Dk_H9Siy.css"></head><body class="stranka-fable z-stranka"><a href="#obsah" class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded focus:bg-tyrkys focus:px-4 focus:py-2 focus:text-white">Přeskočit na obsah</a><header class="f-hlavicka" id="f-hlavicka"><div class="mx-auto flex max-w-obsah items-center gap-4 px-5 py-3"><a href="/aktivne-spolu-cz/" class="shrink-0" aria-label="Mezigeneračně aktivně spolu, hlavní stránka"><img src="/aktivne-spolu-cz/obrazky/logo.png" alt="Mezigeneračně aktivně spolu" width="170" height="50" class="h-auto w-[150px] sm:w-[170px]"></a><button type="button" id="f-menu-tlacitko" class="f-menu-tlacitko" aria-controls="f-menu" aria-expanded="false" hidden><span class="f-menu-carky" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">Menu</span></button><nav id="f-menu" class="f-menu f-hlavicka-odkazy -mx-2 flex min-w-0 flex-1 gap-1 overflow-x-auto px-2" aria-label="Sekce stránky"><a href="/aktivne-spolu-cz/#proc-se-zapojit" data-kotva="#proc-se-zapojit" class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys">Proč se zapojit</a><a href="/aktivne-spolu-cz/#jak-to-funguje" data-kotva="#jak-to-funguje" class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys">Jak to funguje</a><a href="/aktivne-spolu-cz/#tipy-na-aktivity" data-kotva="#tipy-na-aktivity" class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys">Tipy na aktivity</a><a href="/aktivne-spolu-cz/#zasobnik" data-kotva="#zasobnik" class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys">Zásobník nápadů</a><a href="/aktivne-spolu-cz/#mapa" data-kotva="#mapa" class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys">Mapa akcí</a><a href="/aktivne-spolu-cz/#ke-stazeni" data-kotva="#ke-stazeni" class="flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-popisek whitespace-nowrap text-text no-underline transition-colors duration-150 hover:bg-plocha-tyrkys">Kontakt</a><div class="f-menu-cta"><a href="/aktivne-spolu-cz/zasobnik/" class="tlacitko-pohyb inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-6 py-3 font-semibold no-underline bg-tlacitko text-white hover:bg-tlacitko-hover w-full justify-center px-5 py-3" data-poradi="0">Zásobník nápadů</a></div></nav><div class="hidden shrink-0 lg:block"><a href="/aktivne-spolu-cz/zasobnik/" class="tlacitko-pohyb inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-6 py-3 font-semibold no-underline bg-tlacitko text-white hover:bg-tlacitko-hover px-5 py-2" data-poradi="0">Zásobník nápadů</a></div></div></header><script type="module">var e=document.getElementById(`f-menu-tlacitko`),t=document.getElementById(`f-menu`),n=window.matchMedia(`(max-width: 63.999rem)`);if(e&&t){document.body.classList.add(`f-menu-ano`),e.removeAttribute(`hidden`);function r(n){t.classList.toggle(`je-otevrene`,n),e.setAttribute(`aria-expanded`,String(n))}function i(t=!1){e.getAttribute(`aria-expanded`)===`true`&&(r(!1),t&&e.focus())}e.addEventListener(`click`,()=>{r(e.getAttribute(`aria-expanded`)!==`true`)}),t.querySelectorAll(`a`).forEach(e=>{e.addEventListener(`click`,()=>i())}),document.addEventListener(`keydown`,e=>{e.key===`Escape`&&i(!0)}),document.addEventListener(`click`,n=>{let r=n.target;!t.contains(r)&&!e.contains(r)&&i()}),n.addEventListener(`change`,e=>{e.matches||r(!1)})}var r=document.getElementById(`f-hlavicka`);function i(){r?.classList.toggle(`je-plna`,window.scrollY>12)}i(),window.addEventListener(`scroll`,i,{passive:!0});var a=document.querySelectorAll(`.f-hlavicka-odkazy [data-kotva]`),o=Array.from(a).map(e=>document.querySelector(e.dataset.kotva)).filter(e=>e!==null);if(o.length>0){let e=new IntersectionObserver(e=>{e.forEach(e=>{if(!e.isIntersecting)return;let t=`#${e.target.id}`;a.forEach(e=>{e.dataset.kotva===t?e.setAttribute(`aria-current`,`true`):e.removeAttribute(`aria-current`)})})},{rootMargin:`-20% 0px -70% 0px`});o.forEach(t=>e.observe(t))}</script><main id="obsah" class="z-obsah" tabindex="-1"><h1 class="z-nadpis" id="z-nadpis">Zásobník nápadů</h1><div class="z-co-delat"><span class="z-co-delat-ikona" aria-hidden="true">i</span><p><strong>Co tady můžete udělat:</strong> <span id="z-co-delat">Vyberte (vyfiltrujte si), jakou aktivitu hledáte. Najdeme vám ověřené nápady od pořadatelů z celé republiky.</span></p></div><div id="z-prehled"><div class="z-vyber" id="z-vyber" hidden></div><div id="z-stav" aria-live="polite"></div><div id="z-seznam"><p class="z-nacitani">Načítáme nápady…</p></div></div><article id="z-detail" class="z-detail" hidden tabindex="-1"></article></main><footer class="border-t border-merunka-tlumena bg-pozadi px-5 py-12"><div class="mx-auto flex max-w-obsah flex-col items-center gap-6"><img src="/aktivne-spolu-cz/obrazky/logo.png" alt="Mezigeneračně aktivně spolu" width="546" height="161" class="h-10 w-auto" loading="lazy"><nav class="flex flex-wrap justify-center gap-x-8 gap-y-1"><a href="/aktivne-spolu-cz/obchodni-podminky/" class="flex min-h-11 items-center text-tyrkys underline">Obchodní podmínky</a><a href="/aktivne-spolu-cz/zpracovani-osobnich-udaju/" class="flex min-h-11 items-center text-tyrkys underline">Zpracování osobních údajů</a></nav><p class="m-0 text-center text-popisek">© 2026 Právě teď! o.p.s.</p></div></footer></body></html><script type="module" src="/aktivne-spolu-cz/_astro/index.astro_astro_type_script_index_0_lang.DW_YHlIR.js"></script>
