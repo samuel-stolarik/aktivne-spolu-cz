@@ -173,22 +173,6 @@ const OBCE = [
         </fieldset>
       </div>
 
-      {TYPY.filter((t) => t.podtypy.length > 0).map((t) => (
-        <div class="z-pole" data-pole="podtyp" data-pro-typ={t.klic} hidden>
-          <fieldset>
-            <legend>Upřesněte, prosím</legend>
-            <div class="z-volby">
-              {t.podtypy.map((p) => (
-                <label class="z-volba">
-                  <input type="radio" name={`podtyp-${t.klic}`} value={p.klic} />
-                  {p.nazev}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </div>
-      ))}
-
       <div class="z-pole" data-pole="podtyp_jine" hidden>
         <label for="z-podtyp_jine">Jaká akce to byla?</label>
         <input type="text" id="z-podtyp_jine" name="podtyp_jine" maxlength={LIMITY.jineMax} />

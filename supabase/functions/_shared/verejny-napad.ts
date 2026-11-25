@@ -38,7 +38,7 @@ export function verejnaPodoba(r: Record<string, unknown>, fotky: string[]) {
     kraj: String(r.kraj ?? ''),
     nazev_akce: String(r.nazev_akce ?? ''),
     typ: String(r.typ ?? ''),
-    podtyp: String(r.podtyp ?? ''),
+    podtyp: (r.podtyp as string | null) ?? null,
     podtyp_jine: r.podtyp === 'jine' ? String(r.podtyp_jine ?? '') : null,
     pomucky_potreba: r.pomucky_potreba === true,
     pomucky_jake: r.pomucky_potreba === true ? ((r.pomucky_jake as string | null) ?? null) : null,

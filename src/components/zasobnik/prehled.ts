@@ -56,7 +56,7 @@ export interface VerejnyNapad {
   kraj: string;
   nazev_akce: string;
   typ: string;
-  podtyp: string;
+  podtyp: string | null;
   podtyp_jine: string | null;
   pomucky_potreba: boolean;
   pomucky_jake: string | null;

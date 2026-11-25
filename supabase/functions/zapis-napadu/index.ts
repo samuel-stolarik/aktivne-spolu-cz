@@ -30,7 +30,7 @@ import {
   VEREJNY_KONTAKT,
   ZDATNOST,
   ZDATNOST_VICE_VOLEB,
-  maPodtypy,
+  podtypProTyp,
   typAkce,
   typSPodtypem,
 } from '../_shared/ciselnik-napadu.ts';
@@ -390,13 +390,12 @@ function zkontroluj(
 
   const typ = text(v.typ);
   const t = typAkce(typ);
-  // Typ bez upřesnění (Jiná) má jen vlastní text, podtyp je vždycky `jine`.
-  const podtyp = t && !maPodtypy(typ) ? PODTYP_JINE : text(v.podtyp);
+  // Upřesnění typu není. Jen „Jiná" má vlastní text (podtyp `jine`),
+  // u ostatních typů zůstává podtyp prázdný. Co pošle prohlížeč v `podtyp`,
+  // se nebere v úvahu.
+  const podtyp = t ? podtypProTyp(typ) : null;
   let podtyp_jine: string | null = text(v.podtyp_jine) || null;
   if (!t) ch.typ = 'Vyberte prosím typ akce.';
-  else if (maPodtypy(typ) && !t.podtypy.some((p) => p.klic === podtyp)) {
-    ch.podtyp = 'Vyberte prosím, o co šlo.';
-  }
   if (podtyp === PODTYP_JINE) {
     if (!podtyp_jine) ch.podtyp_jine = 'Napište prosím, jaká akce to byla.';
     else if (delka(podtyp_jine) > LIMITY.jineMax) {
@@ -436,7 +435,7 @@ function zkontroluj(
   if (!klice(MISTO_KONANI).has(misto_konani)) ch.misto_konani = 'Vyberte prosím místo konání.';
 
   const rozpocet = text(v.rozpocet);
-  if (!klice(ROZPOCET).has(rozpocet)) ch.rozpocet = 'Vyberte prosím rozpočet na akci.';
+  if (!klice(ROZPOCET).has(rozpocet)) ch.rozpocet = 'Vyberte prosím rozpočet na celou akci.';
 
   const poznamka: string | null = text(v.poznamka) || null;
   if (poznamka && delka(poznamka) > LIMITY.poznamkaMax) {
@@ -629,7 +628,7 @@ async function upozorniSpravce(
   const nazev = String(d.nazev_akce);
   const kdo = String(d.nazev_poradatele);
   const kde = `${d.mesto}, ${d.kraj}`;
-  const typ = typSPodtypem(String(d.typ), String(d.podtyp), (d.podtyp_jine as string | null) ?? null);
+  const typ = typSPodtypem(String(d.typ), (d.podtyp as string | null) ?? null, (d.podtyp_jine as string | null) ?? null);
   const odkaz = `${WEB}/admin/#zasobnik`;
 
   const predmet = upraveno

@@ -31,7 +31,7 @@ import {
   VEK_VSECHNY,
   VEREJNY_KONTAKT,
   ZDATNOST,
-  maPodtypy,
+  maVlastniText,
   nazevVolby,
   nazvyVoleb,
   typSPodtypem,
@@ -50,7 +50,7 @@ const KVALITA_JPEG = 0.8;
 const KROK_POLE: Record<string, number> = {
   nazev_poradatele: 1, kontaktni_osoba: 1, email: 1, telefon: 1,
   nazev_akce: 2, datum_akce: 2, mesto: 2, kraj: 2,
-  typ: 3, podtyp: 3, podtyp_jine: 3,
+  typ: 3, podtyp_jine: 3,
   delka: 4, misto_konani: 4, rozpocet: 4, pomucky_potreba: 4, pomucky_jake: 4,
   vek: 5, zdatnost: 5,
   popis: 6, poznamka: 6, vzkaz: 6,
@@ -385,7 +385,6 @@ export function spustZapis() {
     ]) {
       if (d[jmeno] !== undefined) nastav(jmeno, d[jmeno]);
     }
-    if (d.typ && d.podtyp && maPodtypy(String(d.typ))) nastav(`podtyp-${d.typ}`, d.podtyp);
     // Zdatnost se ukládá jako seznam, i když je ve formuláři jedna volba.
     if (Array.isArray(d.zdatnost)) nastav("zdatnost", d.zdatnost);
     for (const jmeno of ["vek", "verejny_kontakt"]) {
@@ -397,10 +396,9 @@ export function spustZapis() {
     prekresliZavislosti();
   }
 
-  /** Podtyp: u typu bez upřesnění (Jiná) vždycky `jine`. */
-  function podtypPodleTypu(typ: string): string {
-    if (!typ) return "";
-    return maPodtypy(typ) ? hodnota(`podtyp-${typ}`) : PODTYP_JINE;
+  /** Podtyp: jen u „Jiná" (`jine`, s vlastním textem), jinak nic. */
+  function podtypPodleTypu(typ: string): string | null {
+    return maVlastniText(typ) ? PODTYP_JINE : null;
   }
 
   function sesbirej(): Record<string, unknown> {
@@ -439,11 +437,7 @@ export function spustZapis() {
   // -------------------------------------------------------------------------
   function prekresliZavislosti() {
     const typ = hodnota("typ");
-    formular.querySelectorAll<HTMLElement>('[data-pole="podtyp"]').forEach((b) => {
-      b.hidden = b.dataset.proTyp !== typ;
-    });
-    const podtyp = podtypPodleTypu(typ);
-    (formular.querySelector('[data-pole="podtyp_jine"]') as HTMLElement).hidden = podtyp !== PODTYP_JINE;
+    (formular.querySelector('[data-pole="podtyp_jine"]') as HTMLElement).hidden = !maVlastniText(typ);
     (formular.querySelector('[data-pole="pomucky_jake"]') as HTMLElement).hidden =
       hodnota("pomucky_potreba") !== "ano";
 
@@ -644,13 +638,12 @@ export function spustZapis() {
     }
     if (n === 3) {
       if (!d.typ) ch.typ = "Vyberte prosím, jaký typ akce to byl.";
-      else if (!d.podtyp) ch.podtyp = "Upřesněte prosím, o jakou akci šlo.";
-      if (d.podtyp === PODTYP_JINE && !d.podtyp_jine) ch.podtyp_jine = "Napište prosím, jaká akce to byla.";
+      else if (d.podtyp === PODTYP_JINE && !d.podtyp_jine) ch.podtyp_jine = "Napište prosím, jaká akce to byla.";
     }
     if (n === 4) {
       if (!d.delka) ch.delka = "Vyberte prosím časovou náročnost akce.";
       if (!d.misto_konani) ch.misto_konani = "Vyberte prosím místo konání.";
-      if (!d.rozpocet) ch.rozpocet = "Vyberte prosím rozpočet na akci.";
+      if (!d.rozpocet) ch.rozpocet = "Vyberte prosím rozpočet na celou akci.";
       if (d.pomucky_potreba === null) ch.pomucky_potreba = "Vyberte prosím, jestli byly potřeba pomůcky.";
       else if (d.pomucky_potreba && !d.pomucky_jake) ch.pomucky_jake = "Napište prosím, jaké pomůcky byly potřeba.";
     }
@@ -718,7 +711,7 @@ export function spustZapis() {
       ["Název akce", String(d.nazev_akce)],
       ["Kdy proběhla", d.datum_akce ? datumCesky(String(d.datum_akce)) : "Neuvedeno"],
       ["Kde", `${d.mesto}, ${d.kraj}`],
-      [POPISKY.typ, typSPodtypem(String(d.typ), String(d.podtyp), String(d.podtyp_jine))],
+      [POPISKY.typ, typSPodtypem(String(d.typ), d.podtyp as string | null, (d.podtyp_jine as string) || null)],
       [POPISKY.delka, nazevVolby(DELKA, String(d.delka))],
       [POPISKY.misto_konani, nazevVolby(MISTO_KONANI, String(d.misto_konani))],
       [POPISKY.rozpocet, nazevVolby(ROZPOCET, String(d.rozpocet))],

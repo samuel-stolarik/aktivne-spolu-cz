@@ -7,12 +7,14 @@
 //
 // Do databáze se ukládají KLÍČE (bez diakritiky), ne názvy. Názvy se dají
 // kdykoli přepsat bez zásahu do dat. Stejné klíče jsou vypsané v CHECK
-// podmínkách migrací 20261112120000_zasobnik_napadu.sql
-// a 20261120120000_zasobnik_zpetna_vazba.sql. Kdo tady přidá nebo odebere
+// podmínkách migrací 20261112120000_zasobnik_napadu.sql,
+// 20261120120000_zasobnik_zpetna_vazba.sql
+// a 20261125120000_zasobnik_typy_bez_upresneni.sql. Kdo tady přidá nebo odebere
 // klíč, musí přidat i novou migraci.
 //
 // Názvy polí a hodnot jsou doslova podle zadavatelky (Hana Čepová,
-// e-mail z 18. 11. 2026). Bez jejího souhlasu je neměňte.
+// e-mail z 18. 11. 2026, upřesnění 24. 11. 2026). Bez jejího souhlasu
+// je neměňte.
 
 export interface Volba {
   klic: string;
@@ -23,20 +25,20 @@ export interface TypAkce {
   klic: 'kulturni' | 'pohyb' | 'spolecenska' | 'jina';
   nazev: string;
   /**
-   * Upřesnění typu. Prázdný seznam = typ nemá upřesnění, jen povinné
-   * textové pole „Jaká akce to byla?" (do databáze jde podtyp `jine`).
+   * Jen u „Jiná": pořadatel napíše vlastními slovy, jaká akce to byla.
+   * Do databáze jde podtyp `jine` + text v `podtyp_jine`. Ostatní typy
+   * žádné upřesnění nemají (`podtyp` je prázdný).
    */
-  podtypy: Volba[];
+  vlastniText: boolean;
 }
 
-/** Klíč podtypu, u kterého se vyplňuje vlastní text. */
+/** Klíč podtypu u typu „Jiná", u kterého se vyplňuje vlastní text. */
 export const PODTYP_JINE = 'jine';
 
 // ---------------------------------------------------------------------------
-// ROZHODNUTÍ, KTERÁ ZADAVATELKA ZATÍM NEPOTVRDILA
+// ROZHODNUTÍ, KTERÁ JDE PŘEPNOUT NA JEDNOM MÍSTĚ
 // ---------------------------------------------------------------------------
-// Každé jde změnit tady, na jednom místě. Formulář, filtry, funkce i admin
-// se podle toho zařídí samy.
+// Formulář, filtry, funkce i admin se podle toho zařídí samy.
 
 /**
  * Otázka 2: Poznámka/komentář je VEŘEJNÁ (zobrazí se u nápadu).
@@ -63,7 +65,7 @@ export const POPISKY = {
   delka: 'Časová náročnost akce',
   pomucky: 'Pomůcky',
   misto_konani: 'Místo konání',
-  rozpocet: 'Rozpočet na akci',
+  rozpocet: 'Rozpočet na celou akci',
   poznamka: 'Poznámka/komentář',
 } as const;
 
@@ -75,61 +77,17 @@ export const NEUVEDENO = 'neuvedeno';
 // ---------------------------------------------------------------------------
 
 /**
- * Typ akce a jeho upřesnění. U podtypu `jine` se vyplňuje vlastní text.
- *
- * Otázka 1 (nepotvrzeno): Kulturní a Pohyb a sport si upřesnění nechávají,
- * Společenská akce převzala upřesnění dřívější „Ostatní" a Jiná má jen
- * textové pole. Kdyby se to změnilo, upravte jen seznamy `podtypy` níž
- * (a klíče podtypů v CHECK podmínce migrace).
+ * Typ akce. Jen čtyři volby, upřesnění (dřív Zpěv, Tanec, Kvíz…) zadavatelka
+ * zrušila (e-mail 18. 11. 2026, potvrzeno 24. 11. 2026). U „Jiná" se píše
+ * vlastní text. Klíče musí sedět s CHECK podmínkou v migraci
+ * 20261125120000_zasobnik_typy_bez_upresneni.sql.
  */
 export const TYPY: TypAkce[] = [
-  {
-    klic: 'kulturni',
-    nazev: 'Kulturní',
-    podtypy: [
-      { klic: 'zpev', nazev: 'Zpěv' },
-      { klic: 'tanec', nazev: 'Tanec' },
-      { klic: 'vytvarne', nazev: 'Výtvarné' },
-      { klic: 'divadlo', nazev: 'Divadlo' },
-      { klic: 'cteni', nazev: 'Čtení' },
-      { klic: 'vystava', nazev: 'Výstava' },
-      { klic: 'jine', nazev: 'Jiné' },
-    ],
-  },
-  {
-    klic: 'pohyb',
-    nazev: 'Pohyb a sport',
-    podtypy: [
-      { klic: 'turistika', nazev: 'Turistika' },
-      { klic: 'olympiada', nazev: 'Olympiáda' },
-      { klic: 'venkovni-hry', nazev: 'Venkovní hry' },
-      { klic: 'prochazka', nazev: 'Procházka' },
-      { klic: 'nordic-walking', nazev: 'Nordic walking' },
-      { klic: 'sjizdeni-reky', nazev: 'Sjíždění řeky' },
-      { klic: 'plavani', nazev: 'Plavání' },
-      { klic: 'jine', nazev: 'Jiné' },
-    ],
-  },
-  {
-    // Do 20. 11. 2026 „Ostatní" s klíčem `ostatni`.
-    klic: 'spolecenska',
-    nazev: 'Společenská akce',
-    podtypy: [
-      { klic: 'kviz', nazev: 'Kvíz' },
-      { klic: 'hospodsky-kviz', nazev: 'Hospodský kvíz' },
-      { klic: 'prednaska', nazev: 'Přednáška' },
-      { klic: 'host', nazev: 'Host' },
-      { klic: 'strelba-prakem', nazev: 'Střelba prakem' },
-      { klic: 'povidani', nazev: 'Povídání' },
-      { klic: 'karty-hry', nazev: 'Karty a stolní hry' },
-      { klic: 'jine', nazev: 'Jiné' },
-    ],
-  },
-  {
-    klic: 'jina',
-    nazev: 'Jiná',
-    podtypy: [],
-  },
+  { klic: 'kulturni', nazev: 'Kulturní', vlastniText: false },
+  { klic: 'pohyb', nazev: 'Pohyb a sport', vlastniText: false },
+  // Do 20. 11. 2026 „Ostatní" s klíčem `ostatni`.
+  { klic: 'spolecenska', nazev: 'Společenská akce', vlastniText: false },
+  { klic: 'jina', nazev: 'Jiná', vlastniText: true },
 ];
 
 /**
@@ -175,9 +133,8 @@ export const MISTO_KONANI: Volba[] = [
 ];
 
 /**
- * Rozpočet na akci.
- * Otázka 3 (nepotvrzeno): myslí se celkové náklady pořadatele, viz
- * ROZPOCET_NAPOVEDA.
+ * Rozpočet na celou akci: celkové náklady (potvrzeno zadavatelkou
+ * 24. 11. 2026).
  */
 export const ROZPOCET: Volba[] = [
   { klic: 'zadny', nazev: 'Žádný' },
@@ -186,8 +143,8 @@ export const ROZPOCET: Volba[] = [
   { klic: 'vic-1000', nazev: 'Více než 1000 Kč' },
 ];
 
-/** Nápověda pod polem Rozpočet na akci ve formuláři. */
-export const ROZPOCET_NAPOVEDA = 'Celkové náklady pořadatele na akci.';
+/** Nápověda pod polem Rozpočet na celou akci ve formuláři. */
+export const ROZPOCET_NAPOVEDA = 'Celkové náklady na celou akci.';
 
 /** Pomůcky (formulář i filtr). */
 export const POMUCKY: Volba[] = [
@@ -270,18 +227,19 @@ export function typAkce(klic: string): TypAkce | undefined {
   return TYPY.find((t) => t.klic === klic);
 }
 
-/** Má typ akce upřesnění? Když ne, vyplňuje se jen vlastní text. */
-export function maPodtypy(typ: string): boolean {
-  return (typAkce(typ)?.podtypy.length ?? 0) > 0;
+/** Píše se u typu vlastní text („Jaká akce to byla?")? Jen u „Jiná". */
+export function maVlastniText(typ: string): boolean {
+  return typAkce(typ)?.vlastniText === true;
 }
 
-export function nazevPodtypu(typ: string, podtyp: string): string {
-  return typAkce(typ)?.podtypy.find((p) => p.klic === podtyp)?.nazev ?? podtyp;
+/** Co se ukládá do `podtyp`: u „Jiná" `jine`, jinak nic. */
+export function podtypProTyp(typ: string): typeof PODTYP_JINE | null {
+  return maVlastniText(typ) ? PODTYP_JINE : null;
 }
 
-/** „Kulturní – zpěv", „Jiná – vlastní text". */
-export function typSPodtypem(typ: string, podtyp: string, podtypJine: string | null): string {
+/** „Kulturní", „Jiná – vlastní text". */
+export function typSPodtypem(typ: string, podtyp: string | null, podtypJine: string | null): string {
   const nazevTypu = typAkce(typ)?.nazev ?? typ;
-  const upresneni = podtyp === PODTYP_JINE ? (podtypJine ?? '') : nazevPodtypu(typ, podtyp);
+  const upresneni = podtyp === PODTYP_JINE ? (podtypJine ?? '').trim() : '';
   return upresneni ? `${nazevTypu} – ${upresneni.toLocaleLowerCase('cs')}` : nazevTypu;
 }
